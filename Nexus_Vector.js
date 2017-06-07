@@ -26,6 +26,7 @@ var heroLeftWingX = heroTipX - 10;
 var heroLeftWingY = heroTipY + 40;
 
 //events
+var hPressed = false;
 var pPressed = false;
 var rightPressed = false;
 var leftPressed = false;
@@ -59,27 +60,33 @@ var goldDoorXList = [];
 var goldDoorYList = [];
 var randGold = 0;
 
-//enemies
-var dustWidth = 16;
-var dustHeight = 16;
-var dustXList = [];
-var dustYList = [];
-var dustX = 0;
-var dustY = 0;
+//Stardust
+
+var dust = {
+	width: 16,
+	height: 16,
+	xList: [],
+	yList: [],
+	x: 0,
+	y: 0
+};
 
 //stars
-var starWidth = 2;
-var starHeight = 2;
-var starXList = [];
-var starYList = [];
-var starX = 0;
-var starY = 0;
+var star = {
+	size: 2,
+	xList: [],
+	yList: [],
+	x: 0,
+	y: 0
+};
 
 //laser
-var laserWidth = 1;
-var laserHeight = canvas.height-10;
-var laserX = heroTipX - .5;
-var laserY = canvas.height;
+var laser = {
+	width: 1,
+	height: canvas.height - 10,
+	x: heroTipX - .5,
+	y: canvas.height - 10
+};
 
 //score
 var score = 0;
@@ -93,22 +100,27 @@ window.addEventListener("touchstart", handleStart, false);
 window.addEventListener("touchend", handleEnd, false);
 
 //laser
-var laserEnergyBarWidth = canvas.width/5;
-var laserEnergyBarHeight = 10;
-var laserEnergyBarY = 0;
-var laserEnergyBarX = 0;
 
-var staminaBarWidth = canvas.width/5;
-var staminaBarHeight = 10;
-var staminaBarY = laserEnergyBarY + 10;
-var staminaBarX = 0;
+var laserEnergyBar = {
+	width: canvas.width/5,
+	height: 20,
+	x: 0,
+	y: 0
+};
 
-var lifeBarWidth = canvas.width/5;
-var lifeBarHeight = 10;
-var lifeBarY = staminaBarY + 10;
-var lifeBarX = 0;
+var staminaBar = {
+	width: canvas.width/5,
+	height: laserEnergyBar.height,
+	x: 0,
+	y: laserEnergyBar.y + laserEnergyBar.height
+};
 
-
+var lifeBar = {
+	width: canvas.width/5,
+	height: staminaBar.height,
+	x: 0,
+	y: staminaBar.y + staminaBar.height
+};
 
 var randGreen = 0;
 var randRed = 0;
@@ -117,18 +129,18 @@ var randBlue = 0;
 var playingGame = false;
 
 function drawHero(){
-	for (i = 0; i <= dustXList.length; i++){
-	if (dustXList[i] + dustWidth > heroLeftWingX && dustXList[i] < (heroRightWingX) && 
-		(dustYList[i] + dustHeight) > (heroTipY) && dustYList[i] < heroLeftWingY){
+	for (i = 0; i <= dust.xList.length; i++){
+	if (dust.xList[i] + dust.width > heroLeftWingX && dust.xList[i] < (heroRightWingX) && 
+		(dust.yList[i] + dust.height) > (heroTipY) && dust.yList[i] < heroLeftWingY){
 	    heroCollision = true;
-	    delete dustXList[i];
-	    delete dustYList[i];
+	    delete dust.xList[i];
+	    delete dust.yList[i];
 	}
     }
     if(heroCollision){
 		deaths++;
-		if(lifeBarX > -lifeBarWidth){
-	            lifeBarX -= 10;
+		if(lifeBar.x > -lifeBar.width){
+	            lifeBar.x -= 10;
 		}
     }
     if(heroCollision == false){
@@ -146,9 +158,9 @@ function drawHero(){
 	    ctx.fill();
 
 	    ctx.beginPath();
-	    ctx.moveTo(heroTipX, heroTipY+2);
-	    ctx.lineTo(heroLeftWingX+2, heroLeftWingY-1);
-	    ctx.lineTo(heroRightWingX-2, heroRightWingY-1);
+	    ctx.moveTo(heroTipX, heroTipY+8);
+	    ctx.lineTo(heroLeftWingX+4, heroLeftWingY-3);
+	    ctx.lineTo(heroRightWingX-4, heroRightWingY-3);
 	    ctx.fillStyle = "#000";
 	    ctx.fill();
     }
@@ -225,8 +237,8 @@ function drawGoldDoor(){
 //draw laser energy bar
 function drawLEB(){
 	ctx.beginPath();
-	ctx.rect(laserEnergyBarX, laserEnergyBarY, laserEnergyBarWidth, laserEnergyBarHeight);
-	ctx.fillStyle = "#ff0000";
+	ctx.rect(laserEnergyBar.x, laserEnergyBar.y, laserEnergyBar.width, laserEnergyBar.height);
+	ctx.fillStyle = "rgba(255,100,10,0.4)";
 	ctx.fill();
 	ctx.closePath();
 }
@@ -234,69 +246,69 @@ function drawLEB(){
 //draw stamina energy bar
 function drawSEB(){
 	ctx.beginPath();
-	ctx.rect(staminaBarX, staminaBarY, staminaBarWidth, staminaBarHeight);
-	ctx.fillStyle = "#0000ff";
+	ctx.rect(staminaBar.x, staminaBar.y, staminaBar.width, staminaBar.height);
+	ctx.fillStyle = "rgba(100,10,255,0.4)";
 	ctx.fill();
 	ctx.closePath();
 }
 
 function drawLB(){
 	ctx.beginPath();
-	ctx.rect(lifeBarX, lifeBarY, lifeBarWidth, lifeBarHeight);
-	ctx.fillStyle = "#00ff00";
+	ctx.rect(lifeBar.x, lifeBar.y, lifeBar.width, lifeBar.height);
+	ctx.fillStyle = "rgba(10,255,100,0.4)";
 	ctx.fill();
 	ctx.closePath();
 }
 
 function gendustXY(){
     if (Math.floor(Math.random() * 5) == 1){
-	dustX = Math.floor(Math.random()* -canvas.width) + Math.floor(Math.random() * canvas.width * 2);
-	dustY = Math.floor(Math.random()* -canvas.height - 1);
-	if ((spacePressed == false && screenTouched == false) || laserX < dustXList[i] || 
-		laserX > dustXList[i] + dustWidth || laserEnergyBarX <= -laserEnergyBarWidth){
-	    dustXList[dustXList.length] = dustX;
-	    dustYList[dustYList.length] = dustY;
+		dust.x = Math.floor(Math.random()* -canvas.width) + Math.floor(Math.random() * canvas.width * 2);
+		dust.y = Math.floor(Math.random()* -canvas.height - 1);
+	if ((spacePressed == false && screenTouched == false) || laser.x < dust.xList[i] || 
+		laser.x > dust.xList[i] + dust.width || laserEnergyBar.x <= -laserEnergyBar.width){
+	    dust.xList[dust.xList.length] = dust.x;
+	    dust.yList[dust.yList.length] = dust.y;
 	}
     }
 }
 
 function drawdustShips(){
-	for (i = 0; i < dustYList.length; i++){
-	    if(dustYList[i] >= canvas.height){
-		delete dustYList[i];
-		delete dustXList[i];
+	for (i = 0; i < dust.yList.length; i++){
+	    if(dust.yList[i] >= canvas.height){
+			dust.yList.splice(i,1);//delete dust.yList[i];
+			dust.xList.splice(i,1);//delete dust.xList[i];
 	    }
 	    else{
-		dustRGB1 = Math.floor(Math.random() * 255);
-		dustRGB2 = Math.floor(Math.random() * 255);
-		dustRGB3 = Math.floor(Math.random() * 255);
-		ctx.beginPath();
-		ctx.rect(dustXList[i], dustYList[i], dustWidth, dustHeight);
-		ctx.fillStyle = 'rgb(' + dustRGB1 + ',' + dustRGB2 + ',' + dustRGB3 + ')';
-		ctx.fill();
-		ctx.closePath();
+			dustRGB1 = Math.floor(Math.random() * 255);
+			dustRGB2 = Math.floor(Math.random() * 255);
+			dustRGB3 = Math.floor(Math.random() * 255);
+			ctx.beginPath();
+			ctx.rect(dust.xList[i], dust.yList[i], dust.width, dust.height);
+			ctx.fillStyle = 'rgb(' + dustRGB1 + ',' + dustRGB2 + ',' + dustRGB3 + ')';
+			ctx.fill();
+			ctx.closePath();
 	    }
 	}
 }
 
-function genStarXY(){
+function genstarXY(){
     if (Math.floor(Math.random() * 3) == 1){
-	starX = Math.floor(Math.random() * -canvas.width) + Math.floor(Math.random() * canvas.width * 2);
-	starY = Math.floor(Math.random() * -canvas.height) + Math.floor(Math.random() * canvas.height);
-	starXList[starXList.length] = starX;
-	starYList[starYList.length] = starY;
+		star.x = Math.floor(Math.random() * -canvas.width) + Math.floor(Math.random() * canvas.width * 2);
+		star.y = Math.floor(Math.random() * -canvas.height) + Math.floor(Math.random() * canvas.height);
+		star.xList[star.xList.length] = star.x;
+		star.yList[star.yList.length] = star.y;
     }
 }
 
 function drawStars(){
-    for (i = 0; i < starYList.length; i++){
-	var starSize = Math.floor(Math.random() * 4);
-	randRGB = Math.floor(Math.random() * 255);
-	ctx.beginPath();
-	ctx.rect(starXList[i], starYList[i], starSize, starSize);
-	ctx.fillStyle = 'rgb(' + randRGB + ',' + randRGB + ',' + randRGB + ')';
-	ctx.fill();
-	ctx.closePath();
+    for (i = 0; i < star.yList.length; i++){
+		star.size = Math.floor(Math.random() * 4);
+		var randRGB = Math.floor(Math.random() * 255);
+		ctx.beginPath();
+		ctx.rect(star.xList[i], star.yList[i], star.size, star.size);
+		ctx.fillStyle = 'rgb(' + randRGB + ',' + randRGB + ',' + randRGB + ')';
+		ctx.fill();
+		ctx.closePath();
     }
 }
 
@@ -314,10 +326,18 @@ function keyDownHandler(e) {
     	downPressed = true;
     }
     else if(e.keyCode == 16){
-	shiftPressed = true;
+		shiftPressed = true;
+    }
+    else if(e.keyCode == 72){
+    	hPressed = true;
     }
     else if(e.keyCode == 80){
-	pPressed = true;
+		if(gamePaused == false){
+			gamePaused = true;
+		}
+		else{
+			gamePaused = false;
+		}
     }
 }
 function keyUpHandler(e) {
@@ -334,28 +354,28 @@ function keyUpHandler(e) {
     	downPressed = false;
     }
     else if(e.keyCode == 16){
-	shiftPressed = false;
+		shiftPressed = false;
     }
-    else if(e.keyCode == 80){
-	pPressed = false;
+    else if(e.keyCode == 72){
+    	hPressed = false;
     }
 }
 
 //my added drawLaser function
 function drawLaser(){
 	ctx.beginPath();
-	ctx.rect(laserX, 0, laserWidth, laserHeight);
+	ctx.rect(laser.x, 0, laser.width, laser.height);
 	ctx.fillStyle = 'rgb(' +
 		Math.floor(Math.random() * 255) + ',' +
 		Math.floor(Math.random() * 255) + ',' +
 		Math.floor(Math.random() * 255) + ')';
 	ctx.fill();
 	ctx.closePath();
-	for (i = 0; i < dustXList.length; i++){
-	    if(laserX >= dustXList[i] && laserX <= dustXList[i] + dustWidth && dustYList[i] > 0 && 
-	    	dustYList[i] < laserY && (spacePressed || screenTouched)){
-			delete dustXList[i];
-			delete dustYList[i];
+	for (i = 0; i < dust.xList.length; i++){
+	    if(laser.x >= dust.xList[i] && laser.x <= dust.xList[i] + dust.width && dust.yList[i] > 0 && 
+	    	dust.yList[i] < laser.y && (spacePressed || screenTouched)){
+			dust.yList.splice(i,1);
+			dust.xList.splice(i,1);
 			score++;
 	    }
 	}
@@ -376,117 +396,122 @@ function drawTitle(){
     }
 }
 
-function drawStats(){
+function drawHelps(){
     ctx.font = "22px Courier New";
-    ctx.fillStyle = "#fff";
-    ctx.fillText("Move: <-/-> or Tilt", 0, lifeBarY + 30);
-    ctx.fillText("Shoot: Space or Tap", 0, lifeBarY + 50);
-    ctx.fillText("Boost: Shift + <-/->", 0, lifeBarY + 70);
-    ctx.fillText("Strafe: Down + <-/->", 0, lifeBarY + 90);
-    ctx.fillText("Dust: " + score, 0, lifeBarY + 110);
+    ctx.fillStyle = "rgba(255,255,255,0.5)";
+    ctx.textAlign = "start";
+    ctx.fillText("Move\t\t\t\t:<-/-> or Tilt", 0, lifeBar.y + lifeBar.height * 2);
+    ctx.fillText("Shoot\t\t\t:Space or Tap", 0, lifeBar.y + lifeBar.height * 3);
+    ctx.fillText("Boost\t\t\t:Shift + <-/->", 0, lifeBar.y + lifeBar.height * 4);
+    ctx.fillText("Strafe\t\t:Down + <-/->", 0, lifeBar.y + lifeBar.height * 5);
+    ctx.textAlign = "end";
+    ctx.fillText("Stardust Captured: " + score, canvas.width - 12, 22);
 }
 
+
 function draw() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    drawStats();
-    drawTitle();
-    genStarXY();
-    drawStars();
-    genSilverDoorXY();
-    drawSilverDoor();
-    genGoldDoorXY();
-    drawGoldDoor();
-    if((spacePressed || screenTouched) && laserEnergyBarX > -laserEnergyBarWidth){
-    	drawLaser();
-    }
-    gendustXY();
-    drawdustShips();
-    drawLEB();
-    drawSEB();
-    drawLB();
-    drawHero();
-    //handleOrientation();
-    for(i = 0; i < dustYList.length; i++){
-    	if (((spacePressed == false && screenTouched == false) || laserX < dustXList[i] || 
-    		laserX > dustXList[i] + dustWidth || laserEnergyBarX <= -laserEnergyBarWidth)){
-            dustYList[i] += Math.floor(Math.random() * 5 + 3);
-	    dustXList[i] += Math.floor(Math.random() * -5 + 3);
-	    if (rightPressed && downPressed){
-	   	dustXList[i] -= speed;
+	if(!gamePaused){
+		ctx.clearRect(0, 0, canvas.width, canvas.height);
+	   	drawHelps();
+	    drawTitle();
+	    genstarXY();
+	    drawStars();
+	    genSilverDoorXY();
+	    drawSilverDoor();
+	    genGoldDoorXY();
+	    drawGoldDoor();
+	    if((spacePressed || screenTouched) && laserEnergyBar.x > -laserEnergyBar.width){
+	    	drawLaser();
 	    }
-	    if (leftPressed && downPressed){
-		dustXList[i] += speed;
+	    gendustXY();
+	    drawdustShips();
+	    drawLEB();
+	    drawSEB();
+	    drawLB();
+	    drawHero();
+	    //handleOrientation();
+	    for(i = 0; i < dust.yList.length; i++){
+	    	if (((spacePressed == false && screenTouched == false) || laser.x < dust.xList[i] || 
+	    		laser.x > dust.xList[i] + dust.width || laserEnergyBar.x <= -laserEnergyBar.width)){
+	            dust.yList[i] += Math.floor(Math.random() * 5 + 3);
+		    	dust.xList[i] += Math.floor(Math.random() * -5 + 3);
+		    if (rightPressed && downPressed){
+		   		dust.xList[i] -= speed;
+		    }
+		    if (leftPressed && downPressed){
+				dust.xList[i] += speed;
+		    }
+		    if (dust.yList[i] >= canvas.height){
+				dust.yList.splice(i,1);
+				dust.xList.splice(i,1);
+		    }
+	    	}
 	    }
-	    if (dustYList[i] >= canvas.height){
-		delete dustYList[i];
-		delete dustXList[i];
+
+	    if((spacePressed || screenTouched) && laserEnergyBar.x >= -laserEnergyBar.width){
+			laserEnergyBar.x--;
 	    }
-    	}
-    }
+	    else if(spacePressed == false && screenTouched == false && laserEnergyBar.x < 0){
+			laserEnergyBar.x++;
+	    }
 
-    if((spacePressed || screenTouched) && laserEnergyBarX >= -laserEnergyBarWidth){
-	laserEnergyBarX--;
-    }
-    else if(spacePressed == false && screenTouched == false && laserEnergyBarX < 0){
-	laserEnergyBarX++;
-    }
+	    for (i = 0; i < star.xList.length; i++){
+			if(star.yList[i] < canvas.height){
+			    star.yList[i]++;
+			}
+			else{
+			    star.yList.splice(i,1);
+			    star.xList.splice(i,1);
+			}
+	    }
 
-    for (i = 0; i < starXList.length; i++){
-		if(starYList[i] < canvas.height){
-		    starYList[i]++;
-		}
-		else{
-		    delete starYList[i];
-		    delete starXList[i];
-		}
-    }
+	    if((rightPressed || screenTiltRight) && heroLeftWingX < canvas.width && 
+	    	downPressed == false) {
+	        laser.x += speed;
+			heroTipX += speed;
+	    }
+	    else if((rightPressed || screenTiltRight) && heroLeftWingX >= canvas.width && 
+	    	downPressed == false){
+	    	laser.x -= canvas.width + heroWidth;
+			heroTipX -= canvas.width + heroWidth;
+	    }
 
-    if((rightPressed || screenTiltRight) && heroLeftWingX < canvas.width && 
-    	downPressed == false) {
-        laserX += speed;
-		heroTipX += speed;
-    }
-    else if((rightPressed || screenTiltRight) && heroLeftWingX >= canvas.width && 
-    	downPressed == false){
-    	laserX -= canvas.width + heroWidth;
-		heroTipX -= canvas.width + heroWidth;
-    }
+	    else if((leftPressed || screenTiltLeft) && heroRightWingX > 0 && downPressed == false){
+	        laser.x -= speed;
+			heroTipX -= speed;
+	    }
+	    else if((leftPressed || screenTiltLeft) && heroRightWingX <= 0 && downPressed == false){
+	    	laser.x += canvas.width + heroWidth;
+			heroTipX += canvas.width + heroWidth;
+	    }
 
-    else if((leftPressed || screenTiltLeft) && heroRightWingX > 0 && downPressed == false){
-        laserX -= speed;
-		heroTipX -= speed;
-    }
-    else if((leftPressed || screenTiltLeft) && heroRightWingX <= 0 && downPressed == false){
-    	laserX += canvas.width + heroWidth;
-		heroTipX += canvas.width + heroWidth;
-    }
+	    if(shiftPressed && staminaBar.x > -staminaBar.width){
+			staminaBar.x--;
+			speed = 10;
+	    }
+	    else{
+			speed = 7;
+	    }
+	    if(shiftPressed == false && staminaBar.x < 0){
+			staminaBar.x++;
+	    }
 
-    if(shiftPressed && staminaBarX > -staminaBarWidth){
-		staminaBarX--;
-		speed = 10;
-    }
-    else{
-		speed = 7;
-    }
-    if(shiftPressed == false && staminaBarX < 0){
-		staminaBarX++;
-    }
+	    for (i = 0; i <= silverDoorXList.length; i++){
+			silverDoorYList[i] += 5;
+			if(silverDoorYList[i] > canvas.height){
+			    silverDoorYList.splice(i,1);
+			    silverDoorXList.splice(i,1);
+			}
+	    }
 
-    for (i = 0; i <= silverDoorXList.length; i++){
-		silverDoorYList[i] += 5;
-		if(silverDoorYList[i] > canvas.height){
-		    delete silverDoorYList[i];
-		    delete silverDoorXList[i];
-		}
-    }
-
-    for (i=0; i <= goldDoorXList.length; i++){
-		goldDoorYList[i] += 5;
-		if(goldDoorYList[i] > canvas.height){
-		    delete goldDoorYList[i];
-		    delete goldDoorXList[i];
+	    for (i=0; i <= goldDoorXList.length; i++){
+			goldDoorYList[i] += 5;
+			if(goldDoorYList[i] > canvas.height){
+			    goldDoorYList.splice(i,1);
+			    goldDoorXList.splice(i,1);
+		    }
 	    }
     }
-    requestAnimationFrame(draw);
+   	requestAnimationFrame(draw);
 }
 draw();
