@@ -5,13 +5,25 @@
 	Design Menu Button/Menu
 */
 
+/***DOOR CHANGING AXIS FUNCTION, CONTINUE TO PRETTY UP GUI***/
+
 //set up canvas
 var canvas = document.getElementById("myCanvas");
 canvas.width = document.body.clientWidth;
 canvas.height = document.body.clientHeight;
 var ctx = canvas.getContext("2d");
 
-var gamePaused = false;
+var gamePaused = false;/**needs to be implemented**/
+
+//ctx drawn hero
+var heroWidth = heroRightWingX - heroLeftWingX;
+var heroHeight = heroRightWingY - heroTipY;
+var heroTipX = canvas.width/2;
+var heroTipY = canvas.height - 50;
+var heroRightWingX = heroTipX + 10;
+var heroRightWingY = heroTipY + 40;
+var heroLeftWingX = heroTipX - 10;
+var heroLeftWingY = heroTipY + 40;
 
 //events
 var pPressed = false;
@@ -26,11 +38,11 @@ var screenTiltLeft = false;
 
 var speed = 7;
 
-var dead = false;
+var heroCollision = false;
 
 var titleX = canvas.width;
 
-//doors ***DRAW DOORS AND MAKE THEM BLINK VARIOUS SHADES OF THEIR COLOR***
+/***DRAW DOORS AND MAKE THEM BLINK VARIOUS SHADES OF THEIR COLOR***/
 var silverDoorWidth = 32;
 var silverDoorHeight = 64;
 var silverDoorX = 0;
@@ -47,21 +59,13 @@ var goldDoorXList = [];
 var goldDoorYList = [];
 var randGold = 0;
 
-//hero stuff
-var heroWidth = 32;
-var heroHeight = 32;
-var heroX = (canvas.width-heroWidth)/2;
-var heroY = canvas.height-heroHeight;
-var Hero = new Image();
-Hero.src = "Shoot_Them.bmp";
-
 //enemies
-var enemyWidth = 16;
-var enemyHeight = 16;
-var enemyXList = [];
-var enemyYList = [];
-var enemyX = 0;
-var enemyY = 0;
+var dustWidth = 16;
+var dustHeight = 16;
+var dustXList = [];
+var dustYList = [];
+var dustX = 0;
+var dustY = 0;
 
 //stars
 var starWidth = 2;
@@ -74,7 +78,7 @@ var starY = 0;
 //laser
 var laserWidth = 1;
 var laserHeight = canvas.height-10;
-var laserX = heroX + (heroWidth/2) - .5;
+var laserX = heroTipX - .5;
 var laserY = canvas.height;
 
 //score
@@ -104,16 +108,7 @@ var lifeBarHeight = 10;
 var lifeBarY = staminaBarY + 10;
 var lifeBarX = 0;
 
-//ctx drawn hero
-var drawnHeroRightWingX = drawnHeroTipX + 10;
-var drawnHeroLeftWingX = drawnHeroTipX - 10;
 
-var drawnHeroWidth = drawnHeroRightWingX - drawnHeroLeftWingX;
-var drawnHeroHeight = drawnHeroRightWingY - drawnHeroTipY;
-var drawnHeroTipX = canvas.width/2;
-var drawnHeroTipY = canvas.height - 50;
-var drawnHeroLeftWingY = drawnHeroTipY + 40;
-var drawnHeroRightWingY = drawnHeroTipY + 40;
 
 var randGreen = 0;
 var randRed = 0;
@@ -121,46 +116,43 @@ var randBlue = 0;
 
 var playingGame = false;
 
-/************** BEGIN WORKING ON IMPLEMENTATION OF HUD [INCLUDE # OF ENEMIES SHOT, # MISSED, RATIO OF SHOT TO MISSED, ETC.] **************/
-
-function drawNewHero(){
-	for (i = 0; i <= enemyXList.length; i++){
-	if (enemyXList[i] + enemyWidth > drawnHeroLeftWingX && enemyXList[i] < (drawnHeroRightWingX) && 
-		(enemyYList[i] + enemyHeight) > (drawnHeroTipY) && enemyYList[i] < drawnHeroLeftWingY){
-	    dead = true;
-	    delete enemyXList[i];
-	    delete enemyYList[i];
+function drawHero(){
+	for (i = 0; i <= dustXList.length; i++){
+	if (dustXList[i] + dustWidth > heroLeftWingX && dustXList[i] < (heroRightWingX) && 
+		(dustYList[i] + dustHeight) > (heroTipY) && dustYList[i] < heroLeftWingY){
+	    heroCollision = true;
+	    delete dustXList[i];
+	    delete dustYList[i];
 	}
     }
-    if(dead){
+    if(heroCollision){
 		deaths++;
 		if(lifeBarX > -lifeBarWidth){
-	            lifeBarX--;
+	            lifeBarX -= 10;
 		}
     }
-    if(dead == false){
+    if(heroCollision == false){
         randGreen = Math.floor(Math.random() * 255);
 	    randRed = Math.floor(Math.random() * 255);
 	    randBlue = Math.floor(Math.random() * 255);
-	    drawnHeroLeftWingX = drawnHeroTipX - 10;
-	    drawnHeroRightWingX = drawnHeroTipX + 10;
-	    drawnHeroWidth = drawnHeroRightWingX - drawnHeroLeftWingX;
+	    heroLeftWingX = heroTipX - 10;
+	    heroRightWingX = heroTipX + 10;
+	    heroWidth = heroRightWingX - heroLeftWingX;
 	    ctx.beginPath();
-	    ctx.moveTo(drawnHeroTipX, drawnHeroTipY);
-	    ctx.lineTo(drawnHeroLeftWingX, drawnHeroLeftWingY);
-	    ctx.lineTo(drawnHeroRightWingX, drawnHeroRightWingY);
+	    ctx.moveTo(heroTipX, heroTipY);
+	    ctx.lineTo(heroLeftWingX, heroLeftWingY);
+	    ctx.lineTo(heroRightWingX, heroRightWingY);
 	    ctx.fillStyle = 'rgb(' + randRed +',' + randGreen + ',' + randBlue + ')';
 	    ctx.fill();
 
 	    ctx.beginPath();
-	    ctx.moveTo(drawnHeroTipX, drawnHeroTipY+2);
-	    ctx.lineTo(drawnHeroLeftWingX+2, drawnHeroLeftWingY-1);
-	    ctx.lineTo(drawnHeroRightWingX-2, drawnHeroRightWingY-1);
+	    ctx.moveTo(heroTipX, heroTipY+2);
+	    ctx.lineTo(heroLeftWingX+2, heroLeftWingY-1);
+	    ctx.lineTo(heroRightWingX-2, heroRightWingY-1);
 	    ctx.fillStyle = "#000";
 	    ctx.fill();
     }
-    dead = false;
-    
+    heroCollision = false;    
 }
 
 function handleStart(event){
@@ -190,11 +182,13 @@ function handleOrientation(event){
     }
 }
 
-//create silver doors somewhat sparingly (collision with silver door switches to vertical mode
+//create silver doors (collision with silver door switches to vertical mode)
 function genSilverDoorXY(){
     if(Math.floor(Math.random() * 80) == 1){
-	silverDoorYList[silverDoorYList.length] = Math.floor(Math.random() * (screen.height * -screen.height));
-	silverDoorXList[silverDoorXList.length] = Math.floor(Math.random() * screen.width);
+	silverDoorYList[silverDoorYList.length] = Math.floor(Math.random() * 
+		(screen.height * -screen.height));
+	silverDoorXList[silverDoorXList.length] = Math.floor(Math.random() * 
+		screen.width);
     }
 }	
 
@@ -254,30 +248,31 @@ function drawLB(){
 	ctx.closePath();
 }
 
-function genEnemyXY(){
+function gendustXY(){
     if (Math.floor(Math.random() * 5) == 1){
-	enemyX = Math.floor(Math.random()* -canvas.width) + Math.floor(Math.random() * canvas.width * 2);
-	enemyY = Math.floor(Math.random()* -canvas.height - 1);
-	if ((spacePressed == false && screenTouched == false) || laserX < enemyXList[i] || laserX > enemyXList[i] + enemyWidth || laserEnergyBarX <= -laserEnergyBarWidth){
-	    enemyXList[enemyXList.length] = enemyX;
-	    enemyYList[enemyYList.length] = enemyY;
+	dustX = Math.floor(Math.random()* -canvas.width) + Math.floor(Math.random() * canvas.width * 2);
+	dustY = Math.floor(Math.random()* -canvas.height - 1);
+	if ((spacePressed == false && screenTouched == false) || laserX < dustXList[i] || 
+		laserX > dustXList[i] + dustWidth || laserEnergyBarX <= -laserEnergyBarWidth){
+	    dustXList[dustXList.length] = dustX;
+	    dustYList[dustYList.length] = dustY;
 	}
     }
 }
 
-function drawEnemyShips(){
-	for (i = 0; i < enemyYList.length; i++){
-	    if(enemyYList[i] >= canvas.height){
-		delete enemyYList[i];
-		delete enemyXList[i];
+function drawdustShips(){
+	for (i = 0; i < dustYList.length; i++){
+	    if(dustYList[i] >= canvas.height){
+		delete dustYList[i];
+		delete dustXList[i];
 	    }
 	    else{
-		enemyRGB1 = Math.floor(Math.random() * 255);
-		enemyRGB2 = Math.floor(Math.random() * 255);
-		enemyRGB3 = Math.floor(Math.random() * 255);
+		dustRGB1 = Math.floor(Math.random() * 255);
+		dustRGB2 = Math.floor(Math.random() * 255);
+		dustRGB3 = Math.floor(Math.random() * 255);
 		ctx.beginPath();
-		ctx.rect(enemyXList[i], enemyYList[i], enemyWidth, enemyHeight);
-		ctx.fillStyle = 'rgb(' + enemyRGB1 + ',' + enemyRGB2 + ',' + enemyRGB3 + ')';
+		ctx.rect(dustXList[i], dustYList[i], dustWidth, dustHeight);
+		ctx.fillStyle = 'rgb(' + dustRGB1 + ',' + dustRGB2 + ',' + dustRGB3 + ')';
 		ctx.fill();
 		ctx.closePath();
 	    }
@@ -356,11 +351,12 @@ function drawLaser(){
 		Math.floor(Math.random() * 255) + ')';
 	ctx.fill();
 	ctx.closePath();
-	for (i = 0; i < enemyXList.length; i++){
-	    if(laserX >= enemyXList[i] && laserX <= enemyXList[i] + enemyWidth && enemyYList[i] > 0 && enemyYList[i] < laserY && (spacePressed || screenTouched)){
-		delete enemyXList[i];
-		delete enemyYList[i];
-		score++;
+	for (i = 0; i < dustXList.length; i++){
+	    if(laserX >= dustXList[i] && laserX <= dustXList[i] + dustWidth && dustYList[i] > 0 && 
+	    	dustYList[i] < laserY && (spacePressed || screenTouched)){
+			delete dustXList[i];
+			delete dustYList[i];
+			score++;
 	    }
 	}
 }
@@ -371,26 +367,23 @@ function drawTitle(){
     var randB = Math.floor(Math.random() * 255);
     ctx.font = "62px Courier New";
     ctx.fillStyle = 'rgb(' + randR + ',' + randG + ',' + randB + ')';
-    ctx.fillText("STAR THEORY", titleX, canvas.height/2);
-    if(score > 0){
-        ctx.fillText("Collected Stardust: " + score, canvas.width/2 - 45, 65);//canvas.height/2 + 65);
-    }
-    if(titleX > -canvas.width/3){
-        titleX--;
+    ctx.fillText("Nexus Vector", titleX, canvas.height/2);
+    if(titleX > -444){
+    	titleX--;
     }
     else{
-        titleX = canvas.width;
+    	titleX = canvas.width;
     }
 }
 
 function drawStats(){
     ctx.font = "22px Courier New";
     ctx.fillStyle = "#fff";
-    ctx.fillText("Move: Left/Right Keys", 0, lifeBarY + 30);
-    ctx.fillText("Shoot: Space", 0, lifeBarY + 50);
-    ctx.fillText("Boost: Shift", 0, lifeBarY + 70);
-    ctx.fillText("Strafe: Down" /*+ score*/, 0, lifeBarY + 90);
-    //ctx.fillText("Deaths: " + deaths, 0, lifeBarY + 110);
+    ctx.fillText("Move: <-/-> or Tilt", 0, lifeBarY + 30);
+    ctx.fillText("Shoot: Space or Tap", 0, lifeBarY + 50);
+    ctx.fillText("Boost: Shift + <-/->", 0, lifeBarY + 70);
+    ctx.fillText("Strafe: Down + <-/->", 0, lifeBarY + 90);
+    ctx.fillText("Dust: " + score, 0, lifeBarY + 110);
 }
 
 function draw() {
@@ -406,27 +399,27 @@ function draw() {
     if((spacePressed || screenTouched) && laserEnergyBarX > -laserEnergyBarWidth){
     	drawLaser();
     }
-    genEnemyXY();
-    drawEnemyShips();
+    gendustXY();
+    drawdustShips();
     drawLEB();
     drawSEB();
     drawLB();
-    //drawHero();
-    drawNewHero();
+    drawHero();
     //handleOrientation();
-    for(i = 0; i < enemyYList.length; i++){
-    	if (((spacePressed == false && screenTouched == false) || laserX < enemyXList[i] || laserX > enemyXList[i] + enemyWidth || laserEnergyBarX <= -laserEnergyBarWidth)){// && enemyYList[i] < canvas.height){
-            enemyYList[i] += Math.floor(Math.random() * 5 + 3);
-	    enemyXList[i] += Math.floor(Math.random() * -5 + 3);
+    for(i = 0; i < dustYList.length; i++){
+    	if (((spacePressed == false && screenTouched == false) || laserX < dustXList[i] || 
+    		laserX > dustXList[i] + dustWidth || laserEnergyBarX <= -laserEnergyBarWidth)){
+            dustYList[i] += Math.floor(Math.random() * 5 + 3);
+	    dustXList[i] += Math.floor(Math.random() * -5 + 3);
 	    if (rightPressed && downPressed){
-	   	enemyXList[i] -= speed;
+	   	dustXList[i] -= speed;
 	    }
 	    if (leftPressed && downPressed){
-		enemyXList[i] += speed;
+		dustXList[i] += speed;
 	    }
-	    if (enemyYList[i] >= canvas.height){
-		delete enemyYList[i];
-		delete enemyXList[i];
+	    if (dustYList[i] >= canvas.height){
+		delete dustYList[i];
+		delete dustXList[i];
 	    }
     	}
     }
@@ -439,50 +432,48 @@ function draw() {
     }
 
     for (i = 0; i < starXList.length; i++){
-	if(starYList[i] < canvas.height){
-	    starYList[i]++;
-	}
-	else{
-	    delete starYList[i];
-	    delete starXList[i];
-	}
+		if(starYList[i] < canvas.height){
+		    starYList[i]++;
+		}
+		else{
+		    delete starYList[i];
+		    delete starXList[i];
+		}
     }
 
-    if((rightPressed || screenTiltRight) && heroX < canvas.width && downPressed == false) {
+    if((rightPressed || screenTiltRight) && heroLeftWingX < canvas.width && 
+    	downPressed == false) {
         laserX += speed;
-        heroX += speed;
-	drawnHeroTipX += speed;
+		heroTipX += speed;
     }
-    else if((rightPressed || screenTiltRight) && heroX >= canvas.width && downPressed == false){
-    	laserX -= canvas.width + drawnHeroWidth;
-    	heroX -= canvas.width + heroWidth;
-	drawnHeroTipX -= canvas.width + drawnHeroWidth;
+    else if((rightPressed || screenTiltRight) && heroLeftWingX >= canvas.width && 
+    	downPressed == false){
+    	laserX -= canvas.width + heroWidth;
+		heroTipX -= canvas.width + heroWidth;
     }
 
-    else if((leftPressed || screenTiltLeft) && heroX > 0 - heroWidth && downPressed == false) {
+    else if((leftPressed || screenTiltLeft) && heroRightWingX > 0 && downPressed == false){
         laserX -= speed;
-        heroX -= speed;
-	drawnHeroTipX -= speed;
+		heroTipX -= speed;
     }
-    else if((leftPressed || screenTiltLeft) && heroX <= 0 - heroWidth && downPressed == false){
-    	laserX += canvas.width + drawnHeroWidth;
-    	heroX += canvas.width + heroWidth;
-	drawnHeroTipX += canvas.width + drawnHeroWidth;
+    else if((leftPressed || screenTiltLeft) && heroRightWingX <= 0 && downPressed == false){
+    	laserX += canvas.width + heroWidth;
+		heroTipX += canvas.width + heroWidth;
     }
 
     if(shiftPressed && staminaBarX > -staminaBarWidth){
-	staminaBarX--;
-	speed = 10;
+		staminaBarX--;
+		speed = 10;
     }
     else{
-	speed = 7;
+		speed = 7;
     }
     if(shiftPressed == false && staminaBarX < 0){
-	staminaBarX++;
+		staminaBarX++;
     }
 
     for (i = 0; i <= silverDoorXList.length; i++){
-		silverDoorYList[i]++;
+		silverDoorYList[i] += 5;
 		if(silverDoorYList[i] > canvas.height){
 		    delete silverDoorYList[i];
 		    delete silverDoorXList[i];
@@ -490,7 +481,7 @@ function draw() {
     }
 
     for (i=0; i <= goldDoorXList.length; i++){
-		goldDoorYList[i]++;
+		goldDoorYList[i] += 5;
 		if(goldDoorYList[i] > canvas.height){
 		    delete goldDoorYList[i];
 		    delete goldDoorXList[i];
@@ -499,4 +490,3 @@ function draw() {
     requestAnimationFrame(draw);
 }
 draw();
-
