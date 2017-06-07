@@ -1,4 +1,3 @@
-
 /*TODO: 
 	Design Start Screen
 	Design Pause Screen
@@ -74,7 +73,7 @@ var starY = 0;
 
 //laser
 var laserWidth = 1;
-var laserHeight = canvas.height;
+var laserHeight = canvas.height-10;
 var laserX = heroX + (heroWidth/2) - .5;
 var laserY = canvas.height;
 
@@ -112,9 +111,9 @@ var drawnHeroLeftWingX = drawnHeroTipX - 10;
 var drawnHeroWidth = drawnHeroRightWingX - drawnHeroLeftWingX;
 var drawnHeroHeight = drawnHeroRightWingY - drawnHeroTipY;
 var drawnHeroTipX = canvas.width/2;
-var drawnHeroTipY = canvas.height - 30;
-var drawnHeroLeftWingY = drawnHeroTipY + 30;
-var drawnHeroRightWingY = drawnHeroTipY + 30;
+var drawnHeroTipY = canvas.height - 50;
+var drawnHeroLeftWingY = drawnHeroTipY + 40;
+var drawnHeroRightWingY = drawnHeroTipY + 40;
 
 var randGreen = 0;
 var randRed = 0;
@@ -125,18 +124,43 @@ var playingGame = false;
 /************** BEGIN WORKING ON IMPLEMENTATION OF HUD [INCLUDE # OF ENEMIES SHOT, # MISSED, RATIO OF SHOT TO MISSED, ETC.] **************/
 
 function drawNewHero(){
-    randGreen = Math.floor(Math.random() * 255);
-    randRed = Math.floor(Math.random() * 255);
-    randBlue = Math.floor(Math.random() * 255);
-    drawnHeroLeftWingX = drawnHeroTipX - 10;
-    drawnHeroRightWingX = drawnHeroTipX + 10;
-    drawnHeroWidth = drawnHeroRightWingX - drawnHeroLeftWingX;
-    ctx.beginPath();
-    ctx.moveTo(drawnHeroTipX, drawnHeroTipY);
-    ctx.lineTo(drawnHeroLeftWingX, drawnHeroLeftWingY);
-    ctx.lineTo(drawnHeroRightWingX, drawnHeroRightWingY);
-    ctx.fillStyle = 'rgb(' + randRed +',' + randGreen + ',' + randBlue + ')';
-    ctx.fill();
+	for (i = 0; i <= enemyXList.length; i++){
+	if (enemyXList[i] + enemyWidth > drawnHeroLeftWingX && enemyXList[i] < (drawnHeroRightWingX) && 
+		(enemyYList[i] + enemyHeight) > (drawnHeroTipY) && enemyYList[i] < drawnHeroLeftWingY){
+	    dead = true;
+	    delete enemyXList[i];
+	    delete enemyYList[i];
+	}
+    }
+    if(dead){
+		deaths++;
+		if(lifeBarX > -lifeBarWidth){
+	            lifeBarX--;
+		}
+    }
+    if(dead == false){
+        randGreen = Math.floor(Math.random() * 255);
+	    randRed = Math.floor(Math.random() * 255);
+	    randBlue = Math.floor(Math.random() * 255);
+	    drawnHeroLeftWingX = drawnHeroTipX - 10;
+	    drawnHeroRightWingX = drawnHeroTipX + 10;
+	    drawnHeroWidth = drawnHeroRightWingX - drawnHeroLeftWingX;
+	    ctx.beginPath();
+	    ctx.moveTo(drawnHeroTipX, drawnHeroTipY);
+	    ctx.lineTo(drawnHeroLeftWingX, drawnHeroLeftWingY);
+	    ctx.lineTo(drawnHeroRightWingX, drawnHeroRightWingY);
+	    ctx.fillStyle = 'rgb(' + randRed +',' + randGreen + ',' + randBlue + ')';
+	    ctx.fill();
+
+	    ctx.beginPath();
+	    ctx.moveTo(drawnHeroTipX, drawnHeroTipY+2);
+	    ctx.lineTo(drawnHeroLeftWingX+2, drawnHeroLeftWingY-1);
+	    ctx.lineTo(drawnHeroRightWingX-2, drawnHeroRightWingY-1);
+	    ctx.fillStyle = "#000";
+	    ctx.fill();
+    }
+    dead = false;
+    
 }
 
 function handleStart(event){
@@ -322,26 +346,6 @@ function keyUpHandler(e) {
     }
 }
 
-function drawHero(){
-    for (i = 0; i <= enemyXList.length; i++){
-	if (enemyXList[i] + enemyWidth > heroX && enemyXList[i] < (heroX + heroWidth) && (enemyYList[i] + enemyHeight) > (heroY) && enemyYList[i] < heroY + heroWidth){
-	    dead = true;
-	    delete enemyXList[i];
-	    delete enemyYList[i];
-	}
-    }
-    if(dead){
-	deaths++;
-	if(lifeBarX > -lifeBarWidth){
-            lifeBarX--;
-	}
-    }
-    if(dead == false){
-        ctx.drawImage(Hero, heroX, heroY);
-    }
-    dead = false;
-}
-
 //my added drawLaser function
 function drawLaser(){
 	ctx.beginPath();
@@ -369,7 +373,7 @@ function drawTitle(){
     ctx.fillStyle = 'rgb(' + randR + ',' + randG + ',' + randB + ')';
     ctx.fillText("STAR THEORY", titleX, canvas.height/2);
     if(score > 0){
-        ctx.fillText(score, canvas.width/2 - 45, canvas.height/2 + 65);
+        ctx.fillText("Collected Stardust: " + score, canvas.width/2 - 45, 65);//canvas.height/2 + 65);
     }
     if(titleX > -canvas.width/3){
         titleX--;
@@ -385,18 +389,9 @@ function drawStats(){
     ctx.fillText("Move: Left/Right Keys", 0, lifeBarY + 30);
     ctx.fillText("Shoot: Space", 0, lifeBarY + 50);
     ctx.fillText("Boost: Shift", 0, lifeBarY + 70);
-    ctx.fillText("Kills: " + score, 0, lifeBarY + 90);
-    ctx.fillText("Deaths: " + deaths, 0, lifeBarY + 110);
+    ctx.fillText("Strafe: Down" /*+ score*/, 0, lifeBarY + 90);
+    //ctx.fillText("Deaths: " + deaths, 0, lifeBarY + 110);
 }
-
-/*function pauseGame(){
-    if(pPressed && !gamePaused){
-	gamePaused = true;
-    }
-    else if(pPressed && gamePaused){
-	gamePaused = false;
-    }
-}*/
 
 function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -487,20 +482,19 @@ function draw() {
     }
 
     for (i = 0; i <= silverDoorXList.length; i++){
-	//silverDoorXList[i]++;
-	silverDoorYList[i]++;
-	if(silverDoorYList[i] > canvas.height){
-	    delete silverDoorYList[i];
-	    delete silverDoorXList[i];
-	}
+		silverDoorYList[i]++;
+		if(silverDoorYList[i] > canvas.height){
+		    delete silverDoorYList[i];
+		    delete silverDoorXList[i];
+		}
     }
 
     for (i=0; i <= goldDoorXList.length; i++){
-	goldDoorYList[i]++;
-	if(goldDoorYList[i] > canvas.height){
-	    delete goldDoorYList[i];
-	    delete goldDoorXList[i];
-        }
+		goldDoorYList[i]++;
+		if(goldDoorYList[i] > canvas.height){
+		    delete goldDoorYList[i];
+		    delete goldDoorXList[i];
+	    }
     }
     requestAnimationFrame(draw);
 }
