@@ -387,6 +387,7 @@ function drawTitle(){
     var randB = Math.floor(Math.random() * 255);
     ctx.font = "62px Courier New";
     ctx.fillStyle = 'rgb(' + randR + ',' + randG + ',' + randB + ')';
+    ctx.textAlign = "start";
     ctx.fillText("Nexus Vector", titleX, canvas.height/2);
     if(titleX > -444){
     	titleX--;
