@@ -44,14 +44,18 @@ var heroCollision = false;
 var titleX = canvas.width;
 
 /***DRAW DOORS AND MAKE THEM BLINK VARIOUS SHADES OF THEIR COLOR***/
-var silverDoorWidth = 32;
-var silverDoorHeight = 64;
-var silverDoorX = 0;
-var silverDoorY = 0;
-var silverDoorXList = [];
-var silverDoorYList = [];
-var randSilver = 0;
 
+var silverDoor = {
+	width: 32,
+	height: 64,
+	x: 0,
+	y: 0,
+	xList: [],
+	yList: [],
+	randSilver: 0
+};
+
+//set golddoor object oriented
 var goldDoorWidth = 32;
 var goldDoorHeight = 64;
 var goldDoorX = 0;
@@ -169,47 +173,48 @@ function drawHero(){
 
 function handleStart(event){
     if (event.changedTouches){
-	screenTouched = true;
+		screenTouched = true;
     }
 }
 
 function handleEnd(event){
     if (event.changedTouches){
-	screenTouched = false;
+		screenTouched = false;
     }
 }
 
 function handleOrientation(event){
     if (event.gamma > 3){
-	screenTiltLeft = false;
-	screenTiltRight = true;
+		screenTiltLeft = false;
+		screenTiltRight = true;
     }
     else if (event.gamma < -3){
-	screenTiltRight = false;
-	screenTiltLeft = true;
+		screenTiltRight = false;
+		screenTiltLeft = true;
     }
     else if (event.gamma >= -3 && event.gamma <= 3){
-	screenTiltRight = false;
-	screenTiltLeft = false;
+		screenTiltRight = false;
+		screenTiltLeft = false;
     }
 }
 
 //create silver doors (collision with silver door switches to vertical mode)
-function genSilverDoorXY(){
+function gensilverDoorXY(){
     if(Math.floor(Math.random() * 80) == 1){
-	silverDoorYList[silverDoorYList.length] = Math.floor(Math.random() * 
-		(screen.height * -screen.height));
-	silverDoorXList[silverDoorXList.length] = Math.floor(Math.random() * 
-		screen.width);
+		silverDoor.yList[silverDoor.yList.length] = Math.floor(Math.random() * 
+			(screen.height * -screen.height));
+		silverDoor.xList[silverDoor.xList.length] = Math.floor(Math.random() * 
+			screen.width);
     }
 }	
 
 function drawSilverDoor(){
-    for(i=0; i < silverDoorXList.length; i++){
-	randSilver = Math.floor(Math.random() * 100 + 100);
+	gensilverDoorXY();
+    for(i=0; i < silverDoor.xList.length; i++){
+	silverDoor.randSilver = Math.floor(Math.random() * 100 + 100);
 	ctx.beginPath();
-	ctx.rect(silverDoorXList[i], silverDoorYList[i], silverDoorWidth, silverDoorHeight);
-	ctx.fillStyle = 'rgb(' + randSilver + ',' + randSilver + ',' + randSilver + ')';
+	ctx.rect(silverDoor.xList[i], silverDoor.yList[i], silverDoor.width, silverDoor.height);
+	ctx.fillStyle = 'rgb(' + silverDoor.randSilver + ',' + silverDoor.randSilver + ',' + silverDoor.randSilver + ')';
 	ctx.fill();
 	ctx.closePath();
     }
@@ -224,6 +229,7 @@ function genGoldDoorXY(){
 }
 
 function drawGoldDoor(){
+	genGoldDoorXY();
     for(i=0; i < goldDoorXList.length; i++){
 	randGold = Math.floor(Math.random() * 100 + 100);
 	ctx.beginPath();
@@ -273,6 +279,7 @@ function gendustXY(){
 }
 
 function drawdustShips(){
+	gendustXY();
 	for (i = 0; i < dust.yList.length; i++){
 	    if(dust.yList[i] >= canvas.height){
 			dust.yList.splice(i,1);//delete dust.yList[i];
@@ -301,6 +308,7 @@ function genstarXY(){
 }
 
 function drawStars(){
+	genstarXY();
     for (i = 0; i < star.yList.length; i++){
 		star.size = Math.floor(Math.random() * 4);
 		var randRGB = Math.floor(Math.random() * 255);
@@ -399,7 +407,7 @@ function drawTitle(){
 
 function drawHelps(){
     ctx.font = "22px Courier New";
-    ctx.fillStyle = "rgba(255,255,255,0.5)";
+    ctx.fillStyle = "rgba(255,255,255,0.8)";
     ctx.textAlign = "start";
     ctx.fillText("Move\t\t\t\t:<-/-> or Tilt", 0, lifeBar.y + lifeBar.height * 2);
     ctx.fillText("Shoot\t\t\t:Space or Tap", 0, lifeBar.y + lifeBar.height * 3);
@@ -409,26 +417,29 @@ function drawHelps(){
     ctx.fillText("Stardust Captured: " + score, canvas.width - 12, 22);
 }
 
+function drawBars(){
+	drawLEB();
+	drawSEB();
+	drawLB();
+}
+
+function drawDoors(){
+	drawSilverDoor();
+	drawGoldDoor();
+}
 
 function draw() {
 	if(!gamePaused){
 		ctx.clearRect(0, 0, canvas.width, canvas.height);
 	   	drawHelps();
 	    drawTitle();
-	    genstarXY();
 	    drawStars();
-	    genSilverDoorXY();
-	    drawSilverDoor();
-	    genGoldDoorXY();
-	    drawGoldDoor();
+	    drawDoors();
 	    if((spacePressed || screenTouched) && laserEnergyBar.x > -laserEnergyBar.width){
 	    	drawLaser();
 	    }
-	    gendustXY();
 	    drawdustShips();
-	    drawLEB();
-	    drawSEB();
-	    drawLB();
+	    drawBars();
 	    drawHero();
 	    //handleOrientation();
 	    for(i = 0; i < dust.yList.length; i++){
@@ -497,11 +508,11 @@ function draw() {
 			staminaBar.x++;
 	    }
 
-	    for (i = 0; i <= silverDoorXList.length; i++){
-			silverDoorYList[i] += 5;
-			if(silverDoorYList[i] > canvas.height){
-			    silverDoorYList.splice(i,1);
-			    silverDoorXList.splice(i,1);
+	    for (i = 0; i <= silverDoor.xList.length; i++){
+			silverDoor.yList[i] += 5;
+			if(silverDoor.yList[i] > canvas.height){
+			    silverDoor.yList.splice(i,1);
+			    silverDoor.xList.splice(i,1);
 			}
 	    }
 
