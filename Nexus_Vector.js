@@ -15,6 +15,9 @@ var gamePaused = false;
 var speed = 7;
 var heroCollision = false;
 var score = 0;
+var tiltLevel;
+var mwRange = (canvas.width * canvas.height) * 0.0004;
+var barWidth = canvas.width / 3;
 
 function randColor() {
     'use strict';
@@ -24,25 +27,33 @@ function randColor() {
 //draw life/stamina/laser bars
 //laser vars
 var laserEnergyBar = {
-	width: canvas.width / 5,
+	width: barWidth,
 	height: 20,
 	x: 0,
 	y: 0
 };
 
 var staminaBar = {
-	width: canvas.width / 5,
+	width: barWidth,
 	height: laserEnergyBar.height,
 	x: 0,
 	y: laserEnergyBar.y + laserEnergyBar.height
 };
 
 var lifeBar = {
-	width: canvas.width / 5,
+	width: barWidth,
 	height: staminaBar.height,
 	x: 0,
 	y: staminaBar.y + staminaBar.height
 };
+
+var magBar = {
+    width: barWidth,
+    height: staminaBar.height,
+    x: 0,
+    y: lifeBar.y + lifeBar.height
+};
+
 //draw laser energy bar
 function drawLEB() {
     'use strict';
@@ -71,12 +82,23 @@ function drawLB() {
 	ctx.fill();
 	ctx.closePath();
 }
+
+function drawMB() {
+    'use strict';
+    ctx.beginPath();
+    ctx.rect(magBar.x, magBar.y, magBar.width, magBar.height);
+    ctx.fillStyle = "rgba(255,255,0,0.4)";
+    ctx.fill();
+    ctx.closePath();
+}
+
 //condensed
 function drawBars() {
     'use strict';
 	drawLEB();
 	drawSEB();
 	drawLB();
+    drawMB();
 }
 
 /***DRAW DOORS AND MAKE THEM BLINK VARIOUS SHADES OF THEIR COLOR***/
@@ -109,6 +131,8 @@ var evt = {
 	shift: false,
 	space: false,
 	touch: false,
+    rightTouch: false,
+    leftTouch: false,
 	tiltRight: false,
 	tiltLeft: false
 };
@@ -156,6 +180,15 @@ function handleStart(event) {
     event.preventDefault();
     if (event.changedTouches) {
 		evt.touch = true;
+        if (event.touches[0].pageX > canvas.width / 2) {
+            event.preventDefault();
+            evt.rightTouch = true;
+            evt.leftTouch = false;
+        } else if (event.touches[0].pageX <= canvas.width / 2) {
+            event.preventDefault();
+            evt.leftTouch = true;
+            evt.rightTouch = false;
+        }
     }
 }
 
@@ -163,7 +196,10 @@ function handleEnd(event) {
     'use strict';
     event.preventDefault();
     if (event.changedTouches) {
+        event.preventDefault();
 		evt.touch = false;
+        evt.rightTouch = false;
+        evt.leftTouch = false;
     }
 }
 
@@ -180,6 +216,7 @@ function handleOrientation(event) {
 		evt.tiltRight = false;
 		evt.tiltLeft = false;
     }
+    tiltLevel = event.gamma;
 }
 
 document.addEventListener("keydown", keyDownHandler, false);
@@ -231,6 +268,7 @@ function drawHero() {
             delete dust.xList[i];
             delete dust.yList[i];
             score += 1;
+            lifeBar.x -= 1;
         }
     }
     
@@ -295,9 +333,9 @@ function genSilverDoorXY() {
     'use strict';
     if (Math.floor(Math.random() * 80) === 1) {
 		silverDoor.yList[silverDoor.yList.length] = Math.floor(Math.random() *
-			(screen.height * -screen.height));
+			(canvas.height * -canvas.height));
 		silverDoor.xList[silverDoor.xList.length] = Math.floor(Math.random() *
-			screen.width);
+			canvas.width);
     }
 }
 
@@ -319,8 +357,9 @@ function drawSilverDoor() {
 function genGoldDoorXY() {
     'use strict';
     if (Math.floor(Math.random() * 100) === 1) {
-        goldDoor.yList[goldDoor.yList.length] = Math.floor(Math.random() * (screen.height * -screen.height));
-        goldDoor.xList[goldDoor.xList.length] = Math.floor(Math.random() * (screen.width));
+        goldDoor.yList[goldDoor.yList.length] = Math.floor(Math.random() *
+            (-canvas.height * canvas.height));
+        goldDoor.xList[goldDoor.xList.length] = Math.floor(Math.random() * (canvas.width));
     }
 }
 
@@ -342,10 +381,10 @@ function drawGoldDoor() {
 function genDustXY() {
     'use strict';
     var i;
-    if (Math.floor(Math.random() * 5) === 1) {
-		dust.x = Math.floor(Math.random() * -canvas.width) + Math.floor(Math.random() * canvas.width * 2);
-		dust.y = Math.floor(Math.random() * -canvas.height - 1);
-        if ((evt.space === false && evt.touch === false) || laser.x < dust.x ||
+    if (Math.floor(Math.random() * 50) === 1) {
+		dust.x = Math.floor(Math.random() * (canvas.width - dust.width) + 1);
+		dust.y = Math.floor(Math.random() * -canvas.height - dust.height);
+        if ((evt.space === false && evt.rightTouch === false) || laser.x < dust.x ||
                 laser.x > dust.x + dust.width || laserEnergyBar.x <= -laserEnergyBar.width) {
             dust.xList[dust.xList.length] = dust.x;
             dust.yList[dust.yList.length] = dust.y;
@@ -409,7 +448,7 @@ function drawLaser() {
 	ctx.closePath();
 	for (i = 0; i < dust.xList.length; i += 1) {
 	    if (laser.x >= dust.xList[i] && laser.x <= dust.xList[i] + dust.width && dust.yList[i] > 0 &&
-                dust.yList[i] < laser.y && (evt.space || evt.touch)) {
+                dust.yList[i] < laser.y && (evt.space || evt.rightTouch)) {
 			dust.yList.splice(i, 1);
 			dust.xList.splice(i, 1);
 			score += 1;
@@ -446,15 +485,21 @@ function drawTitle() {
 //controls/stats
 function drawHelps() {
     'use strict';
+    ctx.font = "20px Courier New";
+    ctx.fillStyle = "rgb(200,200,200)";
+    ctx.textAlign = "start";
+    ctx.fillText("Move\t\t\t\t:<-/-> or Tilt", 0, magBar.y + magBar.height * 2);
+    ctx.fillText("Shoot\t\t\t:Space/Touch Right", 0, magBar.y + magBar.height * 3);
+    ctx.fillText("Boost\t\t\t:Shift/Strong Tilt", 0, magBar.y + magBar.height * 4);
+    ctx.fillText("MagWave\t:Down/Touch Left", 0, magBar.y + magBar.height * 5);
+}
+
+function drawScore() {
+    'use strict';
     ctx.font = "22px Courier New";
     ctx.fillStyle = "rgba(255,255,255,0.8)";
-    ctx.textAlign = "start";
-    ctx.fillText("Move\t\t\t\t:<-/-> or Tilt", 0, lifeBar.y + lifeBar.height * 2);
-    ctx.fillText("Shoot\t\t\t:Space or Tap", 0, lifeBar.y + lifeBar.height * 3);
-    ctx.fillText("Boost\t\t\t:Shift + <-/->", 0, lifeBar.y + lifeBar.height * 4);
-    ctx.fillText("Strafe\t\t:Down + <-/->", 0, lifeBar.y + lifeBar.height * 5);
     ctx.textAlign = "end";
-    ctx.fillText("Stardust Captured: " + score, canvas.width - 12, 22);
+    ctx.fillText("SD: " + score, canvas.width - 12, 22);
 }
 
 function drawDoors() {
@@ -468,54 +513,60 @@ function draw() {
 	if (!gamePaused) {
         var i;
 		ctx.clearRect(0, 0, canvas.width, canvas.height);
-        drawHelps();
+        drawScore();
 	    drawTitle();
 	    drawStars();
 	    drawDoors();
         
-	    if ((evt.space || evt.touch) && laserEnergyBar.x > -laserEnergyBar.width) {
+	    if ((evt.space || evt.rightTouch) && laserEnergyBar.x > -laserEnergyBar.width) {
             drawLaser();
 	    }
+        
 	    drawDust();
 	    drawBars();
 	    drawHero();
-        
-        if (evt.down) {
-            drawMagWave();
+        if (evt.down || evt.leftTouch) {
             if (magWave.radius < hero.width) {
                 magWave.radius += 0.5;
             } else {
                 magWave.radius = 0;
             }
+            if (magBar.x > -magBar.width) {
+                drawMagWave();
+                magBar.x -= 1;
+            }
         } else {
             magWave.radius = 0;
+            if (magBar.x < 0) {
+                magBar.x += 1;
+            }
         }
         
 	    for (i = 0; i < dust.yList.length; i += 1) {
-            if (((evt.space === false && evt.touch === false) || laser.x < dust.xList[i] ||
+            if (((evt.space === false && evt.rightTouch === false) || laser.x < dust.xList[i] ||
                  laser.x > dust.xList[i] + dust.width || laserEnergyBar.x <= -laserEnergyBar.width)) {
-	            /*dust.yList[i] += Math.floor(Math.random() * 5 + 3);
-                dust.xList[i] += Math.floor(Math.random() * -5 + 3);*/
-                /*if (evt.right && evt.down) {
-                    dust.xList[i] -= speed;
-                }
-                if (evt.left && evt.down) {
-                    dust.xList[i] += speed;
-                }
-                if (dust.yList[i] >= canvas.height) {
-                    dust.yList.splice(i, 1);
-                    dust.xList.splice(i, 1);
-                }*/
-                if (evt.down && dust.xList[i] > magWave.x && dust.yList[i] < magWave.y) {
+                if ((evt.down || evt.leftTouch) && dust.xList[i] > magWave.x &&
+                            dust.xList[i] < (magWave.x + mwRange) &&
+                            dust.yList[i] < magWave.y &&
+                            dust.yList[i] > (magWave.y - mwRange) &&
+                            magBar.x > -magBar.width) {
                     dust.xList[i] -= 3;
                     dust.yList[i] += 3;
-                } else if (evt.down && dust.xList[i] > magWave.x && dust.yList[i] > magWave.y) {
+                } else if ((evt.down || evt.leftTouch) && dust.xList[i] > magWave.x &&
+                            dust.xList[i] < (magWave.x + mwRange) &&
+                            dust.yList[i] > magWave.y && magBar.x > -magBar.width) {
                     dust.xList[i] -= 3;
                     dust.yList[i] -= 3;
-                } else if (evt.down && dust.xList[i] < magWave.x && dust.yList[i] < magWave.y) {
+                } else if ((evt.down || evt.leftTouch) && dust.xList[i] < magWave.x &&
+                           dust.xList[i] > (magWave.x - mwRange) &&
+                           dust.yList[i] < magWave.y &&
+                           dust.yList[i] > (magWave.y - mwRange) &&
+                            magBar.x > -magBar.width) {
                     dust.xList[i] += 3;
                     dust.yList[i] += 3;
-                } else if (evt.down && dust.xList[i] < magWave.x && dust.yList[i] > magWave.y) {
+                } else if ((evt.down || evt.leftTouch) && dust.xList[i] < magWave.x &&
+                           dust.xList[i] > (magWave.x - mwRange) &&
+                           dust.yList[i] > magWave.y && magBar.x > -magBar.width) {
                     dust.xList[i] += 3;
                     dust.yList[i] -= 3;
                 } else {
@@ -523,20 +574,26 @@ function draw() {
                     dust.xList[i] += Math.floor(Math.random() * -5 + 3);
                 }
                 
-                if (evt.down && dust.xList[i] <= magWave.x + 3 &&
-                        dust.xList[i] >= magWave.x - 3 &&
-                        dust.yList[i] >= magWave.y - 3 &&
-                        dust.yList[i] <= magWave.y + 3) {
+                if ((evt.down || evt.leftTouch) && dust.xList[i] <= magWave.x + 3 &&
+                        dust.xList[i] >= magWave.x - magWave.radius / 2 &&
+                        dust.xList[i] <= magWave.x + magWave.radius / 2 &&
+                        dust.yList[i] >= magWave.y - magWave.radius / 2 &&
+                        dust.yList[i] <= magWave.y + magWave.radius / 2) {
                     dust.xList.splice(i, 1);
                     dust.yList.splice(i, 1);
-                    score += 1;
+                    if (magBar.x > -magBar.width) {
+                        score += 1;
+                    } else if (hero.tipX > dust.xList[i] && hero.tipX < (dust.xList[i] + dust.width) &&
+                              hero.tipY < dust.yList[i]) {
+                        lifeBar.x -= 1;
+                    }
                 }
             }
 	    }
 
-	    if ((evt.space || evt.touch) && laserEnergyBar.x >= -laserEnergyBar.width) {
+	    if ((evt.space || evt.rightTouch) && laserEnergyBar.x >= -laserEnergyBar.width) {
 			laserEnergyBar.x -= 1;
-	    } else if (evt.space === false && evt.touch === false && laserEnergyBar.x < 0) {
+	    } else if (evt.space === false && evt.rightTouch === false && laserEnergyBar.x < 0) {
 			laserEnergyBar.x += 1;
 	    }
 
@@ -559,17 +616,19 @@ function draw() {
             laser.x -= canvas.width + hero.width;
 			hero.tipX -= canvas.width + hero.width;
             magWave.x -= canvas.width + hero.width;
-	    } else if ((evt.left || evt.tiltLeft) && hero.rightX > 0) {/* && evt.down === false) {*/
+	    } else if ((evt.left || evt.tiltLeft) && hero.rightX > 0) {
 	        laser.x -= speed;
 			hero.tipX -= speed;
             magWave.x -= speed;
-	    } else if ((evt.left || evt.tiltLeft) && hero.rightX <= 0) {/* && evt.down === false) {*/
+	    } else if ((evt.left || evt.tiltLeft) && hero.rightX <= 0) {
             laser.x += canvas.width + hero.width;
 			hero.tipX += canvas.width + hero.width;
             magWave.x += canvas.width + hero.width;
 	    }
 
-	    if (evt.shift && staminaBar.x > -staminaBar.width) {
+	    if ((evt.shift || tiltLevel > 5 || tiltLevel < -5) &&
+                staminaBar.x > -staminaBar.width &&
+                (evt.left || evt.right)) {
 			staminaBar.x -= 1;
 			speed = 10;
 	    } else {
@@ -594,6 +653,8 @@ function draw() {
 			    goldDoor.xList.splice(i, 1);
 		    }
 	    }
+    } else {
+        drawHelps();
     }
     window.requestAnimationFrame(draw);
 }
