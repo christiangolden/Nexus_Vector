@@ -18,6 +18,8 @@ var score = 0;
 var tiltLevel;
 var mwRange = (canvas.width * canvas.height) * 0.0004;
 var barWidth = canvas.width / 3;
+var barHeight = canvas.height * 0.02;
+var barDecrement = canvas.width * 0.001;
 
 function randColor() {
     'use strict';
@@ -28,28 +30,28 @@ function randColor() {
 //laser vars
 var laserEnergyBar = {
 	width: barWidth,
-	height: 20,
+	height: barHeight,
 	x: 0,
 	y: 0
 };
 
 var staminaBar = {
 	width: barWidth,
-	height: laserEnergyBar.height,
+	height: barHeight,
 	x: 0,
 	y: laserEnergyBar.y + laserEnergyBar.height
 };
 
 var lifeBar = {
 	width: barWidth,
-	height: staminaBar.height,
+	height: barHeight,
 	x: 0,
 	y: staminaBar.y + staminaBar.height
 };
 
 var magBar = {
     width: barWidth,
-    height: staminaBar.height,
+    height: barHeight,
     x: 0,
     y: lifeBar.y + lifeBar.height
 };
@@ -203,6 +205,7 @@ function handleEnd(event) {
     }
 }
 
+//the following accelerometer function should work for most cases
 function handleOrientation(event) {
     'use strict';
     event.preventDefault();
@@ -219,9 +222,33 @@ function handleOrientation(event) {
     tiltLevel = event.gamma;
 }
 
+//if the above doesn't work, this should.
+function handleMotion(event) {
+    'use strict';
+    event.preventDefault();
+    if (event.acceleration.x > 5) {
+        evt.tiltLeft = false;
+        evt.tiltRight = true;
+    } else if (event.acceleration.x < -5) {
+        evt.tiltRight = false;
+        evt.tiltLeft = true;
+    } else {
+        evt.tiltRight = false;
+        evt.tiltLeft = false;
+    }
+}
+
+
 document.addEventListener("keydown", keyDownHandler, false);
 document.addEventListener("keyup", keyUpHandler, false);
-window.addEventListener("deviceorientation", handleOrientation, false);
+
+//check for browser accelerometer compatibility
+if (window.DeviceOrientationEvent) {
+    window.addEventListener("deviceorientation", handleOrientation, false);
+} else if (window.DeviceMotionEvent) {
+    window.addEventListener("devicemotion", handleMotion, false);
+}
+
 window.addEventListener("touchstart", handleStart, false);
 window.addEventListener("touchend", handleEnd, false);
 
@@ -246,8 +273,8 @@ var hero = new Ship("up", 20, 40, canvas.width / 2, canvas.height - 50);
 var badguy = new Ship("down", 20, 40, canvas.width / 2, 40);
 
 var dust = {
-	width: 16,
-	height: 16,
+	width: 20,
+	height: 20,
 	xList: [],
 	yList: [],
 	x: 0,
@@ -268,7 +295,7 @@ function drawHero() {
             delete dust.xList[i];
             delete dust.yList[i];
             score += 1;
-            lifeBar.x -= 1;
+            lifeBar.x -= barDecrement * 5;
         }
     }
     
@@ -533,12 +560,12 @@ function draw() {
             }
             if (magBar.x > -magBar.width) {
                 drawMagWave();
-                magBar.x -= 1;
+                magBar.x -= barDecrement;
             }
         } else {
             magWave.radius = 0;
             if (magBar.x < 0) {
-                magBar.x += 1;
+                magBar.x += barDecrement;
             }
         }
         
@@ -585,16 +612,16 @@ function draw() {
                         score += 1;
                     } else if (hero.tipX > dust.xList[i] && hero.tipX < (dust.xList[i] + dust.width) &&
                               hero.tipY < dust.yList[i]) {
-                        lifeBar.x -= 1;
+                        lifeBar.x -= barDecrement * 5;
                     }
                 }
             }
 	    }
 
 	    if ((evt.space || evt.rightTouch) && laserEnergyBar.x >= -laserEnergyBar.width) {
-			laserEnergyBar.x -= 1;
+			laserEnergyBar.x -= barDecrement;
 	    } else if (evt.space === false && evt.rightTouch === false && laserEnergyBar.x < 0) {
-			laserEnergyBar.x += 1;
+			laserEnergyBar.x += barDecrement;
 	    }
 
 	    for (i = 0; i < star.xList.length; i += 1) {
@@ -629,13 +656,13 @@ function draw() {
 	    if ((evt.shift || tiltLevel > 5 || tiltLevel < -5) &&
                 staminaBar.x > -staminaBar.width &&
                 (evt.left || evt.right)) {
-			staminaBar.x -= 1;
+			staminaBar.x -= barDecrement;
 			speed = 10;
 	    } else {
 			speed = 7;
 	    }
 	    if (evt.shift === false && staminaBar.x < 0) {
-			staminaBar.x += 1;
+			staminaBar.x += barDecrement;
 	    }
 
 	    for (i = 0; i <= silverDoor.xList.length; i += 1) {
