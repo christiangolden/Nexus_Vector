@@ -20,6 +20,9 @@ var mwRange = (canvas.width * canvas.height) * 0.0004;
 var barWidth = canvas.width / 3;
 var barHeight = canvas.height * 0.02;
 var barDecrement = canvas.width * 0.001;
+var laserWidth = 10;
+var red = 50;
+var redder = true;
 
 function randColor() {
     'use strict';
@@ -102,27 +105,6 @@ function drawBars() {
 	drawLB();
     drawMB();
 }
-
-/***DRAW DOORS AND MAKE THEM BLINK VARIOUS SHADES OF THEIR COLOR***/
-var silverDoor = {
-	width: 32,
-	height: 64,
-	x: 0,
-	y: 0,
-	xList: [],
-	yList: [],
-	randTwinkle: 0
-};
-
-var goldDoor = {
-	width: 32,
-	height: 64,
-	x: 0,
-	y: 0,
-	xList: [],
-	yList: [],
-	randGold: 0
-};
 
 //event listeners
 //events
@@ -326,6 +308,29 @@ function drawHero() {
     heroCollision = false;
 }
 
+function drawEnemy() {
+    'use strict';
+    if (red < 150 && redder === true) {
+        red += 10;
+    } else if (red > 49) {
+        redder = false;
+        red -= 10;
+    } else {
+        redder = true;
+    }
+    
+    badguy.leftY = badguy.tipY - badguy.height;
+    badguy.rightY = badguy.tipY - badguy.height;
+    badguy.leftX = badguy.tipX - 10;
+    badguy.rightX = badguy.tipX + 10;
+    badguy.width = badguy.rightX - badguy.leftX;
+    ctx.beginPath();
+    ctx.moveTo(badguy.tipX, badguy.tipY);
+    ctx.lineTo(badguy.leftX, badguy.leftY);
+    ctx.lineTo(badguy.rightX, badguy.rightY);
+    ctx.fillStyle = 'rgb(' + red + ',0,0)';
+    ctx.fill();
+}
 
 
 //stars
@@ -339,9 +344,9 @@ var star = {
 
 //laser
 var laser = {
-	width: 1,
+	width: laserWidth,
 	height: canvas.height - 10,
-	x: hero.tipX - 0.5,
+	x: hero.tipX - (laserWidth / 2),
 	y: canvas.height - 10
 };
 
@@ -354,55 +359,6 @@ var magWave = {
     startAngle: 0,
     endAngle: 2 * Math.PI
 };
-
-//create silver doors (collision with silver door switches to vertical mode)
-function genSilverDoorXY() {
-    'use strict';
-    if (Math.floor(Math.random() * 80) === 1) {
-		silverDoor.yList[silverDoor.yList.length] = Math.floor(Math.random() *
-			(canvas.height * -canvas.height));
-		silverDoor.xList[silverDoor.xList.length] = Math.floor(Math.random() *
-			canvas.width);
-    }
-}
-
-function drawSilverDoor() {
-    'use strict';
-	genSilverDoorXY();
-    var i;
-    for (i = 0; i < silverDoor.xList.length; i += 1) {
-        silverDoor.randTwinkle = Math.floor(Math.random() * 100 + 100);
-        ctx.beginPath();
-        ctx.rect(silverDoor.xList[i], silverDoor.yList[i], silverDoor.width, silverDoor.height);
-        ctx.fillStyle = 'rgb(' + silverDoor.randTwinkle + ',' + silverDoor.randTwinkle + ',' + silverDoor.randTwinkle + ')';
-        ctx.fill();
-        ctx.closePath();
-    }
-}
-
-//create gold doors very sparingly (collision with gold door switches to isometric mode
-function genGoldDoorXY() {
-    'use strict';
-    if (Math.floor(Math.random() * 100) === 1) {
-        goldDoor.yList[goldDoor.yList.length] = Math.floor(Math.random() *
-            (-canvas.height * canvas.height));
-        goldDoor.xList[goldDoor.xList.length] = Math.floor(Math.random() * (canvas.width));
-    }
-}
-
-function drawGoldDoor() {
-    'use strict';
-	genGoldDoorXY();
-    var i;
-    for (i = 0; i < goldDoor.xList.length; i += 1) {
-        goldDoor.randGold = Math.floor(Math.random() * 100 + 100);
-        ctx.beginPath();
-        ctx.rect(goldDoor.xList[i], goldDoor.yList[i], goldDoor.width, goldDoor.height);
-        ctx.fillStyle = 'rgb(' + goldDoor.randGold + ',' + goldDoor.randGold + ',' + '0)';
-        ctx.fill();
-        ctx.closePath();
-    }
-}
 
 //generate xy lists for stardust
 function genDustXY() {
@@ -529,12 +485,6 @@ function drawScore() {
     ctx.fillText("SD: " + score, canvas.width - 12, 22);
 }
 
-function drawDoors() {
-    'use strict';
-	drawSilverDoor();
-	drawGoldDoor();
-}
-
 function draw() {
     'use strict';
 	if (!gamePaused) {
@@ -543,7 +493,6 @@ function draw() {
         drawScore();
 	    drawTitle();
 	    drawStars();
-	    drawDoors();
         
 	    if ((evt.space || evt.rightTouch) && laserEnergyBar.x > -laserEnergyBar.width) {
             drawLaser();
@@ -552,6 +501,21 @@ function draw() {
 	    drawDust();
 	    drawBars();
 	    drawHero();
+        if (badguy.tipX > hero.tipX && badguy.tipY < hero.tipY) {
+            badguy.tipX -= 4;
+            badguy.tipY += 4;
+        } else if (badguy.tipX < hero.tipX && badguy.tipY < hero.tipY) {
+            badguy.tipX += 4;
+            badguy.tipY += 4;
+        } else if (badguy.tipY > canvas.height + badguy.height) {
+            badguy = new Ship("down", 20, 40, Math.floor(Math.random() * canvas.width), Math.floor(Math.random() * -canvas.height));
+        } else {
+            badguy.tipY += 4;
+        }
+        drawEnemy();
+        
+
+        
         if (evt.down || evt.leftTouch) {
             if (magWave.radius < hero.width) {
                 magWave.radius += 0.5;
@@ -663,22 +627,6 @@ function draw() {
 	    }
 	    if (evt.shift === false && staminaBar.x < 0) {
 			staminaBar.x += barDecrement;
-	    }
-
-	    for (i = 0; i <= silverDoor.xList.length; i += 1) {
-			silverDoor.yList[i] += 5;
-			if (silverDoor.yList[i] > canvas.height) {
-			    silverDoor.yList.splice(i, 1);
-			    silverDoor.xList.splice(i, 1);
-			}
-	    }
-
-	    for (i = 0; i <= goldDoor.xList.length; i += 1) {
-			goldDoor.yList[i] += 5;
-			if (goldDoor.yList[i] > canvas.height) {
-			    goldDoor.yList.splice(i, 1);
-			    goldDoor.xList.splice(i, 1);
-		    }
 	    }
     } else {
         drawHelps();
