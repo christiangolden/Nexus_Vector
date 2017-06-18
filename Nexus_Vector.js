@@ -434,7 +434,7 @@ function draw() {
         }
         drawEnemy();
         
-        if (evt.space && laserWidth > -0.1) {
+        if ((evt.space || evt.rightTouch) && laserWidth > -0.1) {
             laserWidth -= 0.1;
             laser.width = laserWidth;
             laser.x += 0.05;
