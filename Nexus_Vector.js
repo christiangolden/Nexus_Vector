@@ -1,5 +1,5 @@
 /*TODO: 
-	Design Start Screen
+	Design Start Screen (started, could use more work)
 	Design Pause Screen (started, needs more work)
 	Design Death Screen
 	Design Menu Button/Menu
@@ -10,6 +10,13 @@ var canvas = document.getElementById("myCanvas");
 canvas.width = document.body.clientWidth;
 canvas.height = document.body.clientHeight;
 var ctx = canvas.getContext("2d");
+
+var start = false;
+var startColor = 0;
+
+var shotDrones = 0;
+var destDust = 0;
+var savedDust = 0;
 
 var gamePaused = false;
 var speed = 7;
@@ -22,7 +29,7 @@ var tiltLevel;
 //range of magwave mag power
 var mwRange = (canvas.width * canvas.height) * 0.0004;
 
-var laserWidth = 10;
+var laserWidth = 2;
 
 //badguy color
 var red = 50;
@@ -41,6 +48,7 @@ function randColor() {
     'use strict';
     return Math.floor(Math.random() * 255);
 }
+
 
 //event listeners
 //events
@@ -220,13 +228,11 @@ function drawHero() {
 	for (i = 0; i <= dust.xList.length; i += 1) {
         if (dust.xList[i] + dust.width > hero.leftX && dust.xList[i] < hero.rightX &&
                 dust.yList[i] + dust.height > hero.tipY && dust.yList[i] < hero.leftY) {
-            //heroCollision = true;
             delete dust.xList[i];
             delete dust.yList[i];
             score += 1;
         }
     }
-    
     if (green < 150 && greener === true) {
         green += 10;
     } else if (red > 49) {
@@ -235,29 +241,26 @@ function drawHero() {
     } else {
         greener = true;
     }
-    if (heroCollision === false) {
-        if (evt.right) {
-            hero.leftX = hero.tipX;
-        } else {
-            hero.leftX = hero.tipX - 10;
-        }
-        if (evt.left) {
-            hero.rightX = hero.tipX;
-        } else {
-            hero.rightX = hero.tipX + 10;
-        }
-	    hero.width = hero.rightX - hero.leftX;
-	    ctx.beginPath();
-	    ctx.moveTo(hero.leftX, hero.leftY);
-	    ctx.lineTo(hero.tipX, hero.tipY);
-	    ctx.lineTo(hero.rightX, hero.rightY);
-	    ctx.strokeStyle = 'rgb(' + randColor() + ',' + randColor() + ',' + randColor() + ')';
-        ctx.lineWidth =  1;
-	    ctx.stroke();
-        ctx.fillStyle = 'rgb(0,' + green + ',0)';
-        ctx.fill();
+    if (evt.right || evt.tiltRight) {
+        hero.leftX = hero.tipX;
+    } else {
+        hero.leftX = hero.tipX - 10;
     }
-    heroCollision = false;
+    if (evt.left || evt.tiltLeft) {
+        hero.rightX = hero.tipX;
+    } else {
+        hero.rightX = hero.tipX + 10;
+    }
+    hero.width = hero.rightX - hero.leftX;
+    ctx.beginPath();
+    ctx.moveTo(hero.leftX, hero.leftY);
+    ctx.lineTo(hero.tipX, hero.tipY);
+    ctx.lineTo(hero.rightX, hero.rightY);
+    ctx.strokeStyle = 'rgb(' + randColor() + ',' + randColor() + ',' + randColor() + ')';
+    ctx.lineWidth =  1;
+    ctx.stroke();
+    ctx.fillStyle = 'rgb(0,' + green + ',0)';
+    ctx.fill();
 }
 
 function drawEnemy() {
@@ -270,8 +273,6 @@ function drawEnemy() {
     } else {
         redder = true;
     }
-    
-
     badguy.leftY = badguy.tipY - badguy.height;
     badguy.rightY = badguy.tipY - badguy.height;
     badguy.leftX = badguy.tipX - 10;
@@ -283,6 +284,18 @@ function drawEnemy() {
     } else {
         badguy.leftX = badguy.tipX - 10;
         badguy.rightX = badguy.tipX + 10;
+    }
+    
+    if (badguy.tipX > (hero.tipX + 4) && badguy.tipY < hero.tipY) {
+        badguy.tipX -= 4;
+        badguy.tipY += 4;
+    } else if (badguy.tipX < (hero.tipX - 4) && badguy.tipY < hero.tipY) {
+        badguy.tipX += 4;
+        badguy.tipY += 4;
+    } else if (badguy.tipY > canvas.height + badguy.height) {
+        badguy = new Ship("down", 20, 40, Math.floor(Math.random() * canvas.width), Math.floor(Math.random() * -canvas.height));
+    } else {
+        badguy.tipY += 4;
     }
     badguy.width = badguy.rightX - badguy.leftX;
     
@@ -433,6 +446,25 @@ function drawTitle() {
     }
 }
 
+
+function startScreen() {
+    'use strict';
+    if (!(evt.space || evt.leftTouch || evt.rightTouch)) {
+        ctx.font = "40px Courier New";
+/*        if (startColor < 255) {
+            startColor += 5;
+        } else {
+            startColor = 200;
+        }*/
+        ctx.fillStyle = "rgb(" + randColor() + "," + randColor() + "," + randColor() + ")";
+        ctx.textAlign = "center";
+        ctx.fillText("NEXUS VECTOR", canvas.width / 2, canvas.height / 2);
+        ctx.font = "20px Courier New";
+        ctx.fillText("PRESS SPACE OR TAP TO START", canvas.width / 2, canvas.height / 2 + 40);
+    } else {
+        start = true;
+    }
+}
 //controls/stats
 function drawHelps() {
     'use strict';
@@ -443,6 +475,8 @@ function drawHelps() {
     ctx.fillText("Shoot\t\t\t:Space/Touch Right", 0, 2 * 20);
     ctx.fillText("Boost\t\t\t:Shift/Strong Tilt", 0, 3 * 20);
     ctx.fillText("MagWave\t:Down/Touch Left", 0, 4 * 20);
+    ctx.textAlign = "center";
+    ctx.fillText("PAUSED", canvas.width / 2, canvas.height / 2);
 }
 
 function drawScore() {
@@ -450,18 +484,18 @@ function drawScore() {
     ctx.font = "22px Courier New";
     ctx.fillStyle = "rgba(255,255,255,0.8)";
     ctx.textAlign = "end";
-    ctx.fillText("SD: " + score, canvas.width - 12, 22);
+    ctx.fillText("Score: " + score, canvas.width - 12, 22);
 }
 
 function drawBullets() {
     'use strict';
     var i, bullet;
-    if (Math.floor(Math.random() * 10) === 3) {
+    if (Math.floor(Math.random() * 10) === 3 && badguy.tipY > 0) {
         bulletList[bulletList.length] = new Bullet(2, 4, badguy.tipX, badguy.tipY);
     }
     for (i = 0; i < bulletList.length; i += 1) {
         if (bulletList[i].y < canvas.height) {
-            bulletList[i].y += 7;
+            bulletList[i].y += 20;
             ctx.beginPath();
             ctx.rect(bulletList[i].x, bulletList[i].y, bulletList[i].width, bulletList[i].height);
             ctx.fillStyle = 'rgb(255,255,255)';
@@ -471,154 +505,156 @@ function drawBullets() {
 
 }
 
-function draw() {
+function moveStuff() {
     'use strict';
-	if (!gamePaused) {
-        var i;
-		ctx.clearRect(0, 0, canvas.width, canvas.height);
-        drawScore();
-	    drawTitle();
-	    drawStars();
-        
-	    if ((evt.space || evt.rightTouch) && laserWidth > 0) {
-            drawLaser();
-	    }
-        
-	    drawDust();
+    var i;
+    if ((evt.right || evt.tiltRight) && hero.leftX < canvas.width) {
+        laser.x += speed;
+        hero.tipX += speed;
+        magWave.x += speed;
+    } else if ((evt.right || evt.tiltRight) && hero.leftX >= canvas.width) {
+        laser.x -= canvas.width + hero.width;
+        hero.tipX -= canvas.width + hero.width;
+        magWave.x -= canvas.width + hero.width;
+    } else if ((evt.left || evt.tiltLeft) && hero.rightX > 0) {
+        laser.x -= speed;
+        hero.tipX -= speed;
+        magWave.x -= speed;
+    } else if ((evt.left || evt.tiltLeft) && hero.rightX <= 0) {
+        laser.x += canvas.width + hero.width;
+        hero.tipX += canvas.width + hero.width;
+        magWave.x += canvas.width + hero.width;
+    }
 
-	    drawHero();
-                
+    if ((evt.shift || tiltLevel > 5 || tiltLevel < -5) &&
+            (evt.left || evt.right)) {
+        speed = 10;
+    } else {
+        speed = 7;
+    }
+    if ((evt.space || evt.rightTouch) && laserWidth > -0.1) {
+        laserWidth -= 0.1;
+        laser.width = laserWidth;
+        laser.x += 0.05;
+    } else if (laserWidth < 2.05) {
+        laserWidth += 0.1;
+        laser.width = laserWidth;
+        laser.x -= 0.05;
+    }
 
-        
-        if (badguy.tipX > (hero.tipX + 4) && badguy.tipY < hero.tipY) {
-            badguy.tipX -= 4;
-            badguy.tipY += 4;
-        } else if (badguy.tipX < (hero.tipX - 4) && badguy.tipY < hero.tipY) {
-            badguy.tipX += 4;
-            badguy.tipY += 4;
-        } else if (badguy.tipY > canvas.height + badguy.height) {
-            badguy = new Ship("down", 20, 40, Math.floor(Math.random() * canvas.width), Math.floor(Math.random() * -canvas.height));
-        } else {
-            badguy.tipY += 4;
-        }
-        
-        if ((evt.space || evt.rightTouch) && hero.tipX > badguy.leftX &&
-                hero.tipX < badguy.rightX && laser.width > 0) {
-            badguy = new Ship("down", 20, 40, Math.floor(Math.random() * canvas.width), Math.floor(Math.random() * -canvas.height));
-        }
-        drawEnemy();
-        drawBullets();
-
-        
-        if ((evt.space || evt.rightTouch) && laserWidth > -0.1) {
-            laserWidth -= 0.1;
-            laser.width = laserWidth;
-            laser.x += 0.05;
-        } else if (laserWidth < 10.05) {
-            laserWidth += 0.1;
-            laser.width = laserWidth;
-            laser.x -= 0.05;
-        }
-        
-        if ((evt.down || evt.leftTouch) && mwEnergy > 0) {
-            if (magWave.radius < hero.width) {
-                magWave.radius += 0.5;
-                mwEnergy -= 0.02;
-            } else {
-                magWave.radius = 0;
-            }
-            drawMagWave();
+    if ((evt.down || evt.leftTouch) && mwEnergy > 0) {
+        if (magWave.radius < hero.width) {
+            magWave.radius += 0.5;
+            mwEnergy -= 0.02;
         } else {
             magWave.radius = 0;
         }
-        
-        if ((!(evt.down || evt.leftTouch)) && mwEnergy < 5) {
-            mwEnergy += 0.02;
-        }
-        
-	    for (i = 0; i < dust.yList.length; i += 1) {
-            if (((evt.space === false && evt.rightTouch === false) || laser.x < dust.xList[i] ||
-                 laser.x > dust.xList[i] + dust.width || laserWidth <= 0)) {
-                if ((evt.down || evt.leftTouch) && dust.xList[i] > magWave.x &&
-                            dust.xList[i] < (magWave.x + mwRange) &&
-                            dust.yList[i] < magWave.y &&
-                            dust.yList[i] > (magWave.y - mwRange) &&
-                            mwEnergy > 0) {
-                    dust.xList[i] -= 3;
-                    dust.yList[i] += 3;
-                } else if ((evt.down || evt.leftTouch) && dust.xList[i] > magWave.x &&
-                            dust.xList[i] < (magWave.x + mwRange) &&
-                            dust.yList[i] > magWave.y && mwEnergy > 0) {
-                    dust.xList[i] -= 3;
-                    dust.yList[i] -= 3;
-                } else if ((evt.down || evt.leftTouch) && dust.xList[i] < magWave.x &&
-                           dust.xList[i] > (magWave.x - mwRange) &&
-                           dust.yList[i] < magWave.y &&
-                           dust.yList[i] > (magWave.y - mwRange) &&
-                            mwEnergy > 0) {
-                    dust.xList[i] += 3;
-                    dust.yList[i] += 3;
-                } else if ((evt.down || evt.leftTouch) && dust.xList[i] < magWave.x &&
-                           dust.xList[i] > (magWave.x - mwRange) &&
-                           dust.yList[i] > magWave.y && mwEnergy > 0) {
-                    dust.xList[i] += 3;
-                    dust.yList[i] -= 3;
-                } else {
-                    dust.yList[i] += Math.floor(Math.random() * 5 + 3);
-                    dust.xList[i] += Math.floor(Math.random() * -5 + 3);
-                }
-                
-                if ((evt.down || evt.leftTouch) && dust.xList[i] <= magWave.x + 3 &&
-                        dust.xList[i] >= magWave.x - magWave.radius / 2 &&
-                        dust.xList[i] <= magWave.x + magWave.radius / 2 &&
-                        dust.yList[i] >= magWave.y - magWave.radius / 2 &&
-                        dust.yList[i] <= magWave.y + magWave.radius / 2 &&
+        drawMagWave();
+    } else {
+        magWave.radius = 0;
+    }
+
+    if ((!(evt.down || evt.leftTouch)) && mwEnergy < 5) {
+        mwEnergy += 0.02;
+    }
+    
+    for (i = 0; i < dust.yList.length; i += 1) {
+        if (((evt.space === false && evt.rightTouch === false) || laser.x < dust.xList[i] ||
+             laser.x > dust.xList[i] + dust.width || laserWidth <= 0)) {
+            if ((evt.down || evt.leftTouch) && dust.xList[i] > magWave.x &&
+                        dust.xList[i] < (magWave.x + mwRange) &&
+                        dust.yList[i] < magWave.y &&
+                        dust.yList[i] > (magWave.y - mwRange) &&
                         mwEnergy > 0) {
-                    dust.xList.splice(i, 1);
-                    dust.yList.splice(i, 1);
-                    if (mwEnergy > 0) {
-                        score += 1;
-                    }
+                dust.xList[i] -= 3;
+                dust.yList[i] += 3;
+            } else if ((evt.down || evt.leftTouch) && dust.xList[i] > magWave.x &&
+                        dust.xList[i] < (magWave.x + mwRange) &&
+                        dust.yList[i] > magWave.y && mwEnergy > 0) {
+                dust.xList[i] -= 3;
+                dust.yList[i] -= 3;
+            } else if ((evt.down || evt.leftTouch) && dust.xList[i] < magWave.x &&
+                       dust.xList[i] > (magWave.x - mwRange) &&
+                       dust.yList[i] < magWave.y &&
+                       dust.yList[i] > (magWave.y - mwRange) &&
+                        mwEnergy > 0) {
+                dust.xList[i] += 3;
+                dust.yList[i] += 3;
+            } else if ((evt.down || evt.leftTouch) && dust.xList[i] < magWave.x &&
+                       dust.xList[i] > (magWave.x - mwRange) &&
+                       dust.yList[i] > magWave.y && mwEnergy > 0) {
+                dust.xList[i] += 3;
+                dust.yList[i] -= 3;
+            } else {
+                dust.yList[i] += Math.floor(Math.random() * 5 + 3);
+                dust.xList[i] += Math.floor(Math.random() * -5 + 3);
+            }
+
+            if ((evt.down || evt.leftTouch) && dust.xList[i] <= magWave.x + 3 &&
+                    dust.xList[i] >= magWave.x - magWave.radius / 2 &&
+                    dust.xList[i] <= magWave.x + magWave.radius / 2 &&
+                    dust.yList[i] >= magWave.y - magWave.radius / 2 &&
+                    dust.yList[i] <= magWave.y + magWave.radius / 2 &&
+                    mwEnergy > 0) {
+                dust.xList.splice(i, 1);
+                dust.yList.splice(i, 1);
+                if (mwEnergy > 0) {
+                    score += 1;
                 }
             }
-	    }
-
-	    for (i = 0; i < star.xList.length; i += 1) {
-			if (star.yList[i] < canvas.height) {
-			    star.yList[i] += 1;
-			} else {
-			    star.yList.splice(i, 1);
-			    star.xList.splice(i, 1);
-			}
-	    }
-
-	    if ((evt.right || evt.tiltRight) && hero.leftX < canvas.width) {
-	        laser.x += speed;
-			hero.tipX += speed;
-            magWave.x += speed;
-	    } else if ((evt.right || evt.tiltRight) && hero.leftX >= canvas.width) {
-            laser.x -= canvas.width + hero.width;
-			hero.tipX -= canvas.width + hero.width;
-            magWave.x -= canvas.width + hero.width;
-	    } else if ((evt.left || evt.tiltLeft) && hero.rightX > 0) {
-	        laser.x -= speed;
-			hero.tipX -= speed;
-            magWave.x -= speed;
-	    } else if ((evt.left || evt.tiltLeft) && hero.rightX <= 0) {
-            laser.x += canvas.width + hero.width;
-			hero.tipX += canvas.width + hero.width;
-            magWave.x += canvas.width + hero.width;
-	    }
-
-	    if ((evt.shift || tiltLevel > 5 || tiltLevel < -5) &&
-                (evt.left || evt.right)) {
-			speed = 10;
-	    } else {
-			speed = 7;
-	    }
-    } else {
-        drawHelps();
+        }
     }
-    window.requestAnimationFrame(draw);
 }
-draw();
+
+function drawGame() {
+    'use strict';
+    
+    if (start) {
+        if (!gamePaused) {
+            var i;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawScore();
+            drawTitle();
+            drawStars();
+
+            if ((evt.space || evt.rightTouch) && laserWidth > 0) {
+                drawLaser();
+            }
+
+            drawDust();
+            drawHero();
+            moveStuff();
+            if ((evt.space || evt.rightTouch) && hero.tipX > badguy.leftX &&
+                    hero.tipX < badguy.rightX && laser.width > 0 &&
+                    badguy.tipY > 0) {
+                badguy = new Ship("down", 20, 40, Math.floor(Math.random() * canvas.width), Math.floor(Math.random() * -canvas.height));
+            }
+            drawEnemy();
+            drawBullets();
+            for (i = 0; i < star.xList.length; i += 1) {
+                if (star.yList[i] < canvas.height) {
+                    star.yList[i] += 1;
+                } else {
+                    star.yList.splice(i, 1);
+                    star.xList.splice(i, 1);
+                }
+            }
+
+            for (i = 0; i < bulletList.length; i += 1) {
+                if (bulletList[i].y > canvas.height) {
+                    bulletList.splice(i, 1);
+                }
+            }
+        } else {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawStars();
+            drawHelps();
+        }
+    } else {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        startScreen();
+        drawStars();
+    }
+    window.requestAnimationFrame(drawGame);
+}
+drawGame();
