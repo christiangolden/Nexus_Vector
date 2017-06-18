@@ -502,7 +502,8 @@ function draw() {
             badguy.tipY += 4;
         }
         
-        if (evt.space && hero.tipX > badguy.leftX && hero.tipX < badguy.rightX) {
+        if ((evt.space || evt.rightTouch) && hero.tipX > badguy.leftX &&
+                hero.tipX < badguy.rightX && laser.width > 0) {
             badguy = new Ship("down", 20, 40, Math.floor(Math.random() * canvas.width), Math.floor(Math.random() * -canvas.height));
         }
         drawEnemy();
