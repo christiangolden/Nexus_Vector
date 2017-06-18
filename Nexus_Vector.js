@@ -15,12 +15,27 @@ var gamePaused = false;
 var speed = 7;
 var heroCollision = false;
 var score = 0;
+
+//get amount of tilt from mobile device
 var tiltLevel;
+
+//range of magwave mag power
 var mwRange = (canvas.width * canvas.height) * 0.0004;
+
 var laserWidth = 10;
+
+//badguy color
 var red = 50;
 var redder = true;
+
+//hero color
+var green = 50;
+var greener = true;
+
+//magwave duration
 var mwEnergy = 5;
+
+var bulletList = [];
 
 function randColor() {
     'use strict';
@@ -172,6 +187,15 @@ function Ship(orientation, width, height, tipX, tipY) {
 	}
 }
 
+
+function Bullet(width, height, x, y) {
+    'use strict';
+    this.width = width;
+    this.height = height;
+    this.x = x;
+    this.y = y;
+}
+
 var hero = new Ship("up", 20, 40, canvas.width / 2, canvas.height - 50);
 var badguy = new Ship("down", 20, 40,
                       Math.floor(Math.random() * canvas.width),
@@ -203,14 +227,22 @@ function drawHero() {
         }
     }
     
+    if (green < 150 && greener === true) {
+        green += 10;
+    } else if (red > 49) {
+        greener = false;
+        green -= 10;
+    } else {
+        greener = true;
+    }
     if (heroCollision === false) {
         if (evt.right) {
-            hero.leftX = hero.tipX - 10;
+            hero.leftX = hero.tipX;
         } else {
             hero.leftX = hero.tipX - 10;
         }
         if (evt.left) {
-            hero.rightX = hero.tipX + 10;
+            hero.rightX = hero.tipX;
         } else {
             hero.rightX = hero.tipX + 10;
         }
@@ -220,18 +252,10 @@ function drawHero() {
 	    ctx.lineTo(hero.tipX, hero.tipY);
 	    ctx.lineTo(hero.rightX, hero.rightY);
 	    ctx.strokeStyle = 'rgb(' + randColor() + ',' + randColor() + ',' + randColor() + ')';
-        ctx.lineWidth =  3;
+        ctx.lineWidth =  1;
 	    ctx.stroke();
-/*        ctx.fillStyle = 'rgb(0,50,150)';
-        ctx.fill();*/
-
-
-	    /*ctx.beginPath();
-	    ctx.moveTo(hero.tipX, hero.tipY + 8);
-	    ctx.lineTo(hero.leftX + 4, hero.leftY - 3);
-	    ctx.lineTo(hero.rightX - 4, hero.rightY - 3);
-	    ctx.fillStyle = "#000";
-	    ctx.fill();*/
+        ctx.fillStyle = 'rgb(0,' + green + ',0)';
+        ctx.fill();
     }
     heroCollision = false;
 }
@@ -252,7 +276,16 @@ function drawEnemy() {
     badguy.rightY = badguy.tipY - badguy.height;
     badguy.leftX = badguy.tipX - 10;
     badguy.rightX = badguy.tipX + 10;
+    if (badguy.tipX > hero.tipX + 4 && badguy.tipY < hero.tipY) {
+        badguy.rightX = badguy.tipX;
+    } else if (badguy.tipX < hero.tipX - 4 && badguy.tipY < hero.tipY) {
+        badguy.leftX = badguy.tipX;
+    } else {
+        badguy.leftX = badguy.tipX - 10;
+        badguy.rightX = badguy.tipX + 10;
+    }
     badguy.width = badguy.rightX - badguy.leftX;
+    
     ctx.beginPath();
     ctx.moveTo(badguy.leftX, badguy.leftY);
     ctx.lineTo(badguy.tipX, badguy.tipY);
@@ -260,11 +293,10 @@ function drawEnemy() {
     ctx.strokeStyle = 'rgb(200,200,200)';
     ctx.lineWidth = 1;
     ctx.stroke();
-/*    ctx.fillStyle = 'rgb(150,0,50)';
-    ctx.fill();*/
+    ctx.fillStyle = 'rgb(' + red + ',0,50)';
+    ctx.fill();
     //ctx.closePath();
 }
-
 
 //stars
 var star = {
@@ -323,8 +355,8 @@ function drawDust() {
 			ctx.lineWidth = 2;
             ctx.stroke();
             /*ctx.fillStyle = 'rgb(200,200,200)';
-            ctx.fill();
-*/			ctx.closePath();
+            ctx.fill();*/
+			ctx.closePath();
 	    }
 	}
 }
@@ -353,8 +385,6 @@ function drawStars() {
 		ctx.closePath();
     }
 }
-
-
 
 //my added drawLaser function
 function drawLaser() {
@@ -423,6 +453,24 @@ function drawScore() {
     ctx.fillText("SD: " + score, canvas.width - 12, 22);
 }
 
+function drawBullets() {
+    'use strict';
+    var i, bullet;
+    if (Math.floor(Math.random() * 10) === 3) {
+        bulletList[bulletList.length] = new Bullet(2, 4, badguy.tipX, badguy.tipY);
+    }
+    for (i = 0; i < bulletList.length; i += 1) {
+        if (bulletList[i].y < canvas.height) {
+            bulletList[i].y += 7;
+            ctx.beginPath();
+            ctx.rect(bulletList[i].x, bulletList[i].y, bulletList[i].width, bulletList[i].height);
+            ctx.fillStyle = 'rgb(255,255,255)';
+            ctx.fill();
+        }
+    }
+
+}
+
 function draw() {
     'use strict';
 	if (!gamePaused) {
@@ -439,6 +487,9 @@ function draw() {
 	    drawDust();
 
 	    drawHero();
+                
+
+        
         if (badguy.tipX > (hero.tipX + 4) && badguy.tipY < hero.tipY) {
             badguy.tipX -= 4;
             badguy.tipY += 4;
@@ -450,7 +501,13 @@ function draw() {
         } else {
             badguy.tipY += 4;
         }
+        
+        if (evt.space && hero.tipX > badguy.leftX && hero.tipX < badguy.rightX) {
+            badguy = new Ship("down", 20, 40, Math.floor(Math.random() * canvas.width), Math.floor(Math.random() * -canvas.height));
+        }
         drawEnemy();
+        drawBullets();
+
         
         if ((evt.space || evt.rightTouch) && laserWidth > -0.1) {
             laserWidth -= 0.1;
