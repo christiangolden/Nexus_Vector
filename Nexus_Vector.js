@@ -17,93 +17,15 @@ var heroCollision = false;
 var score = 0;
 var tiltLevel;
 var mwRange = (canvas.width * canvas.height) * 0.0004;
-var barWidth = canvas.width / 3;
-var barHeight = canvas.height * 0.02;
-var barDecrement = canvas.width * 0.001;
 var laserWidth = 10;
 var red = 50;
 var redder = true;
+var mwEnergy = 5;
+var mwRedFill = 0;
 
 function randColor() {
     'use strict';
     return Math.floor(Math.random() * 255);
-}
-
-//draw life/stamina/laser bars
-//laser vars
-var laserEnergyBar = {
-	width: barWidth,
-	height: barHeight,
-	x: 0,
-	y: 0
-};
-
-var staminaBar = {
-	width: barWidth,
-	height: barHeight,
-	x: 0,
-	y: laserEnergyBar.y + laserEnergyBar.height
-};
-
-var lifeBar = {
-	width: barWidth,
-	height: barHeight,
-	x: 0,
-	y: staminaBar.y + staminaBar.height
-};
-
-var magBar = {
-    width: barWidth,
-    height: barHeight,
-    x: 0,
-    y: lifeBar.y + lifeBar.height
-};
-
-//draw laser energy bar
-function drawLEB() {
-    'use strict';
-	ctx.beginPath();
-	ctx.rect(laserEnergyBar.x, laserEnergyBar.y, laserEnergyBar.width, laserEnergyBar.height);
-	ctx.fillStyle = "rgba(255,100,10,0.4)";
-	ctx.fill();
-	ctx.closePath();
-}
-
-//draw stamina energy bar
-function drawSEB() {
-    'use strict';
-	ctx.beginPath();
-	ctx.rect(staminaBar.x, staminaBar.y, staminaBar.width, staminaBar.height);
-	ctx.fillStyle = "rgba(100,10,255,0.4)";
-	ctx.fill();
-	ctx.closePath();
-}
-//draw life bar
-function drawLB() {
-    'use strict';
-	ctx.beginPath();
-	ctx.rect(lifeBar.x, lifeBar.y, lifeBar.width, lifeBar.height);
-	ctx.fillStyle = "rgba(10,255,100,0.4)";
-	ctx.fill();
-	ctx.closePath();
-}
-
-function drawMB() {
-    'use strict';
-    ctx.beginPath();
-    ctx.rect(magBar.x, magBar.y, magBar.width, magBar.height);
-    ctx.fillStyle = "rgba(255,255,0,0.4)";
-    ctx.fill();
-    ctx.closePath();
-}
-
-//condensed
-function drawBars() {
-    'use strict';
-	drawLEB();
-	drawSEB();
-	drawLB();
-    drawMB();
 }
 
 //event listeners
@@ -277,16 +199,9 @@ function drawHero() {
             delete dust.xList[i];
             delete dust.yList[i];
             score += 1;
-            lifeBar.x -= barDecrement * 5;
         }
     }
     
-    /*** replace with code for collision with actual enemies/enemy bullets*****/
-    /*if (heroCollision) {
-		if (lifeBar.x > -lifeBar.width) {
-	        lifeBar.x -= 10;
-		}
-    }*/
     if (heroCollision === false) {
 	    hero.leftX = hero.tipX - 10;
 	    hero.rightX = hero.tipX + 10;
@@ -368,7 +283,7 @@ function genDustXY() {
 		dust.x = Math.floor(Math.random() * (canvas.width - dust.width) + 1);
 		dust.y = Math.floor(Math.random() * -canvas.height - dust.height);
         if ((evt.space === false && evt.rightTouch === false) || laser.x < dust.x ||
-                laser.x > dust.x + dust.width || laserEnergyBar.x <= -laserEnergyBar.width) {
+                laser.x > dust.x + dust.width || laserWidth <= 0) {
             dust.xList[dust.xList.length] = dust.x;
             dust.yList[dust.yList.length] = dust.y;
         }
@@ -424,19 +339,21 @@ function drawStars() {
 function drawLaser() {
     'use strict';
     var i;
-	ctx.beginPath();
-	ctx.rect(laser.x, 0, laser.width, laser.height);
-	ctx.fillStyle = 'rgb(' + randColor() + ',' + randColor() + ',' + randColor() + ')';
-	ctx.fill();
-	ctx.closePath();
-	for (i = 0; i < dust.xList.length; i += 1) {
-	    if (laser.x >= dust.xList[i] && laser.x <= dust.xList[i] + dust.width && dust.yList[i] > 0 &&
-                dust.yList[i] < laser.y && (evt.space || evt.rightTouch)) {
-			dust.yList.splice(i, 1);
-			dust.xList.splice(i, 1);
-			score += 1;
-	    }
-	}
+    if (laserWidth > 0) {
+        ctx.beginPath();
+        ctx.rect(laser.x, 0, laser.width, laser.height);
+        ctx.fillStyle = 'rgb(' + randColor() + ',' + randColor() + ',' + randColor() + ')';
+        ctx.fill();
+        ctx.closePath();
+        for (i = 0; i < dust.xList.length; i += 1) {
+            if (laser.x >= dust.xList[i] && laser.x <= dust.xList[i] + dust.width && dust.yList[i] > 0 &&
+                    dust.yList[i] < laser.y && (evt.space || evt.rightTouch)) {
+                dust.yList.splice(i, 1);
+                dust.xList.splice(i, 1);
+                score += 1;
+            }
+        }
+    }
 }
 
 function drawMagWave() {
@@ -444,8 +361,11 @@ function drawMagWave() {
     var i;
     ctx.beginPath();
     ctx.arc(magWave.x, magWave.y, magWave.radius, magWave.startAngle, magWave.endAngle);
+/*
+    ctx.fillStyle = 'rgb(' + mwRedFill + ',0,0)';
+*/
     ctx.strokeStyle = 'rgb(' + randColor() + ',' + randColor() + ',' + randColor() + ')';
-    ctx.lineWidth = 3;
+    ctx.lineWidth = mwEnergy;
     ctx.stroke();
     ctx.closePath();
 }
@@ -471,10 +391,10 @@ function drawHelps() {
     ctx.font = "20px Courier New";
     ctx.fillStyle = "rgb(200,200,200)";
     ctx.textAlign = "start";
-    ctx.fillText("Move\t\t\t\t:<-/-> or Tilt", 0, magBar.y + magBar.height * 2);
-    ctx.fillText("Shoot\t\t\t:Space/Touch Right", 0, magBar.y + magBar.height * 3);
-    ctx.fillText("Boost\t\t\t:Shift/Strong Tilt", 0, magBar.y + magBar.height * 4);
-    ctx.fillText("MagWave\t:Down/Touch Left", 0, magBar.y + magBar.height * 5);
+    ctx.fillText("Move\t\t\t\t:<-/-> or Tilt", 0, 20 * 2);
+    ctx.fillText("Shoot\t\t\t:Space/Touch Right", 0, 20 * 3);
+    ctx.fillText("Boost\t\t\t:Shift/Strong Tilt", 0, 20 * 4);
+    ctx.fillText("MagWave\t:Down/Touch Left", 0, 20 * 5);
 }
 
 function drawScore() {
@@ -494,12 +414,12 @@ function draw() {
 	    drawTitle();
 	    drawStars();
         
-	    if ((evt.space || evt.rightTouch) && laserEnergyBar.x > -laserEnergyBar.width) {
+	    if ((evt.space || evt.rightTouch) && laserWidth > 0) {
             drawLaser();
 	    }
         
 	    drawDust();
-	    drawBars();
+
 	    drawHero();
         if (badguy.tipX > hero.tipX && badguy.tipY < hero.tipY) {
             badguy.tipX -= 4;
@@ -514,50 +434,57 @@ function draw() {
         }
         drawEnemy();
         
-
+        if (evt.space && laserWidth > -0.1) {
+            laserWidth -= 0.1;
+            laser.width = laserWidth;
+            laser.x += 0.05;
+        } else if (laserWidth < 10.05) {
+            laserWidth += 0.1;
+            laser.width = laserWidth;
+            laser.x -= 0.05;
+        }
         
-        if (evt.down || evt.leftTouch) {
+        if ((evt.down || evt.leftTouch) && mwEnergy > 0) {
             if (magWave.radius < hero.width) {
                 magWave.radius += 0.5;
+                mwEnergy -= 0.01;
             } else {
                 magWave.radius = 0;
             }
-            if (magBar.x > -magBar.width) {
-                drawMagWave();
-                magBar.x -= barDecrement;
-            }
+            drawMagWave();
         } else {
             magWave.radius = 0;
-            if (magBar.x < 0) {
-                magBar.x += barDecrement;
-            }
+        }
+        
+        if ((!(evt.down || evt.leftTouch)) && mwEnergy < 5) {
+            mwEnergy += 0.01;
         }
         
 	    for (i = 0; i < dust.yList.length; i += 1) {
             if (((evt.space === false && evt.rightTouch === false) || laser.x < dust.xList[i] ||
-                 laser.x > dust.xList[i] + dust.width || laserEnergyBar.x <= -laserEnergyBar.width)) {
+                 laser.x > dust.xList[i] + dust.width || laserWidth <= 0)) {
                 if ((evt.down || evt.leftTouch) && dust.xList[i] > magWave.x &&
                             dust.xList[i] < (magWave.x + mwRange) &&
                             dust.yList[i] < magWave.y &&
                             dust.yList[i] > (magWave.y - mwRange) &&
-                            magBar.x > -magBar.width) {
+                            mwEnergy > 0) {
                     dust.xList[i] -= 3;
                     dust.yList[i] += 3;
                 } else if ((evt.down || evt.leftTouch) && dust.xList[i] > magWave.x &&
                             dust.xList[i] < (magWave.x + mwRange) &&
-                            dust.yList[i] > magWave.y && magBar.x > -magBar.width) {
+                            dust.yList[i] > magWave.y && mwEnergy > 0) {
                     dust.xList[i] -= 3;
                     dust.yList[i] -= 3;
                 } else if ((evt.down || evt.leftTouch) && dust.xList[i] < magWave.x &&
                            dust.xList[i] > (magWave.x - mwRange) &&
                            dust.yList[i] < magWave.y &&
                            dust.yList[i] > (magWave.y - mwRange) &&
-                            magBar.x > -magBar.width) {
+                            mwEnergy > 0) {
                     dust.xList[i] += 3;
                     dust.yList[i] += 3;
                 } else if ((evt.down || evt.leftTouch) && dust.xList[i] < magWave.x &&
                            dust.xList[i] > (magWave.x - mwRange) &&
-                           dust.yList[i] > magWave.y && magBar.x > -magBar.width) {
+                           dust.yList[i] > magWave.y && mwEnergy > 0) {
                     dust.xList[i] += 3;
                     dust.yList[i] -= 3;
                 } else {
@@ -569,23 +496,15 @@ function draw() {
                         dust.xList[i] >= magWave.x - magWave.radius / 2 &&
                         dust.xList[i] <= magWave.x + magWave.radius / 2 &&
                         dust.yList[i] >= magWave.y - magWave.radius / 2 &&
-                        dust.yList[i] <= magWave.y + magWave.radius / 2) {
+                        dust.yList[i] <= magWave.y + magWave.radius / 2 &&
+                        mwEnergy > 0) {
                     dust.xList.splice(i, 1);
                     dust.yList.splice(i, 1);
-                    if (magBar.x > -magBar.width) {
+                    if (mwEnergy > 0) {
                         score += 1;
-                    } else if (hero.tipX > dust.xList[i] && hero.tipX < (dust.xList[i] + dust.width) &&
-                              hero.tipY < dust.yList[i]) {
-                        lifeBar.x -= barDecrement * 5;
                     }
                 }
             }
-	    }
-
-	    if ((evt.space || evt.rightTouch) && laserEnergyBar.x >= -laserEnergyBar.width) {
-			laserEnergyBar.x -= barDecrement;
-	    } else if (evt.space === false && evt.rightTouch === false && laserEnergyBar.x < 0) {
-			laserEnergyBar.x += barDecrement;
 	    }
 
 	    for (i = 0; i < star.xList.length; i += 1) {
@@ -618,15 +537,10 @@ function draw() {
 	    }
 
 	    if ((evt.shift || tiltLevel > 5 || tiltLevel < -5) &&
-                staminaBar.x > -staminaBar.width &&
                 (evt.left || evt.right)) {
-			staminaBar.x -= barDecrement;
 			speed = 10;
 	    } else {
 			speed = 7;
-	    }
-	    if (evt.shift === false && staminaBar.x < 0) {
-			staminaBar.x += barDecrement;
 	    }
     } else {
         drawHelps();
