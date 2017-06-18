@@ -21,7 +21,6 @@ var laserWidth = 10;
 var red = 50;
 var redder = true;
 var mwEnergy = 5;
-var mwRedFill = 0;
 
 function randColor() {
     'use strict';
@@ -174,7 +173,9 @@ function Ship(orientation, width, height, tipX, tipY) {
 }
 
 var hero = new Ship("up", 20, 40, canvas.width / 2, canvas.height - 50);
-var badguy = new Ship("down", 20, 40, canvas.width / 2, 40);
+var badguy = new Ship("down", 20, 40,
+                      Math.floor(Math.random() * canvas.width),
+                      Math.floor(Math.random() * -canvas.height));
 
 var dust = {
 	width: 20,
@@ -203,22 +204,34 @@ function drawHero() {
     }
     
     if (heroCollision === false) {
-	    hero.leftX = hero.tipX - 10;
-	    hero.rightX = hero.tipX + 10;
+        if (evt.right) {
+            hero.leftX = hero.tipX - 10;
+        } else {
+            hero.leftX = hero.tipX - 10;
+        }
+        if (evt.left) {
+            hero.rightX = hero.tipX + 10;
+        } else {
+            hero.rightX = hero.tipX + 10;
+        }
 	    hero.width = hero.rightX - hero.leftX;
 	    ctx.beginPath();
-	    ctx.moveTo(hero.tipX, hero.tipY);
-	    ctx.lineTo(hero.leftX, hero.leftY);
+	    ctx.moveTo(hero.leftX, hero.leftY);
+	    ctx.lineTo(hero.tipX, hero.tipY);
 	    ctx.lineTo(hero.rightX, hero.rightY);
-	    ctx.fillStyle = 'rgb(' + randColor() + ',' + randColor() + ',' + randColor() + ')';
-	    ctx.fill();
+	    ctx.strokeStyle = 'rgb(' + randColor() + ',' + randColor() + ',' + randColor() + ')';
+        ctx.lineWidth =  3;
+	    ctx.stroke();
+/*        ctx.fillStyle = 'rgb(0,50,150)';
+        ctx.fill();*/
 
-	    ctx.beginPath();
+
+	    /*ctx.beginPath();
 	    ctx.moveTo(hero.tipX, hero.tipY + 8);
 	    ctx.lineTo(hero.leftX + 4, hero.leftY - 3);
 	    ctx.lineTo(hero.rightX - 4, hero.rightY - 3);
 	    ctx.fillStyle = "#000";
-	    ctx.fill();
+	    ctx.fill();*/
     }
     heroCollision = false;
 }
@@ -234,17 +247,22 @@ function drawEnemy() {
         redder = true;
     }
     
+
     badguy.leftY = badguy.tipY - badguy.height;
     badguy.rightY = badguy.tipY - badguy.height;
     badguy.leftX = badguy.tipX - 10;
     badguy.rightX = badguy.tipX + 10;
     badguy.width = badguy.rightX - badguy.leftX;
     ctx.beginPath();
-    ctx.moveTo(badguy.tipX, badguy.tipY);
-    ctx.lineTo(badguy.leftX, badguy.leftY);
+    ctx.moveTo(badguy.leftX, badguy.leftY);
+    ctx.lineTo(badguy.tipX, badguy.tipY);
     ctx.lineTo(badguy.rightX, badguy.rightY);
-    ctx.fillStyle = 'rgb(' + red + ',0,0)';
-    ctx.fill();
+    ctx.strokeStyle = 'rgb(200,200,200)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+/*    ctx.fillStyle = 'rgb(150,0,50)';
+    ctx.fill();*/
+    //ctx.closePath();
 }
 
 
@@ -301,9 +319,12 @@ function drawDust() {
 	    } else {
 			ctx.beginPath();
 			ctx.rect(dust.xList[i], dust.yList[i], dust.width, dust.height);
-			ctx.fillStyle = 'rgb(' + randColor() + ',' + randColor() + ',' + randColor() + ')';
-			ctx.fill();
-			ctx.closePath();
+			ctx.strokeStyle = 'rgb(' + randColor() + ',' + randColor() + ',' + randColor() + ')';
+			ctx.lineWidth = 2;
+            ctx.stroke();
+            /*ctx.fillStyle = 'rgb(200,200,200)';
+            ctx.fill();
+*/			ctx.closePath();
 	    }
 	}
 }
@@ -361,9 +382,6 @@ function drawMagWave() {
     var i;
     ctx.beginPath();
     ctx.arc(magWave.x, magWave.y, magWave.radius, magWave.startAngle, magWave.endAngle);
-/*
-    ctx.fillStyle = 'rgb(' + mwRedFill + ',0,0)';
-*/
     ctx.strokeStyle = 'rgb(' + randColor() + ',' + randColor() + ',' + randColor() + ')';
     ctx.lineWidth = mwEnergy;
     ctx.stroke();
@@ -391,10 +409,10 @@ function drawHelps() {
     ctx.font = "20px Courier New";
     ctx.fillStyle = "rgb(200,200,200)";
     ctx.textAlign = "start";
-    ctx.fillText("Move\t\t\t\t:<-/-> or Tilt", 0, 20 * 2);
-    ctx.fillText("Shoot\t\t\t:Space/Touch Right", 0, 20 * 3);
-    ctx.fillText("Boost\t\t\t:Shift/Strong Tilt", 0, 20 * 4);
-    ctx.fillText("MagWave\t:Down/Touch Left", 0, 20 * 5);
+    ctx.fillText("Move\t\t\t\t:<-/-> or Tilt", 0, 20);
+    ctx.fillText("Shoot\t\t\t:Space/Touch Right", 0, 2 * 20);
+    ctx.fillText("Boost\t\t\t:Shift/Strong Tilt", 0, 3 * 20);
+    ctx.fillText("MagWave\t:Down/Touch Left", 0, 4 * 20);
 }
 
 function drawScore() {
@@ -421,10 +439,10 @@ function draw() {
 	    drawDust();
 
 	    drawHero();
-        if (badguy.tipX > hero.tipX && badguy.tipY < hero.tipY) {
+        if (badguy.tipX > (hero.tipX + 4) && badguy.tipY < hero.tipY) {
             badguy.tipX -= 4;
             badguy.tipY += 4;
-        } else if (badguy.tipX < hero.tipX && badguy.tipY < hero.tipY) {
+        } else if (badguy.tipX < (hero.tipX - 4) && badguy.tipY < hero.tipY) {
             badguy.tipX += 4;
             badguy.tipY += 4;
         } else if (badguy.tipY > canvas.height + badguy.height) {
@@ -447,7 +465,7 @@ function draw() {
         if ((evt.down || evt.leftTouch) && mwEnergy > 0) {
             if (magWave.radius < hero.width) {
                 magWave.radius += 0.5;
-                mwEnergy -= 0.01;
+                mwEnergy -= 0.02;
             } else {
                 magWave.radius = 0;
             }
@@ -457,7 +475,7 @@ function draw() {
         }
         
         if ((!(evt.down || evt.leftTouch)) && mwEnergy < 5) {
-            mwEnergy += 0.01;
+            mwEnergy += 0.02;
         }
         
 	    for (i = 0; i < dust.yList.length; i += 1) {
@@ -516,13 +534,11 @@ function draw() {
 			}
 	    }
 
-	    if ((evt.right || evt.tiltRight) && hero.leftX < canvas.width) {/* &&
-                evt.down === false) {*/
+	    if ((evt.right || evt.tiltRight) && hero.leftX < canvas.width) {
 	        laser.x += speed;
 			hero.tipX += speed;
             magWave.x += speed;
-	    } else if ((evt.right || evt.tiltRight) && hero.leftX >= canvas.width) {/* &&
-                   evt.down === false) {*/
+	    } else if ((evt.right || evt.tiltRight) && hero.leftX >= canvas.width) {
             laser.x -= canvas.width + hero.width;
 			hero.tipX -= canvas.width + hero.width;
             magWave.x -= canvas.width + hero.width;
