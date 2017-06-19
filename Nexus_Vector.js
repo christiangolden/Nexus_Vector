@@ -22,6 +22,7 @@ var gamePaused = false;
 var speed = 7;
 var heroCollision = false;
 var score = 0;
+var hp = 100;
 
 //get amount of tilt from mobile device
 var tiltLevel;
@@ -451,11 +452,6 @@ function startScreen() {
     'use strict';
     if (!(evt.space || evt.leftTouch || evt.rightTouch)) {
         ctx.font = "40px Courier New";
-/*        if (startColor < 255) {
-            startColor += 5;
-        } else {
-            startColor = 200;
-        }*/
         ctx.fillStyle = "rgb(" + randColor() + "," + randColor() + "," + randColor() + ")";
         ctx.textAlign = "center";
         ctx.fillText("NEXUS VECTOR", canvas.width / 2, canvas.height / 2);
@@ -481,10 +477,12 @@ function drawHelps() {
 
 function drawScore() {
     'use strict';
-    ctx.font = "22px Courier New";
+    ctx.font = "18px Courier New";
     ctx.fillStyle = "rgba(255,255,255,0.8)";
     ctx.textAlign = "end";
-    ctx.fillText("Score: " + score, canvas.width - 12, 22);
+    ctx.fillText("Stardust Collected:" + score, canvas.width - 12, 22);
+    ctx.fillText("Drones Destroyed:" + shotDrones, canvas.width - 12, 44);
+    ctx.fillText("HP:" + hp + "/100", canvas.width - 12, 66);
 }
 
 function drawBullets() {
@@ -627,10 +625,18 @@ function drawGame() {
             if ((evt.space || evt.rightTouch) && hero.tipX > badguy.leftX &&
                     hero.tipX < badguy.rightX && laser.width > 0 &&
                     badguy.tipY > 0) {
+                shotDrones += 1;
                 badguy = new Ship("down", 20, 40, Math.floor(Math.random() * canvas.width), Math.floor(Math.random() * -canvas.height));
             }
             drawEnemy();
             drawBullets();
+            for (i = 0; i < bulletList.length; i += 1) {
+                if (bulletList[i].x > hero.leftX && bulletList[i].x < hero.rightX &&
+                        bulletList[i].y > hero.tipY) {
+                    bulletList.splice(i, 1);
+                    hp -= 1;
+                }
+            }
             for (i = 0; i < star.xList.length; i += 1) {
                 if (star.yList[i] < canvas.height) {
                     star.yList[i] += 1;
@@ -652,8 +658,8 @@ function drawGame() {
         }
     } else {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        startScreen();
         drawStars();
+        startScreen();
     }
     window.requestAnimationFrame(drawGame);
 }
