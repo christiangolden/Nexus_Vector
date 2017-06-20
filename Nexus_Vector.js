@@ -1,6 +1,4 @@
 /*TODO: 
-	Design Start Screen (started, could use more work)
-	Design Pause Screen (started, needs more work)
 	Design Death Screen
 	Design Menu Button/Menu
 */
@@ -48,6 +46,11 @@ var bulletList = [];
 function randColor() {
     'use strict';
     return Math.floor(Math.random() * 255);
+}
+
+function randRGB() {
+    'use strict';
+    return ("rgb(" + randColor() + "," + randColor() + "," + randColor() + ")");
 }
 
 
@@ -257,7 +260,7 @@ function drawHero() {
     ctx.moveTo(hero.leftX, hero.leftY);
     ctx.lineTo(hero.tipX, hero.tipY);
     ctx.lineTo(hero.rightX, hero.rightY);
-    ctx.strokeStyle = 'rgb(' + randColor() + ',' + randColor() + ',' + randColor() + ')';
+    ctx.strokeStyle = randRGB();
     ctx.lineWidth =  1;
     ctx.stroke();
     ctx.fillStyle = 'rgb(0,' + green + ',0)';
@@ -294,7 +297,8 @@ function drawEnemy() {
         badguy.tipX += 4;
         badguy.tipY += 4;
     } else if (badguy.tipY > canvas.height + badguy.height) {
-        badguy = new Ship("down", 20, 40, Math.floor(Math.random() * canvas.width), Math.floor(Math.random() * -canvas.height));
+        badguy = new Ship("down", 20, 40, Math.floor(Math.random() * canvas.width),
+                          Math.floor(Math.random() * -canvas.height));
     } else {
         badguy.tipY += 4;
     }
@@ -365,7 +369,7 @@ function drawDust() {
 	    } else {
 			ctx.beginPath();
 			ctx.rect(dust.xList[i], dust.yList[i], dust.width, dust.height);
-			ctx.strokeStyle = 'rgb(' + randColor() + ',' + randColor() + ',' + randColor() + ')';
+			ctx.strokeStyle = randRGB();
 			ctx.lineWidth = 2;
             ctx.stroke();
             /*ctx.fillStyle = 'rgb(200,200,200)';
@@ -378,8 +382,10 @@ function drawDust() {
 function genStarXY() {
     'use strict';
     if (Math.floor(Math.random() * 3) === 1) {
-		star.x = Math.floor(Math.random() * -canvas.width) + Math.floor(Math.random() * canvas.width * 2);
-		star.y = Math.floor(Math.random() * -canvas.height) + Math.floor(Math.random() * canvas.height);
+		star.x = Math.floor(Math.random() * -canvas.width) +
+            Math.floor(Math.random() * canvas.width * 2);
+		star.y = Math.floor(Math.random() * -canvas.height) +
+            Math.floor(Math.random() * canvas.height);
 		star.xList[star.xList.length] = star.x;
 		star.yList[star.yList.length] = star.y;
     }
@@ -407,11 +413,12 @@ function drawLaser() {
     if (laserWidth > 0) {
         ctx.beginPath();
         ctx.rect(laser.x, 0, laser.width, laser.height);
-        ctx.fillStyle = 'rgb(' + randColor() + ',' + randColor() + ',' + randColor() + ')';
+        ctx.fillStyle = randRGB();
         ctx.fill();
         ctx.closePath();
         for (i = 0; i < dust.xList.length; i += 1) {
-            if (laser.x >= dust.xList[i] && laser.x <= dust.xList[i] + dust.width && dust.yList[i] > 0 &&
+            if (laser.x >= dust.xList[i] && laser.x <= dust.xList[i] +
+                    dust.width && dust.yList[i] > 0 &&
                     dust.yList[i] < laser.y && (evt.space || evt.rightTouch)) {
                 dust.yList.splice(i, 1);
                 dust.xList.splice(i, 1);
@@ -426,7 +433,7 @@ function drawMagWave() {
     var i;
     ctx.beginPath();
     ctx.arc(magWave.x, magWave.y, magWave.radius, magWave.startAngle, magWave.endAngle);
-    ctx.strokeStyle = 'rgb(' + randColor() + ',' + randColor() + ',' + randColor() + ')';
+    ctx.strokeStyle = randRGB();
     ctx.lineWidth = mwEnergy;
     ctx.stroke();
     ctx.closePath();
@@ -437,7 +444,7 @@ var titleX = canvas.width;
 function drawTitle() {
     'use strict';
     ctx.font = "62px Courier New";
-    ctx.fillStyle = 'rgb(' + randColor() + ',' + randColor() + ',' + randColor() + ')';
+    ctx.fillStyle = randRGB();
     ctx.textAlign = "start";
     ctx.fillText("Nexus Vector", titleX, canvas.height / 2);
     if (titleX > -444) {
@@ -452,7 +459,7 @@ function startScreen() {
     'use strict';
     if (!(evt.space || evt.leftTouch || evt.rightTouch)) {
         ctx.font = "40px Courier New";
-        ctx.fillStyle = "rgb(" + randColor() + "," + randColor() + "," + randColor() + ")";
+        ctx.fillStyle = randRGB();
         ctx.textAlign = "center";
         ctx.fillText("NEXUS VECTOR", canvas.width / 2, canvas.height / 2);
         ctx.font = "20px Courier New";
@@ -503,26 +510,41 @@ function drawBullets() {
 
 }
 
-function moveStuff() {
+function moveHeroRight() {
     'use strict';
-    var i;
-    if ((evt.right || evt.tiltRight) && hero.leftX < canvas.width) {
-        laser.x += speed;
-        hero.tipX += speed;
-        magWave.x += speed;
-    } else if ((evt.right || evt.tiltRight) && hero.leftX >= canvas.width) {
+    if (hero.leftX >= canvas.width) {
         laser.x -= canvas.width + hero.width;
         hero.tipX -= canvas.width + hero.width;
         magWave.x -= canvas.width + hero.width;
-    } else if ((evt.left || evt.tiltLeft) && hero.rightX > 0) {
-        laser.x -= speed;
-        hero.tipX -= speed;
-        magWave.x -= speed;
-    } else if ((evt.left || evt.tiltLeft) && hero.rightX <= 0) {
+    } else {
+        laser.x += speed;
+        hero.tipX += speed;
+        magWave.x += speed;
+    }
+}
+
+function moveHeroLeft() {
+    'use strict';
+    if (hero.rightX <= 0) {
         laser.x += canvas.width + hero.width;
         hero.tipX += canvas.width + hero.width;
         magWave.x += canvas.width + hero.width;
+    } else {
+        laser.x -= speed;
+        hero.tipX -= speed;
+        magWave.x -= speed;
     }
+}
+
+function moveStuff() {
+    'use strict';
+    var i;
+    if ((evt.right || evt.tiltRight)) {
+        moveHeroRight();
+    } else if ((evt.left || evt.tiltLeft)) {
+        moveHeroLeft();
+    }
+
 
     if ((evt.shift || tiltLevel > 5 || tiltLevel < -5) &&
             (evt.left || evt.right)) {
@@ -626,7 +648,8 @@ function drawGame() {
                     hero.tipX < badguy.rightX && laser.width > 0 &&
                     badguy.tipY > 0) {
                 shotDrones += 1;
-                badguy = new Ship("down", 20, 40, Math.floor(Math.random() * canvas.width), Math.floor(Math.random() * -canvas.height));
+                badguy = new Ship("down", 20, 40, Math.floor(Math.random() * canvas.width),
+                                  Math.floor(Math.random() * -canvas.height));
             }
             drawEnemy();
             drawBullets();
