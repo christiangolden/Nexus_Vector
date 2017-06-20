@@ -172,9 +172,7 @@ document.addEventListener("keyup", keyUpHandler, false);
 //check for browser accelerometer compatibility
 if (window.DeviceOrientationEvent) {
     window.addEventListener("deviceorientation", handleOrientation, false);
-}
-
-if (window.DeviceMotionEvent) {
+} else if (window.DeviceMotionEvent) {
     window.addEventListener("devicemotion", handleMotion, false);
 }
 
