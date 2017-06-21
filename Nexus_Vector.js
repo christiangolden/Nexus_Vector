@@ -77,15 +77,20 @@ function keyDownHandler(e) {
     'use strict';
     if (e.keyCode === 32) {
         evt.space = true;
-    } else if (e.keyCode === 37) {
+    }
+    if (e.keyCode === 37) {
         evt.left = true;
-    } else if (e.keyCode === 39) {
+    }
+    if (e.keyCode === 39) {
         evt.right = true;
-    } else if (e.keyCode === 40) {
+    }
+    if (e.keyCode === 40) {
         evt.down = true;
-    } else if (e.keyCode === 16) {
+    }
+    if (e.keyCode === 16) {
 		evt.shift = true;
-    } else if (e.keyCode === 80) {
+    }
+    if (e.keyCode === 80) {
 		if (gamePaused === false) {
 			gamePaused = true;
 		} else {
@@ -97,13 +102,17 @@ function keyUpHandler(e) {
     'use strict';
     if (e.keyCode === 39) {
         evt.right = false;
-    } else if (e.keyCode === 37) {
+    }
+    if (e.keyCode === 37) {
         evt.left = false;
-    } else if (e.keyCode === 32) {
+    }
+    if (e.keyCode === 32) {
         evt.space = false;
-    } else if (e.keyCode === 40) {
+    }
+    if (e.keyCode === 40) {
         evt.down = false;
-    } else if (e.keyCode === 16) {
+    }
+    if (e.keyCode === 16) {
 		evt.shift = false;
     }
 }
@@ -544,7 +553,8 @@ function moveStuff() {
     
     if ((evt.right || evt.tiltRight)) {
         moveHeroRight();
-    } else if ((evt.left || evt.tiltLeft)) {
+    }
+    if ((evt.left || evt.tiltLeft)) {
         moveHeroLeft();
     }
 
@@ -644,7 +654,7 @@ function drawGame() {
                 drawBullets();
                 for (i = 0; i < bulletList.length; i += 1) {
                     if (bulletList[i].x > hero.leftX && bulletList[i].x < hero.rightX &&
-                            bulletList[i].y > hero.tipY) {
+                            bulletList[i].y > hero.tipY && bulletList[i].y < hero.tipY + hero.height) {
                         bulletList.splice(i, 1);
                         hp -= 1;
                         if (hp < 70) {
