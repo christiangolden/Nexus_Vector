@@ -24,8 +24,7 @@ var heroCollision = false;
 var score = 0;
 var hp = 100;
 
-var hpGreenText = 255;
-var hpRedColor = 0;
+var hpColor = 'rgb(0,255,0)';
 
 //get amount of tilt from mobile device
 var tiltLevel;
@@ -460,7 +459,12 @@ function drawScore() {
     ctx.textAlign = "end";
     ctx.fillText("Stardust Collected:" + score, canvas.width - 12, 22);
     ctx.fillText("Drones Destroyed:" + shotDrones, canvas.width - 12, 44);
-    ctx.fillText("HP:" + hp + "/100", canvas.width - 12, 66);
+    ctx.fillText("HP:", canvas.width - 88, 66);
+    ctx.fillStyle = hpColor;
+    ctx.fillText(hp, canvas.width - 55, 66);
+    ctx.fillStyle = "rgba(255,255,255,0.8)";
+    ctx.fillText("/100", canvas.width - 12, 66);
+
 }
 
 function drawGameOver() {
@@ -643,6 +647,12 @@ function drawGame() {
                             bulletList[i].y > hero.tipY) {
                         bulletList.splice(i, 1);
                         hp -= 1;
+                        if (hp < 70) {
+                            hpColor = 'rgb(255,255,0)';
+                        }
+                        if (hp < 40) {
+                            hpColor = 'rgb(255,0,0)';
+                        }
                         if (hp < 1) {
                             deadHero = true;
                         }
@@ -663,18 +673,24 @@ function drawGame() {
                     }
                 }
             } else {
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                //ctx.clearRect(0, 0, canvas.width, canvas.height);
                 if (evt.space || evt.leftTouch || evt.rightTouch) {
                     hp = 100;
                     score = 0;
                     shotDrones = 0;
                     destDust = 0;
                     savedDust = 0;
+                    hpColor = 'rgb(0,255,0)';
                     badguy = new Ship("down", 20, 40, Math.floor(Math.random() * canvas.width),
                                       Math.floor(Math.random() * -canvas.height));
                     bulletList.splice(1, bulletList.length);
+                    star.xList.splice(1, star.xList.length);
+                    star.yList.splice(1, star.yList.length);
+                    dust.xList.splice(1, dust.xList.length);
+                    dust.yList.splice(1, dust.yList.length);
                     deadHero = false;
                 }
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
                 drawStars();
                 drawGameOver();
 
