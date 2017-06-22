@@ -144,8 +144,8 @@ function handleEnd(event) {
         evt.rightTouch = false;
         evt.leftTouch = false;
     }
-    if (touchX1 > touchX2 + 5 || touchY1 > touchY2 + 5 ||
-            touchX1 < touchX2 - 5 || touchY1 < touchY2 - 5) {
+    if (touchX1 > touchX2 + 50 || touchY1 > touchY2 + 50 ||
+            touchX1 < touchX2 - 50 || touchY1 < touchY2 - 50) {
         if (!gamePaused) {
             gamePaused = true;
         } else {
