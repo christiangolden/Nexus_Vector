@@ -14,6 +14,8 @@ var startColor = 0;
 
 var deadHero = false;
 
+var swiped = false;
+
 var shotDrones = 0;
 var destDust = 0;
 var savedDust = 0;
@@ -116,11 +118,13 @@ function keyUpHandler(e) {
 		evt.shift = false;
     }
 }
-
+var touchX1, touchY1;
 function handleStart(event) {
     'use strict';
     if (event.changedTouches) {
 		evt.touch = true;
+        touchX1 = event.touches[0].pageX;
+        touchY1 = event.touches[0].pageY;
         if (event.touches[0].pageX > canvas.width / 2) {
             //event.preventDefault();
             evt.rightTouch = true;
@@ -133,7 +137,13 @@ function handleStart(event) {
 
 function handleEnd(event) {
     'use strict';
+    var touchX2, touchY2;
     if (event.changedTouches) {
+        touchX2 = event.touches[0].pageX;
+        touchY2 = event.touches[0].pageY;
+        if (touchX2 - touchX1 !== 0 || touchY2 - touchY1 !== 0) {
+            swiped = true;
+        }
         //event.preventDefault();
 		evt.touch = false;
         evt.rightTouch = false;
@@ -631,6 +641,9 @@ function drawGame() {
     if (start) {
         if (!gamePaused) {
             if (!deadHero) {
+                if (swiped) {
+                    gamePaused = true;
+                }
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
                 drawScore();
                 drawTitle();
