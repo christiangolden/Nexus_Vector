@@ -121,17 +121,13 @@ function keyUpHandler(e) {
 var touchX1, touchY1, touchX2, touchY2;
 function handleStart(event) {
     'use strict';
-    //touchX1 = event.touches[0].pageX;
-    //touchY1 = event.touches[0].pageY;
     if (event.changedTouches) {
 		evt.touch = true;
         touchX1 = event.touches[0].pageX;
         touchY1 = event.touches[0].pageY;
         if (event.touches[0].pageX > canvas.width / 2) {
-            //event.preventDefault();
             evt.rightTouch = true;
         } else if (event.touches[0].pageX <= canvas.width / 2) {
-            //event.preventDefault();
             evt.leftTouch = true;
         }
     }
@@ -141,9 +137,9 @@ function handleEnd(event) {
     'use strict';
 
     if (event.changedTouches) {
+        event.preventDefault();
         touchX2 = event.changedTouches[0].pageX;
         touchY2 = event.changedTouches[0].pageY;
-        event.preventDefault();
 		evt.touch = false;
         evt.rightTouch = false;
         evt.leftTouch = false;
