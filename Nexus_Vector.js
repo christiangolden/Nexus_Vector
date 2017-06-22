@@ -122,10 +122,10 @@ function handleStart(event) {
     if (event.changedTouches) {
 		evt.touch = true;
         if (event.touches[0].pageX > canvas.width / 2) {
-            event.preventDefault();
+            //event.preventDefault();
             evt.rightTouch = true;
         } else if (event.touches[0].pageX <= canvas.width / 2) {
-            event.preventDefault();
+            //event.preventDefault();
             evt.leftTouch = true;
         }
     }
@@ -134,7 +134,7 @@ function handleStart(event) {
 function handleEnd(event) {
     'use strict';
     if (event.changedTouches) {
-        event.preventDefault();
+        //event.preventDefault();
 		evt.touch = false;
         evt.rightTouch = false;
         evt.leftTouch = false;
@@ -218,8 +218,8 @@ var badguy = new Ship("down", 20, 40,
                       Math.floor(Math.random() * -canvas.height));
 
 var dust = {
-	width: 20,
-	height: 20,
+	width: 14,
+	height: 14,
 	xList: [],
 	yList: [],
 	x: 0,
@@ -238,7 +238,7 @@ function drawHero() {
                 dust.yList[i] + dust.height > hero.tipY && dust.yList[i] < hero.leftY) {
             delete dust.xList[i];
             delete dust.yList[i];
-            score += 1;
+            hp -= 1;
         }
     }
     hero.leftX = hero.tipX - 10;
@@ -372,20 +372,21 @@ function genStarXY() {
 
 function drawStars() {
     'use strict';
-	genStarXY();
+    if (star.xList.length < 300) {
+        genStarXY();
+    }
     var i, randTwinkle;
     for (i = 0; i < star.yList.length; i += 1) {
-		star.size = Math.floor(Math.random() * 4);
-		randTwinkle = randColor();
-		ctx.beginPath();
-		ctx.rect(star.xList[i], star.yList[i], star.size, star.size);
-		ctx.fillStyle = 'rgb(' + randTwinkle + ',' + randTwinkle + ',' + randTwinkle + ')';
-		ctx.fill();
-		ctx.closePath();
+        star.size = Math.floor(Math.random() * 4);
+        randTwinkle = randColor();
+        ctx.beginPath();
+        ctx.rect(star.xList[i], star.yList[i], star.size, star.size);
+        ctx.fillStyle = 'rgb(' + randTwinkle + ',' + randTwinkle + ',' + randTwinkle + ')';
+        ctx.fill();
+        ctx.closePath();
     }
 }
 
-//my added drawLaser function
 function drawLaser() {
     'use strict';
     var i;
@@ -401,7 +402,6 @@ function drawLaser() {
                     dust.yList[i] < laser.y && (evt.space || evt.rightTouch)) {
                 dust.yList.splice(i, 1);
                 dust.xList.splice(i, 1);
-                score += 1;
             }
         }
     }
@@ -660,7 +660,7 @@ function drawGame() {
                         if (hp < 70) {
                             hpColor = 'rgb(255,255,0)';
                         }
-                        if (hp < 40) {
+                        if (hp < 30) {
                             hpColor = 'rgb(255,0,0)';
                         }
                         if (hp < 1) {
