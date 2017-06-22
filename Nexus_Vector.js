@@ -121,8 +121,8 @@ function keyUpHandler(e) {
 var touchX1, touchY1, touchX2, touchY2;
 function handleStart(event) {
     'use strict';
-    touchX1 = event.pageX;
-    touchY1 = event.pageY;
+    touchX1 = event.touches[0].pageX;
+    touchY1 = event.touches[0].pageY;
     if (event.changedTouches) {
 		evt.touch = true;
         //touchX1 = event.touches[0].pageX;
@@ -139,8 +139,8 @@ function handleStart(event) {
 
 function handleEnd(event) {
     'use strict';
-    touchX2 = event.pageX;
-    touchY2 = event.pageY;
+    touchX2 = event.touches[0].pageX;
+    touchY2 = event.touches[0].pageY;
     if (event.changedTouches) {
         event.preventDefault();
 		evt.touch = false;
