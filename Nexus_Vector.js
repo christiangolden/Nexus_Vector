@@ -135,15 +135,19 @@ function handleStart(event) {
     }
 }
 
-function handleEnd(event) {
+function handleMove(event) {
     'use strict';
     var touchX2, touchY2;
+    touchX2 = event.touches[0].pageX;
+    touchY2 = event.touches[0].pageY;
+    if (Math.abs(touchX2 - touchX1) || Math.abs(touchY2 - touchY1)) {
+        swiped = true;
+    }
+}
+
+function handleEnd(event) {
+    'use strict';
     if (event.changedTouches) {
-        touchX2 = event.touches[0].pageX;
-        touchY2 = event.touches[0].pageY;
-        if (Math.abs(touchX2 - touchX1) || Math.abs(touchY2 - touchY1)) {
-            swiped = true;
-        }
         event.preventDefault();
 		evt.touch = false;
         evt.rightTouch = false;
@@ -195,6 +199,7 @@ if (window.DeviceOrientationEvent) {
 
 window.addEventListener("touchstart", handleStart, false);
 window.addEventListener("touchend", handleEnd, false);
+window.addEventListener("touchemove", handleMove, false);
 
 function Ship(orientation, width, height, tipX, tipY) {
     'use strict';
@@ -641,7 +646,7 @@ function drawGame() {
     if (start) {
         if (!gamePaused) {
             if (!deadHero) {
-                if (swiped) {
+                if (swiped && !gamePaused) {
                     gamePaused = true;
                 }
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
