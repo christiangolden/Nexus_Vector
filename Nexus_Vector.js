@@ -141,7 +141,7 @@ function handleEnd(event) {
     if (event.changedTouches) {
         touchX2 = event.touches[0].pageX;
         touchY2 = event.touches[0].pageY;
-        if (touchX2 - touchX1 !== 0 || touchY2 - touchY1 !== 0) {
+        if (Math.abs(touchX2 - touchX1) || Math.abs(touchY2 - touchY1)) {
             swiped = true;
         }
         //event.preventDefault();
