@@ -121,17 +121,17 @@ function keyUpHandler(e) {
 var touchX1, touchY1, touchX2, touchY2;
 function handleStart(event) {
     'use strict';
-    touchX1 = event.touches[0].pageX;
-    touchY1 = event.touches[0].pageY;
+    //touchX1 = event.touches[0].pageX;
+    //touchY1 = event.touches[0].pageY;
     if (event.changedTouches) {
 		evt.touch = true;
-        //touchX1 = event.touches[0].pageX;
-        //touchY1 = event.touches[0].pageY;
+        touchX1 = event.touches[0].pageX;
+        touchY1 = event.touches[0].pageY;
         if (event.touches[0].pageX > canvas.width / 2) {
-            event.preventDefault();
+            //event.preventDefault();
             evt.rightTouch = true;
         } else if (event.touches[0].pageX <= canvas.width / 2) {
-            event.preventDefault();
+            //event.preventDefault();
             evt.leftTouch = true;
         }
     }
@@ -139,9 +139,10 @@ function handleStart(event) {
 
 function handleEnd(event) {
     'use strict';
-    touchX2 = event.touches[0].pageX;
-    touchY2 = event.touches[0].pageY;
+
     if (event.changedTouches) {
+        touchX2 = event.changedTouches[0].pageX;
+        touchY2 = event.changedTouches[0].pageY;
         event.preventDefault();
 		evt.touch = false;
         evt.rightTouch = false;
@@ -149,7 +150,11 @@ function handleEnd(event) {
     }
     if (touchX1 > touchX2 || touchY1 > touchY2 ||
             touchX1 < touchX2 || touchY1 < touchY2) {
-        swiped = true;
+        if (!gamePaused) {
+            gamePaused = true;
+        } else {
+            gamePaused = false;
+        }
     }
 }
 
@@ -643,9 +648,13 @@ function drawGame() {
     if (start) {
         if (!gamePaused) {
             if (!deadHero) {
-                if (swiped && !gamePaused) {
-                    gamePaused = true;
-                }
+                /*if (swiped) {
+                    if (!gamePaused) {
+                        gamePaused = true;
+                    } else {
+                        gamePaused = false;
+                    }
+                }*/
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
                 drawScore();
                 drawTitle();
