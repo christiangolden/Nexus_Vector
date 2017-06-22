@@ -126,10 +126,10 @@ function handleStart(event) {
         touchX1 = event.touches[0].pageX;
         touchY1 = event.touches[0].pageY;
         if (event.touches[0].pageX > canvas.width / 2) {
-            //event.preventDefault();
+            event.preventDefault();
             evt.rightTouch = true;
         } else if (event.touches[0].pageX <= canvas.width / 2) {
-            //event.preventDefault();
+            event.preventDefault();
             evt.leftTouch = true;
         }
     }
@@ -144,7 +144,7 @@ function handleEnd(event) {
         if (Math.abs(touchX2 - touchX1) || Math.abs(touchY2 - touchY1)) {
             swiped = true;
         }
-        //event.preventDefault();
+        event.preventDefault();
 		evt.touch = false;
         evt.rightTouch = false;
         evt.leftTouch = false;
