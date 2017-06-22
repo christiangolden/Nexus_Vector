@@ -130,6 +130,13 @@ function handleStart(event) {
         } else if (event.touches[0].pageX <= canvas.width / 2) {
             evt.leftTouch = true;
         }
+        if (event.touches.length > 1) {
+            if (!gamePaused) {
+                gamePaused = true;
+            } else {
+                gamePaused = false;
+            }
+        }
     }
 }
 
@@ -144,14 +151,14 @@ function handleEnd(event) {
         evt.rightTouch = false;
         evt.leftTouch = false;
     }
-    if (touchX1 > touchX2 + 50 || touchY1 > touchY2 + 50 ||
+    /*if (touchX1 > touchX2 + 50 || touchY1 > touchY2 + 50 ||
             touchX1 < touchX2 - 50 || touchY1 < touchY2 - 50) {
         if (!gamePaused) {
             gamePaused = true;
         } else {
             gamePaused = false;
         }
-    }
+    }*/
 }
 
 //the following accelerometer function should work for most cases
