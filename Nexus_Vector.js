@@ -118,13 +118,15 @@ function keyUpHandler(e) {
 		evt.shift = false;
     }
 }
-var touchX1, touchY1;
+var touchX1, touchY1, touchX2, touchY2;
 function handleStart(event) {
     'use strict';
+    touchX1 = event.pageX;
+    touchY1 = event.pageY;
     if (event.changedTouches) {
 		evt.touch = true;
-        touchX1 = event.touches[0].pageX;
-        touchY1 = event.touches[0].pageY;
+        //touchX1 = event.touches[0].pageX;
+        //touchY1 = event.touches[0].pageY;
         if (event.touches[0].pageX > canvas.width / 2) {
             event.preventDefault();
             evt.rightTouch = true;
@@ -135,23 +137,19 @@ function handleStart(event) {
     }
 }
 
-function handleMove(event) {
-    'use strict';
-    var touchX2, touchY2;
-    touchX2 = event.touches[0].pageX;
-    touchY2 = event.touches[0].pageY;
-    if (Math.abs(touchX2 - touchX1) || Math.abs(touchY2 - touchY1)) {
-        swiped = true;
-    }
-}
-
 function handleEnd(event) {
     'use strict';
+    touchX2 = event.pageX;
+    touchY2 = event.pageY;
     if (event.changedTouches) {
         event.preventDefault();
 		evt.touch = false;
         evt.rightTouch = false;
         evt.leftTouch = false;
+    }
+    if (touchX1 > touchX2 || touchY1 > touchY2 ||
+            touchX1 < touchX2 || touchY1 < touchY2) {
+        swiped = true;
     }
 }
 
@@ -199,7 +197,6 @@ if (window.DeviceOrientationEvent) {
 
 window.addEventListener("touchstart", handleStart, false);
 window.addEventListener("touchend", handleEnd, false);
-window.addEventListener("touchemove", handleMove, false);
 
 function Ship(orientation, width, height, tipX, tipY) {
     'use strict';
