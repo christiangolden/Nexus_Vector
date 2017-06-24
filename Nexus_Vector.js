@@ -13,7 +13,7 @@ var start = false;
 var startColor = 0;
 
 var deadHero = false;
-
+var unDeadHero = false;
 var swiped = false;
 
 var shotDrones = 0;
@@ -131,6 +131,9 @@ function handleStart(event) {
             evt.leftTouch = true;
         }
         if (event.touches.length > 1) {
+            if (deadHero) {
+                unDeadHero = true;
+            }
             if (!gamePaused) {
                 gamePaused = true;
             } else {
@@ -151,14 +154,6 @@ function handleEnd(event) {
         evt.rightTouch = false;
         evt.leftTouch = false;
     }
-    /*if (touchX1 > touchX2 + 50 || touchY1 > touchY2 + 50 ||
-            touchX1 < touchX2 - 50 || touchY1 < touchY2 - 50) {
-        if (!gamePaused) {
-            gamePaused = true;
-        } else {
-            gamePaused = false;
-        }
-    }*/
 }
 
 //the following accelerometer function should work for most cases
@@ -751,7 +746,7 @@ function drawGame() {
                 }
             } else {
                 //reset game upon confirmation of replay
-                if (evt.space || evt.leftTouch || evt.rightTouch) {
+                if (evt.space || unDeadHero) {
                     hp = 100;
                     score = 0;
                     shotDrones = 0;
@@ -766,6 +761,7 @@ function drawGame() {
                     dust.xList.splice(0, dust.xList.length);
                     dust.yList.splice(0, dust.yList.length);
                     deadHero = false;
+                    unDeadHero = false;
                 }
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
                 drawStars();
