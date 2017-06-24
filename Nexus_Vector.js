@@ -256,8 +256,9 @@ function drawHero() {
 	for (i = 0; i <= dust.xList.length; i += 1) {
         if (dust.xList[i] + dust.width > hero.leftX && dust.xList[i] < hero.rightX &&
                 dust.yList[i] + dust.height > hero.tipY && dust.yList[i] < hero.leftY) {
-            delete dust.xList[i];
-            delete dust.yList[i];
+            dust.xList.splice(i, 1);
+            dust.yList.splice(i, 1);
+            destDust += 1;
             hp -= 1;
         }
     }
@@ -401,7 +402,7 @@ function drawStars() {
         randTwinkle = randColor();
         ctx.beginPath();
         ctx.rect(star.xList[i], star.yList[i], star.size, star.size);
-        ctx.fillStyle = 'rgb(' + randTwinkle + ',' + randTwinkle + ',' + randTwinkle + ')';
+        ctx.fillStyle = randRGB();//'rgb(' + randTwinkle + ',' + randTwinkle + ',' + randTwinkle + ')';
         ctx.fill();
         ctx.closePath();
     }
@@ -422,6 +423,7 @@ function drawLaser() {
                     dust.yList[i] < laser.y && (evt.space || evt.rightTouch)) {
                 dust.yList.splice(i, 1);
                 dust.xList.splice(i, 1);
+                destDust += 1;
             }
         }
     }
@@ -487,12 +489,13 @@ function drawScore() {
     ctx.fillStyle = "rgba(255,255,255,0.8)";
     ctx.textAlign = "end";
     ctx.fillText("Stardust Collected:" + score, canvas.width - 12, 22);
-    ctx.fillText("Drones Destroyed:" + shotDrones, canvas.width - 12, 44);
-    ctx.fillText("HP:", canvas.width - 88, 66);
+    ctx.fillText("Stardust Destroyed:" + destDust, canvas.width - 12, 44);
+    ctx.fillText("Drones Destroyed:" + shotDrones, canvas.width - 12, 66);
+    ctx.fillText("HP:", canvas.width - 88, 88);
     ctx.fillStyle = hpColor;
-    ctx.fillText(hp, canvas.width - 55, 66);
+    ctx.fillText(hp, canvas.width - 55, 88);
     ctx.fillStyle = "rgba(255,255,255,0.8)";
-    ctx.fillText("/100", canvas.width - 12, 66);
+    ctx.fillText("/100", canvas.width - 12, 88);
 
 }
 
@@ -510,14 +513,14 @@ function drawBullets() {
     'use strict';
     var i, bullet;
     if (Math.floor(Math.random() * 10) === 3 && badguy.tipY > 0) {
-        bulletList[bulletList.length] = new Bullet(2, 4, badguy.tipX - 1, badguy.tipY - 9);
+        bulletList[bulletList.length] = new Bullet(2, 16, badguy.tipX - 1, badguy.tipY - 9);
     }
     for (i = 0; i < bulletList.length; i += 1) {
         if (bulletList[i].y < canvas.height) {
             bulletList[i].y += 10;
             ctx.beginPath();
             ctx.rect(bulletList[i].x, bulletList[i].y, bulletList[i].width, bulletList[i].height);
-            ctx.fillStyle = 'rgb(255,255,255)';
+            ctx.fillStyle = randRGB();
             ctx.fill();
         }
     }
@@ -637,9 +640,9 @@ function moveStuff() {
                     mwEnergy > 0) {
                 dust.xList.splice(i, 1);
                 dust.yList.splice(i, 1);
-                if (mwEnergy > 0) {
-                    score += 1;
-                }
+                //if (mwEnergy > 0) {
+                score += 1;
+                //}
             }
         }
     }
@@ -647,17 +650,11 @@ function moveStuff() {
 
 function drawGame() {
     'use strict';
-    var i;
+    var i, j;
     if (start) {
         if (!gamePaused) {
             if (!deadHero) {
-                /*if (swiped) {
-                    if (!gamePaused) {
-                        gamePaused = true;
-                    } else {
-                        gamePaused = false;
-                    }
-                }*/
+                //draw/update game screen
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
                 drawScore();
                 drawTitle();
@@ -679,15 +676,17 @@ function drawGame() {
                 }
                 drawEnemy();
                 drawBullets();
+                
+                //check if enemy shot hero & if hero is dead
                 for (i = 0; i < bulletList.length; i += 1) {
                     if (bulletList[i].x > hero.leftX && bulletList[i].x < hero.rightX &&
                             bulletList[i].y > hero.tipY && bulletList[i].y < hero.tipY + hero.height) {
                         bulletList.splice(i, 1);
                         hp -= 1;
-                        if (hp < 70) {
+                        if (hp < 65) {
                             hpColor = 'rgb(255,255,0)';
                         }
-                        if (hp < 30) {
+                        if (hp < 25) {
                             hpColor = 'rgb(255,0,0)';
                         }
                         if (hp < 1) {
@@ -695,6 +694,26 @@ function drawGame() {
                         }
                     }
                 }
+                
+                //check if enemy shot stardust
+                for (i = 0; i < bulletList.length; i += 1) {
+                    for (j = 0; j < dust.xList.length; j += 1) {
+                        if (bulletList[i].x + bulletList[i].width > dust.xList[j] &&
+                                bulletList[i].x < dust.xList[j] + dust.width &&
+                                bulletList[i].y + bulletList[i].height > dust.yList[j] &&
+                                bulletList[i].y < dust.yList[j] + dust.height) {
+                            bulletList.splice(i, 1);
+                            dust.xList.splice(j, 1);
+                            dust.yList.splice(j, 1);
+                            destDust += 1;
+                            if (i >= bulletList.length) {
+                                break;
+                            }
+                        }
+                    }
+                }
+                
+                //descending stars, spliced if pass canvas bottom
                 for (i = 0; i < star.xList.length; i += 1) {
                     if (star.yList[i] < canvas.height) {
                         star.yList[i] += 1;
@@ -703,14 +722,14 @@ function drawGame() {
                         star.xList.splice(i, 1);
                     }
                 }
-
+                //descending enemy bullets, spliced if pass canvas bottom
                 for (i = 0; i < bulletList.length; i += 1) {
                     if (bulletList[i].y > canvas.height) {
                         bulletList.splice(i, 1);
                     }
                 }
             } else {
-                //ctx.clearRect(0, 0, canvas.width, canvas.height);
+                //reset game upon confirmation of replay
                 if (evt.space || evt.leftTouch || evt.rightTouch) {
                     hp = 100;
                     score = 0;
@@ -720,11 +739,11 @@ function drawGame() {
                     hpColor = 'rgb(0,255,0)';
                     badguy = new Ship("down", 20, 40, Math.floor(Math.random() * canvas.width),
                                       Math.floor(Math.random() * -canvas.height));
-                    bulletList.splice(1, bulletList.length);
-                    star.xList.splice(1, star.xList.length);
-                    star.yList.splice(1, star.yList.length);
-                    dust.xList.splice(1, dust.xList.length);
-                    dust.yList.splice(1, dust.yList.length);
+                    bulletList.splice(0, bulletList.length);
+                    star.xList.splice(0, star.xList.length);
+                    star.yList.splice(0, star.yList.length);
+                    dust.xList.splice(0, dust.xList.length);
+                    dust.yList.splice(0, dust.yList.length);
                     deadHero = false;
                 }
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -733,11 +752,13 @@ function drawGame() {
 
             }
         } else {
+            //display pause screen
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             drawStars();
             drawHelps();
         }
     } else {
+        //display start screen
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         drawStars();
         startScreen();
