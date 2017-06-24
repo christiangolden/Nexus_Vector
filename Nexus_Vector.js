@@ -477,8 +477,10 @@ function drawHelps() {
     ctx.textAlign = "start";
     ctx.fillText("Move\t\t\t\t:<-/-> or Tilt", 4, 20);
     ctx.fillText("Shoot\t\t\t:Space/Touch Right", 4, 2 * 20);
+/*
     ctx.fillText("Boost\t\t\t:Shift/Strong Tilt", 4, 3 * 20);
-    ctx.fillText("MagWave\t:Down/Touch Left", 4, 4 * 20);
+*/
+    ctx.fillText("MagWave\t:Down/Touch Left", 4, 3 * 20);
     ctx.textAlign = "center";
     ctx.fillText("PAUSED", canvas.width / 2, canvas.height / 2);
 }
@@ -582,12 +584,12 @@ function moveStuff() {
     }
 
 
-    if ((evt.shift || tiltLevel > 5 || tiltLevel < -5) &&
+/*    if ((evt.shift || tiltLevel > 5 || tiltLevel < -5) &&
             (evt.left || evt.right)) {
         speed = 10;
     } else {
         speed = 7;
-    }
+    }*/
     if ((evt.space || evt.rightTouch) && laserWidth > -0.1) {
         laserWidth -= 0.1;
         laser.width = laserWidth;
@@ -722,6 +724,25 @@ function drawGame() {
                         star.xList.splice(i, 1);
                     }
                 }
+                
+                for (i = 0; i < dust.xList.length; i += 1) {
+                    if (badguy.rightX >= dust.xList[i] &&
+                               badguy.leftX <= dust.xList[i] + dust.width &&
+                               badguy.tipY >= dust.yList[i] &&
+                               badguy.leftY <= dust.yList[i] + dust.height) {
+                        dust.xList.splice(i, 1);
+                        dust.yList.splice(i, 1);
+                        destDust += 1;
+                        if (i >= dust.xList.length) {
+                            break;
+                        }
+                    }
+                }
+                
+                if (badguy.tipY > hero.tipY && badguy.leftY < hero.tipY + hero.height &&
+                        badguy.rightX > hero.leftX && badguy.leftX < hero.rightX) {
+                    deadHero = true;
+                }
                 //descending enemy bullets, spliced if pass canvas bottom
                 for (i = 0; i < bulletList.length; i += 1) {
                     if (bulletList[i].y > canvas.height) {
@@ -756,6 +777,7 @@ function drawGame() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             drawStars();
             drawHelps();
+            drawScore();
         }
     } else {
         //display start screen
