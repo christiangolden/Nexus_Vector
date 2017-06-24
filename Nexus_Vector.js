@@ -28,9 +28,6 @@ var hp = 100;
 
 var hpColor = 'rgb(0,255,0)';
 
-//get amount of tilt from mobile device
-var tiltLevel;
-
 //range of magwave mag power
 var mwRange = (canvas.width * canvas.height) * 0.0004;
 
@@ -93,7 +90,7 @@ function keyDownHandler(e) {
 		evt.shift = true;
     }
     if (e.keyCode === 80) {
-		if (gamePaused === false) {
+		if (gamePaused === false && deadHero === false) {
 			gamePaused = true;
 		} else {
 			gamePaused = false;
@@ -134,7 +131,7 @@ function handleStart(event) {
             if (deadHero) {
                 unDeadHero = true;
             }
-            if (!gamePaused) {
+            if (!gamePaused && !deadHero) {
                 gamePaused = true;
             } else {
                 gamePaused = false;
@@ -169,7 +166,6 @@ function handleOrientation(event) {
 		evt.tiltRight = false;
 		evt.tiltLeft = false;
     }
-    tiltLevel = event.gamma;
 }
 
 //if the above doesn't work, this should.
@@ -467,15 +463,12 @@ function startScreen() {
 //controls/stats
 function drawHelps() {
     'use strict';
-    ctx.font = "20px Courier New";
+    ctx.font = "18px Courier New";
     ctx.fillStyle = "rgb(200,200,200)";
     ctx.textAlign = "start";
-    ctx.fillText("Move\t\t\t\t:<-/-> or Tilt", 4, 20);
-    ctx.fillText("Shoot\t\t\t:Space/Touch Right", 4, 2 * 20);
-/*
-    ctx.fillText("Boost\t\t\t:Shift/Strong Tilt", 4, 3 * 20);
-*/
-    ctx.fillText("MagWave\t:Down/Touch Left", 4, 3 * 20);
+    ctx.fillText("Move\t\t\t\t:<-/-> or Tilt", 5, canvas.height - 42);
+    ctx.fillText("Shoot\t\t\t:Space/Touch Right", 5, canvas.height - 24);
+    ctx.fillText("MagWave\t:Down/Touch Left", 5, canvas.height - 6);
     ctx.textAlign = "center";
     ctx.fillText("PAUSED", canvas.width / 2, canvas.height / 2);
 }
@@ -579,12 +572,6 @@ function moveStuff() {
     }
 
 
-/*    if ((evt.shift || tiltLevel > 5 || tiltLevel < -5) &&
-            (evt.left || evt.right)) {
-        speed = 10;
-    } else {
-        speed = 7;
-    }*/
     if ((evt.space || evt.rightTouch) && laserWidth > -0.1) {
         laserWidth -= 0.1;
         laser.width = laserWidth;
