@@ -394,17 +394,17 @@ function drawDust() {
 			dust.yList.splice(i, 1);
 			dust.xList.splice(i, 1);
 	    } else {
-/*			ctx.beginPath();
+			ctx.beginPath();
 			ctx.rect(dust.xList[i], dust.yList[i], dust.width, dust.height);
 			ctx.strokeStyle = randRGB();
 			ctx.lineWidth = 2;
             ctx.stroke();
-			ctx.closePath();*/
+			ctx.closePath();
             
-            ctx.font = "48px Courier";
+/*            ctx.font = "48px Courier";
             ctx.fillStyle = randRGB();
             ctx.textAlign = "center";
-            ctx.fillText("\u263A", dust.xList[i] + dust.width / 2, dust.yList[i] + dust.height);
+            ctx.fillText("\u263A", dust.xList[i] + dust.width / 2, dust.yList[i] + dust.height);*/
 	    }
 	}
 }
