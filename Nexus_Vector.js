@@ -515,17 +515,17 @@ function drawHelps() {
 
 function drawScore() {
     'use strict';
-    ctx.font = "24px Consolas";
+    ctx.font = "20px Consolas";
     ctx.fillStyle = "rgba(255,255,255,0.8)";
     ctx.textAlign = "end";
     ctx.fillText("Stardust Collected:" + score, canvas.width - 12, 22);
-    ctx.fillText("Stardust Destroyed:" + destDust, canvas.width - 12, 44);
-    ctx.fillText("Drones Destroyed:" + shotDrones, canvas.width - 12, 66);
-    ctx.fillText("HP:", canvas.width - 88, 88);
+    ctx.fillText("Stardust Destroyed:" + destDust, canvas.width - 12, 42);
+    ctx.fillText("Drones Destroyed:" + shotDrones, canvas.width - 12, 62);
+    ctx.fillText("HP:", canvas.width - 80, 82);
     ctx.fillStyle = hpColor;
-    ctx.fillText(hp, canvas.width - 55, 88);
+    ctx.fillText(hp, canvas.width - 50, 82);
     ctx.fillStyle = "rgba(255,255,255,0.8)";
-    ctx.fillText("/100", canvas.width - 12, 88);
+    ctx.fillText("/100", canvas.width - 12, 82);
 
 }
 
