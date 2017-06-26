@@ -1,5 +1,4 @@
 /*TODO: 
-	Design Death Screen
 	Design Menu Button/Menu
 */
 
@@ -46,6 +45,26 @@ var mwEnergy = 5;
 
 var bulletList = [];
 
+var drones = [
+    "\u26B6",
+    "\u262C",
+    "\u2645"
+];
+
+function genRandDrone() {
+    'use strict';
+    var r = Math.floor(Math.random() * 3 + 1);
+    if (r === 3) {
+        return drones[0];
+    } else if (r === 2) {
+        return drones[1];
+    } else {
+        return drones[2];
+    }
+}
+
+var randDrone = genRandDrone();
+
 function randColor() {
     'use strict';
     return Math.floor(Math.random() * 255);
@@ -56,7 +75,6 @@ function randRGB() {
     return ("rgb(" + randColor() + "," + randColor() + "," + randColor() + ")");
 }
 
-
 //event listeners
 //events
 var evt = {
@@ -65,6 +83,7 @@ var evt = {
 	down: false,
 	shift: false,
 	space: false,
+    tab: false,
 	touch: false,
     rightTouch: false,
     leftTouch: false,
@@ -89,8 +108,11 @@ function keyDownHandler(e) {
     if (e.keyCode === 16) {
 		evt.shift = true;
     }
+    if (e.keyCode === 9) {
+        evt.tab = true;
+    }
     if (e.keyCode === 80) {
-		if (gamePaused === false && deadHero === false) {
+		if (!gamePaused && !deadHero) {
 			gamePaused = true;
 		} else {
 			gamePaused = false;
@@ -113,6 +135,9 @@ function keyUpHandler(e) {
     }
     if (e.keyCode === 16) {
 		evt.shift = false;
+    }
+    if (e.keyCode === 9) {
+        evt.tab = false;
     }
 }
 var touchX1, touchY1, touchX2, touchY2;
@@ -253,14 +278,19 @@ function drawHero() {
             hp -= 1;
         }
     }
-    hero.leftX = hero.tipX - 10;
-    hero.rightX = hero.tipX + 10;
-    ctx.beginPath();
+    hero.leftX = hero.tipX - 16;
+    hero.rightX = hero.tipX + 16;
+    /*ctx.beginPath();
     ctx.moveTo(hero.leftX, hero.leftY);
     ctx.lineTo(hero.tipX, hero.tipY);
     ctx.lineTo(hero.rightX, hero.rightY);
     ctx.fillStyle = randRGB();
-    ctx.fill();
+    ctx.fill();*/
+    
+    ctx.font = "48px Courier";
+    ctx.fillStyle = randRGB();
+    ctx.textAlign = "center";
+    ctx.fillText("\u262B", hero.tipX, hero.leftY);
 }
 
 function drawEnemy() {
@@ -291,6 +321,7 @@ function drawEnemy() {
         badguy.tipX += 4;
         badguy.tipY += 4;
     } else if (badguy.tipY > canvas.height + badguy.height) {
+        randDrone = genRandDrone();
         badguy = new Ship("down", 20, 40, Math.floor(Math.random() * canvas.width),
                           Math.floor(Math.random() * -canvas.height));
     } else {
@@ -298,13 +329,18 @@ function drawEnemy() {
     }
     badguy.width = badguy.rightX - badguy.leftX;
     
-    ctx.beginPath();
+/*    ctx.beginPath();
     ctx.moveTo(badguy.leftX, badguy.leftY);
     ctx.lineTo(badguy.tipX, badguy.tipY);
     ctx.lineTo(badguy.rightX, badguy.rightY);
     ctx.strokeStyle = randRGB();
     ctx.lineWidth = 2;
-    ctx.stroke();
+    ctx.stroke();*/
+    
+    ctx.font = "48px Courier";
+    ctx.fillStyle = randRGB();
+    ctx.textAlign = "center";
+    ctx.fillText(randDrone, badguy.tipX, badguy.tipY);
 }
 
 //stars
@@ -358,14 +394,17 @@ function drawDust() {
 			dust.yList.splice(i, 1);
 			dust.xList.splice(i, 1);
 	    } else {
-			ctx.beginPath();
+/*			ctx.beginPath();
 			ctx.rect(dust.xList[i], dust.yList[i], dust.width, dust.height);
 			ctx.strokeStyle = randRGB();
 			ctx.lineWidth = 2;
             ctx.stroke();
-            /*ctx.fillStyle = 'rgb(200,200,200)';
-            ctx.fill();*/
-			ctx.closePath();
+			ctx.closePath();*/
+            
+            ctx.font = "48px Courier";
+            ctx.fillStyle = randRGB();
+            ctx.textAlign = "center";
+            ctx.fillText("\u263A", dust.xList[i] + dust.width / 2, dust.yList[i] + dust.height);
 	    }
 	}
 }
@@ -393,7 +432,7 @@ function drawStars() {
         randTwinkle = randColor();
         ctx.beginPath();
         ctx.rect(star.xList[i], star.yList[i], star.size, star.size);
-        ctx.fillStyle = randRGB();//'rgb(' + randTwinkle + ',' + randTwinkle + ',' + randTwinkle + ')';
+        ctx.fillStyle = randRGB();
         ctx.fill();
         ctx.closePath();
     }
@@ -431,11 +470,10 @@ function drawMagWave() {
     ctx.closePath();
 }
 
-//Scrolling Title
 var titleX = canvas.width;
 function drawTitle() {
     'use strict';
-    ctx.font = "62px Courier New";
+    ctx.font = "62px Consolas";
     ctx.fillStyle = randRGB();
     ctx.textAlign = "start";
     ctx.fillText("Nexus Vector", titleX, canvas.height / 2);
@@ -450,32 +488,34 @@ function drawTitle() {
 function startScreen() {
     'use strict';
     if (!(evt.space || evt.leftTouch || evt.rightTouch)) {
-        ctx.font = "40px Courier New";
+        ctx.font = "40px Consolas";
         ctx.fillStyle = randRGB();
         ctx.textAlign = "center";
-        ctx.fillText("NEXUS VECTOR", canvas.width / 2, canvas.height / 2);
+        ctx.fillText("NEXUS \u2A53 VECTOR", canvas.width / 2, canvas.height / 2);
         ctx.font = "20px Courier New";
         ctx.fillText("PRESS SPACE OR TAP TO START", canvas.width / 2, canvas.height / 2 + 40);
     } else {
         start = true;
     }
 }
+
 //controls/stats
 function drawHelps() {
     'use strict';
-    ctx.font = "18px Courier New";
+    ctx.font = "18px Consolas";
     ctx.fillStyle = "rgb(200,200,200)";
     ctx.textAlign = "start";
-    ctx.fillText("Move\t\t\t\t:<-/-> or Tilt", 5, canvas.height - 42);
-    ctx.fillText("Shoot\t\t\t:Space/Touch Right", 5, canvas.height - 24);
-    ctx.fillText("MagWave\t:Down/Touch Left", 5, canvas.height - 6);
+    ctx.fillText("Move:             <-/-> or Tilt", 5, canvas.height - 60);
+    ctx.fillText("Shoot:            Space/Touch Right", 5, canvas.height - 42);
+    ctx.fillText("MagWave:     Down/Touch Left", 5, canvas.height - 24);
+    ctx.fillText("Resume:         p/Multi-Touch", 5, canvas.height - 6);
     ctx.textAlign = "center";
     ctx.fillText("PAUSED", canvas.width / 2, canvas.height / 2);
 }
 
 function drawScore() {
     'use strict';
-    ctx.font = "18px Courier New";
+    ctx.font = "24px Consolas";
     ctx.fillStyle = "rgba(255,255,255,0.8)";
     ctx.textAlign = "end";
     ctx.fillText("Stardust Collected:" + score, canvas.width - 12, 22);
@@ -491,12 +531,12 @@ function drawScore() {
 
 function drawGameOver() {
     'use strict';
-    ctx.font = "48px Courier New";
+    ctx.font = "48px Consolas";
     ctx.fillStyle = randRGB();
     ctx.textAlign = "center";
     ctx.fillText("GAME OVER", canvas.width / 2, canvas.height / 2);
     ctx.font = "18px Courier New";
-    ctx.fillText("Space/Tap to Play Again", canvas.width / 2, canvas.height / 2 + 50);
+    ctx.fillText("Space/Multi-Touch to Play Again", canvas.width / 2, canvas.height / 2 + 50);
 }
 
 function drawBullets() {
@@ -649,12 +689,14 @@ function drawGame() {
                 }
 
                 drawDust();
+                //drawUnicodeHero();
                 drawHero();
                 moveStuff();
                 if ((evt.space || evt.rightTouch) && hero.tipX > badguy.leftX &&
                         hero.tipX < badguy.rightX && laser.width > 0 &&
                         badguy.tipY > 0) {
                     shotDrones += 1;
+                    randDrone = genRandDrone();
                     badguy = new Ship("down", 20, 40, Math.floor(Math.random() * canvas.width),
                                       Math.floor(Math.random() * -canvas.height));
                 }
@@ -740,6 +782,7 @@ function drawGame() {
                     destDust = 0;
                     savedDust = 0;
                     hpColor = 'rgb(0,255,0)';
+                    randDrone = genRandDrone();
                     badguy = new Ship("down", 20, 40, Math.floor(Math.random() * canvas.width),
                                       Math.floor(Math.random() * -canvas.height));
                     bulletList.splice(0, bulletList.length);
