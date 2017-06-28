@@ -78,6 +78,7 @@ function randRGB() {
 //event listeners
 //events
 var evt = {
+    enter: false,
 	right: false,
 	left: false,
 	down: false,
@@ -111,8 +112,11 @@ function keyDownHandler(e) {
     if (e.keyCode === 9) {
         evt.tab = true;
     }
+    if (e.keyCode === 13) {
+        evt.enter = true;
+    }
     if (e.keyCode === 80) {
-		if (!gamePaused && !deadHero) {
+		if (!gamePaused && !deadHero && start) {
 			gamePaused = true;
 		} else {
 			gamePaused = false;
@@ -138,6 +142,9 @@ function keyUpHandler(e) {
     }
     if (e.keyCode === 9) {
         evt.tab = false;
+    }
+    if (e.keyCode === 13) {
+        evt.enter = false;
     }
 }
 var touchX1, touchY1, touchX2, touchY2;
@@ -394,17 +401,17 @@ function drawDust() {
 			dust.yList.splice(i, 1);
 			dust.xList.splice(i, 1);
 	    } else {
-			ctx.beginPath();
+/*			ctx.beginPath();
 			ctx.rect(dust.xList[i], dust.yList[i], dust.width, dust.height);
 			ctx.strokeStyle = randRGB();
 			ctx.lineWidth = 2;
             ctx.stroke();
-			ctx.closePath();
+			ctx.closePath();*/
             
-/*            ctx.font = "48px Courier";
+            ctx.font = "40px Courier";
             ctx.fillStyle = randRGB();
             ctx.textAlign = "center";
-            ctx.fillText("\u263A", dust.xList[i] + dust.width / 2, dust.yList[i] + dust.height);*/
+            ctx.fillText("\u2735", dust.xList[i] + dust.width / 2, dust.yList[i] + dust.height);
 	    }
 	}
 }
@@ -428,13 +435,18 @@ function drawStars() {
     }
     var i, randTwinkle;
     for (i = 0; i < star.yList.length; i += 1) {
-        star.size = Math.floor(Math.random() * 4);
-        randTwinkle = randColor();
+        star.size = Math.floor(Math.random() * 20 + 6);
+/*        randTwinkle = randColor();
         ctx.beginPath();
         ctx.rect(star.xList[i], star.yList[i], star.size, star.size);
         ctx.fillStyle = randRGB();
         ctx.fill();
-        ctx.closePath();
+        ctx.closePath();*/
+        
+        ctx.font = star.size + "px Courier";
+        ctx.fillStyle = randRGB();
+        ctx.textAlign = "center";
+        ctx.fillText("\u2734", star.xList[i], star.yList[i] + star.size / 2);
     }
 }
 
@@ -487,13 +499,13 @@ function drawTitle() {
 
 function startScreen() {
     'use strict';
-    if (!(evt.space || evt.leftTouch || evt.rightTouch)) {
+    if (!(evt.enter || evt.leftTouch || evt.rightTouch)) {
         ctx.font = "40px Consolas";
         ctx.fillStyle = randRGB();
         ctx.textAlign = "center";
         ctx.fillText("NEXUS \u2A53 VECTOR", canvas.width / 2, canvas.height / 2);
         ctx.font = "20px Courier New";
-        ctx.fillText("PRESS SPACE OR TAP TO START", canvas.width / 2, canvas.height / 2 + 40);
+        ctx.fillText("PRESS Enter OR TAP TO START", canvas.width / 2, canvas.height / 2 + 40);
     } else {
         start = true;
     }
