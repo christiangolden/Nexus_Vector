@@ -352,7 +352,7 @@ function drawEnemy() {
 
 //stars
 var star = {
-	size: 2,
+	size: 1,
 	xList: [],
 	yList: [],
 	x: 0,
@@ -408,7 +408,7 @@ function drawDust() {
             ctx.stroke();
 			ctx.closePath();*/
             
-            ctx.font = "40px Courier";
+            ctx.font = "30px Courier";
             ctx.fillStyle = randRGB();
             ctx.textAlign = "center";
             ctx.fillText("\u2735", dust.xList[i] + dust.width / 2, dust.yList[i] + dust.height);
@@ -430,15 +430,15 @@ function genStarXY() {
 
 function drawStars() {
     'use strict';
-    if (star.xList.length < 300) {
+    if (star.xList.length < 100) {
         genStarXY();
     }
     var i, randTwinkle;
     for (i = 0; i < star.yList.length; i += 1) {
-        star.size = Math.floor(Math.random() * 20 + 6);
+        star.size = Math.floor(Math.random() * 12 + 10);
 /*        randTwinkle = randColor();
         ctx.beginPath();
-        ctx.rect(star.xList[i], star.yList[i], star.size, star.size);
+        ctx.rect(star.xList[i], star.yList[i], star.size star.size);
         ctx.fillStyle = randRGB();
         ctx.fill();
         ctx.closePath();*/
@@ -548,7 +548,7 @@ function drawGameOver() {
     ctx.textAlign = "center";
     ctx.fillText("GAME OVER", canvas.width / 2, canvas.height / 2);
     ctx.font = "18px Courier New";
-    ctx.fillText("Space/Multi-Touch to Play Again", canvas.width / 2, canvas.height / 2 + 50);
+    ctx.fillText("Enter/Multi-Touch to Play Again", canvas.width / 2, canvas.height / 2 + 50);
 }
 
 function drawBullets() {
@@ -787,7 +787,7 @@ function drawGame() {
                 }
             } else {
                 //reset game upon confirmation of replay
-                if (evt.space || unDeadHero) {
+                if (evt.enter || unDeadHero) {
                     hp = 100;
                     score = 0;
                     shotDrones = 0;
