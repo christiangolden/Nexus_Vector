@@ -8,6 +8,12 @@ canvas.width = document.body.clientWidth;
 canvas.height = document.body.clientHeight;
 var ctx = canvas.getContext("2d");
 
+var downUp = true;
+var leftRight = false;
+var upDown = false;
+var rightLeft = false;
+
+var rotated = false;
 var start = false;
 var startColor = 0;
 
@@ -78,6 +84,7 @@ function randRGB() {
 //event listeners
 //events
 var evt = {
+    w: false,
     enter: false,
 	right: false,
 	left: false,
@@ -94,6 +101,13 @@ var evt = {
 
 function keyDownHandler(e) {
     'use strict';
+    if (e.keyCode === 87) {
+        if (!rotated) {
+            rotated = true;
+        } else {
+            rotated = false;
+        }
+    }
     if (e.keyCode === 32) {
         evt.space = true;
     }
@@ -125,6 +139,9 @@ function keyDownHandler(e) {
 }
 function keyUpHandler(e) {
     'use strict';
+    if (e.keyCode === 87) {
+        evt.w = false;
+    }
     if (e.keyCode === 39) {
         evt.right = false;
     }
@@ -278,7 +295,7 @@ function drawHero() {
     var i;
 	for (i = 0; i <= dust.xList.length; i += 1) {
         if (dust.xList[i] + dust.width > hero.leftX && dust.xList[i] < hero.rightX &&
-                dust.yList[i] + dust.height > hero.tipY && dust.yList[i] < hero.leftY) {
+                dust.yList[i] > hero.tipY && dust.yList[i] < hero.leftY) {
             dust.xList.splice(i, 1);
             dust.yList.splice(i, 1);
             destDust += 1;
@@ -287,13 +304,6 @@ function drawHero() {
     }
     hero.leftX = hero.tipX - 16;
     hero.rightX = hero.tipX + 16;
-    /*ctx.beginPath();
-    ctx.moveTo(hero.leftX, hero.leftY);
-    ctx.lineTo(hero.tipX, hero.tipY);
-    ctx.lineTo(hero.rightX, hero.rightY);
-    ctx.fillStyle = randRGB();
-    ctx.fill();*/
-    
     ctx.font = "48px Courier";
     ctx.fillStyle = randRGB();
     ctx.textAlign = "center";
@@ -335,15 +345,6 @@ function drawEnemy() {
         badguy.tipY += 4;
     }
     badguy.width = badguy.rightX - badguy.leftX;
-    
-/*    ctx.beginPath();
-    ctx.moveTo(badguy.leftX, badguy.leftY);
-    ctx.lineTo(badguy.tipX, badguy.tipY);
-    ctx.lineTo(badguy.rightX, badguy.rightY);
-    ctx.strokeStyle = randRGB();
-    ctx.lineWidth = 2;
-    ctx.stroke();*/
-    
     ctx.font = "48px Courier";
     ctx.fillStyle = randRGB();
     ctx.textAlign = "center";
@@ -401,17 +402,10 @@ function drawDust() {
 			dust.yList.splice(i, 1);
 			dust.xList.splice(i, 1);
 	    } else {
-/*			ctx.beginPath();
-			ctx.rect(dust.xList[i], dust.yList[i], dust.width, dust.height);
-			ctx.strokeStyle = randRGB();
-			ctx.lineWidth = 2;
-            ctx.stroke();
-			ctx.closePath();*/
-            
-            ctx.font = "30px Courier";
+            ctx.font = "40px Courier";
             ctx.fillStyle = randRGB();
             ctx.textAlign = "center";
-            ctx.fillText("\u2735", dust.xList[i] + dust.width / 2, dust.yList[i] + dust.height);
+            ctx.fillText("*", dust.xList[i] + dust.width / 2, dust.yList[i] + dust.height);
 	    }
 	}
 }
@@ -436,17 +430,10 @@ function drawStars() {
     var i, randTwinkle;
     for (i = 0; i < star.yList.length; i += 1) {
         star.size = Math.floor(Math.random() * 12 + 10);
-/*        randTwinkle = randColor();
-        ctx.beginPath();
-        ctx.rect(star.xList[i], star.yList[i], star.size star.size);
-        ctx.fillStyle = randRGB();
-        ctx.fill();
-        ctx.closePath();*/
-        
         ctx.font = star.size + "px Courier";
         ctx.fillStyle = randRGB();
         ctx.textAlign = "center";
-        ctx.fillText("\u2734", star.xList[i], star.yList[i] + star.size / 2);
+        ctx.fillText("*", star.xList[i], star.yList[i] + star.size / 2);
     }
 }
 
@@ -488,7 +475,7 @@ function drawTitle() {
     ctx.font = "62px Consolas";
     ctx.fillStyle = randRGB();
     ctx.textAlign = "start";
-    ctx.fillText("Nexus Vector", titleX, canvas.height / 2);
+    ctx.fillText("Nexus \u2A58\u2A57 Vector", titleX, canvas.height / 2);
     if (titleX > -444) {
         titleX -= 1;
     } else {
@@ -503,9 +490,9 @@ function startScreen() {
         ctx.font = "40px Consolas";
         ctx.fillStyle = randRGB();
         ctx.textAlign = "center";
-        ctx.fillText("NEXUS \u2A53 VECTOR", canvas.width / 2, canvas.height / 2);
+        ctx.fillText("NEXUS \u2A58\u2A57 VECTOR", canvas.width / 2, canvas.height / 2);
         ctx.font = "20px Courier New";
-        ctx.fillText("PRESS Enter OR TAP TO START", canvas.width / 2, canvas.height / 2 + 40);
+        ctx.fillText("PRESS ENTER OR TAP TO START", canvas.width / 2, canvas.height / 2 + 40);
     } else {
         start = true;
     }
@@ -671,7 +658,7 @@ function moveStuff() {
             if ((evt.down || evt.leftTouch) && dust.xList[i] <= magWave.x + 3 &&
                     dust.xList[i] >= magWave.x - magWave.radius - dust.width &&
                     dust.xList[i] <= magWave.x + magWave.radius + dust.width &&
-                    dust.yList[i] >= magWave.y - magWave.radius - dust.height &&
+                    dust.yList[i] >= magWave.y - magWave.radius &&
                     dust.yList[i] <= magWave.y + magWave.radius &&
                     mwEnergy > 0) {
                 dust.xList.splice(i, 1);
@@ -690,6 +677,15 @@ function drawGame() {
     if (start) {
         if (!gamePaused) {
             if (!deadHero) {
+                if (rotated) {
+                    if (downUp) {
+                        ctx.clearRect(0, 0, canvas.width, canvas.height);
+                        ctx.save();
+                        ctx.translate(canvas.width / 2, canvas.height / 2);
+                        ctx.rotate(Math.PI / 2);
+                        ctx.translate(-(canvas.width / 2), -(canvas.height / 2));
+                    }
+                }
                 //draw/update game screen
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
                 drawScore();
@@ -701,7 +697,6 @@ function drawGame() {
                 }
 
                 drawDust();
-                //drawUnicodeHero();
                 drawHero();
                 moveStuff();
                 if ((evt.space || evt.rightTouch) && hero.tipX > badguy.leftX &&
@@ -784,6 +779,10 @@ function drawGame() {
                     if (bulletList[i].y > canvas.height) {
                         bulletList.splice(i, 1);
                     }
+                }
+                
+                if (rotated) {
+                    ctx.restore();
                 }
             } else {
                 //reset game upon confirmation of replay
