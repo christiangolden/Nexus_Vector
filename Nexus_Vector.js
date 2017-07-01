@@ -8,6 +8,21 @@ canvas.width = document.body.clientWidth;
 canvas.height = document.body.clientHeight;
 var ctx = canvas.getContext("2d");
 
+/*var newcanvas = document.getElementById("newCanvas");
+newcanvas.width = document.body.clientWidth;
+newcanvas.height = document.body.clientHeight;
+var newctx = newcanvas.getContext("2d");*/
+
+var health = [
+    /*"*****","\u1694",*****
+    "****","\u1693"*/
+    "***",//"\u1692",
+    "**",//"\u1691",
+    "*"//"\u1690"
+];
+var hit = 0;
+var healthChar = health[hit];
+
 var downUp = true;
 var leftRight = false;
 var upDown = false;
@@ -54,18 +69,21 @@ var bulletList = [];
 var drones = [
     "\u26B6",
     "\u262C",
-    "\u2645"
+    "\u2645",
+    "\u0F12"
 ];
 
 function genRandDrone() {
     'use strict';
-    var r = Math.floor(Math.random() * 3 + 1);
+    var r = Math.floor(Math.random() * 4 + 1);
     if (r === 3) {
         return drones[0];
     } else if (r === 2) {
         return drones[1];
-    } else {
+    } else if (r === 1) {
         return drones[2];
+    } else {
+        return drones[3];
     }
 }
 
@@ -272,7 +290,7 @@ function Bullet(width, height, x, y) {
     this.y = y;
 }
 
-var hero = new Ship("up", 20, 40, canvas.width / 2, canvas.height - 50);
+var hero = new Ship("up", 20, 40, canvas.width / 2, canvas.height - 62);
 var badguy = new Ship("down", 20, 40,
                       Math.floor(Math.random() * canvas.width),
                       Math.floor(Math.random() * -canvas.height));
@@ -299,16 +317,23 @@ function drawHero() {
             dust.xList.splice(i, 1);
             dust.yList.splice(i, 1);
             destDust += 1;
-            hp -= 1;
+            if (hit === health.length - 1) {
+                deadHero = true;
+            }
+            hit += 1;
+            healthChar = health[hit];
+            //hp -= 1;
         }
     }
     hero.leftX = hero.tipX - 16;
     hero.rightX = hero.tipX + 16;
-    ctx.font = "48px Courier";
-    ctx.fillStyle = randRGB();
+    ctx.font = "40px Courier";
+    ctx.fillStyle = randColor();
     ctx.textAlign = "center";
-    ctx.fillText("\u262B", hero.tipX, hero.leftY);
+    ctx.fillText("\u1CC0", hero.tipX, hero.leftY);
 }
+
+//hero unicode "\u262B"
 
 function drawEnemy() {
     'use strict';
@@ -498,34 +523,51 @@ function startScreen() {
     }
 }
 
-//controls/stats
-function drawHelps() {
+function drawHealth() {
     'use strict';
-    ctx.font = "18px Consolas";
-    ctx.fillStyle = "rgb(200,200,200)";
-    ctx.textAlign = "start";
-    ctx.fillText("Move:             <-/-> or Tilt", 5, canvas.height - 60);
-    ctx.fillText("Shoot:            Space/Touch Right", 5, canvas.height - 42);
-    ctx.fillText("MagWave:     Down/Touch Left", 5, canvas.height - 24);
-    ctx.fillText("Resume:         p/Multi-Touch", 5, canvas.height - 6);
+    ctx.font = "28px Consolas";
+    ctx.fillStyle = randColor();
     ctx.textAlign = "center";
-    ctx.fillText("PAUSED", canvas.width / 2, canvas.height / 2);
+    ctx.fillText(healthChar, hero.tipX, hero.leftY + 25);
 }
+//controls/stats
+
 
 function drawScore() {
     'use strict';
-    ctx.font = "20px Consolas";
-    ctx.fillStyle = "rgba(255,255,255,0.8)";
+    /*if (score > 0) {
+        ctx.font = "30px Consolas";
+        ctx.fillStyle = randColor();
+        ctx.textAlign = "end";
+        ctx.fillText(score, canvas.width - 12, 22);
+    }*/
     ctx.textAlign = "end";
+    ctx.fillStyle = randRGB();
+    ctx.font = "18px Consolas";
     ctx.fillText("Stardust Collected:" + score, canvas.width - 12, 22);
+    ctx.fillStyle = randRGB();
     ctx.fillText("Stardust Destroyed:" + destDust, canvas.width - 12, 42);
+    ctx.fillStyle = randRGB();
     ctx.fillText("Drones Destroyed:" + shotDrones, canvas.width - 12, 62);
-    ctx.fillText("HP:", canvas.width - 80, 82);
-    ctx.fillStyle = hpColor;
-    ctx.fillText(hp, canvas.width - 50, 82);
-    ctx.fillStyle = "rgba(255,255,255,0.8)";
-    ctx.fillText("/100", canvas.width - 12, 82);
+}
 
+function drawHelps() {
+    'use strict';
+    drawScore();
+    ctx.font = "18px Consolas";
+    ctx.fillStyle = randRGB();
+    ctx.textAlign = "start";
+    ctx.fillText("Move:             <-/-> or Tilt", 5, canvas.height - 60);
+    ctx.fillStyle = randRGB();
+    ctx.fillText("Shoot:            Space/Touch Right", 5, canvas.height - 42);
+    ctx.fillStyle = randRGB();
+    ctx.fillText("MagWave:     Down/Touch Left", 5, canvas.height - 24);
+    ctx.fillStyle = randRGB();
+    ctx.fillText("Resume:         p/Multi-Touch", 5, canvas.height - 6);
+    ctx.textAlign = "center";
+    ctx.fillStyle = randRGB();
+    ctx.font = "48px Consolas";
+    ctx.fillText("| |", canvas.width / 2, canvas.height / 2);
 }
 
 function drawGameOver() {
@@ -533,7 +575,7 @@ function drawGameOver() {
     ctx.font = "48px Consolas";
     ctx.fillStyle = randRGB();
     ctx.textAlign = "center";
-    ctx.fillText("GAME OVER", canvas.width / 2, canvas.height / 2);
+    ctx.fillText("GAME \u2620 OVER", canvas.width / 2, canvas.height / 2);
     ctx.font = "18px Courier New";
     ctx.fillText("Enter/Multi-Touch to Play Again", canvas.width / 2, canvas.height / 2 + 50);
 }
@@ -663,9 +705,7 @@ function moveStuff() {
                     mwEnergy > 0) {
                 dust.xList.splice(i, 1);
                 dust.yList.splice(i, 1);
-                //if (mwEnergy > 0) {
                 score += 1;
-                //}
             }
         }
     }
@@ -689,7 +729,7 @@ function drawGame() {
                 //draw/update game screen
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
                 drawScore();
-                drawTitle();
+                //drawTitle();
                 drawStars();
 
                 if ((evt.space || evt.rightTouch) && laserWidth > 0) {
@@ -698,6 +738,7 @@ function drawGame() {
 
                 drawDust();
                 drawHero();
+                drawHealth();
                 moveStuff();
                 if ((evt.space || evt.rightTouch) && hero.tipX > badguy.leftX &&
                         hero.tipX < badguy.rightX && laser.width > 0 &&
@@ -715,7 +756,12 @@ function drawGame() {
                     if (bulletList[i].x > hero.leftX && bulletList[i].x < hero.rightX &&
                             bulletList[i].y > hero.tipY && bulletList[i].y < hero.tipY + hero.height) {
                         bulletList.splice(i, 1);
-                        hp -= 1;
+                        if (hit === health.length - 1) {
+                            deadHero = true;
+                        }
+                        hit += 1;
+                        healthChar = health[hit];
+                        /*hp -= 1;
                         if (hp < 65) {
                             hpColor = 'rgb(255,255,0)';
                         }
@@ -724,7 +770,7 @@ function drawGame() {
                         }
                         if (hp < 1) {
                             deadHero = true;
-                        }
+                        }*/
                     }
                 }
                 
@@ -801,6 +847,8 @@ function drawGame() {
                     star.yList.splice(0, star.yList.length);
                     dust.xList.splice(0, dust.xList.length);
                     dust.yList.splice(0, dust.yList.length);
+                    hit = 0;
+                    healthChar = health[hit];
                     deadHero = false;
                     unDeadHero = false;
                 }
@@ -814,7 +862,7 @@ function drawGame() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             drawStars();
             drawHelps();
-            drawScore();
+            //drawScore();
         }
     } else {
         //display start screen
