@@ -624,7 +624,7 @@ function drawHeroBullets() {
             wait = false;
         }
     } else {
-        if (evt.space) {
+        if (evt.space || evt.rightTouch) {
             heroBulletList[heroBulletList.length] = new Bullet(2, 16, hero.tipX - 1, hero.tipY);
             timer = 0;
             wait = true;
