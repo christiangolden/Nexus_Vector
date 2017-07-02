@@ -808,6 +808,8 @@ function drawGame() {
                         randDrone = genRandDrone();
                         badguy = new Ship("down", 20, 40, Math.floor(Math.random() * canvas.width),
                                           Math.floor(Math.random() * -canvas.height));
+                        heroBulletList.splice(i, 1);
+                        break;
                     }
                 }
                 drawEnemy();
