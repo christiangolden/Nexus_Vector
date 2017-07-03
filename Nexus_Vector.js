@@ -64,9 +64,7 @@ var evt = {
     rightTouch: false,
     leftTouch: false,
 	tiltRight: false,
-	tiltLeft: false,
-    tiltUp: false,
-    tiltDown: false
+	tiltLeft: false
 };
 
 function keyDownHandler(e) {
@@ -191,16 +189,6 @@ function handleOrientation(event) {
 		evt.tiltRight = false;
 		evt.tiltLeft = false;
     }
-    if (event.beta < 40) {
-        evt.tiltDown = false;
-        evt.tiltUp = true;
-    } else if (event.beta > 45) {
-        evt.tiltUp = false;
-        evt.tiltDown = true;
-    } else if (event.beta >= 40 && event.beta <= 45) {
-        evt.tiltDown = false;
-        evt.tiltUp = false;
-    }
 }
 
 //if the above doesn't work, this should.
@@ -231,6 +219,46 @@ if (window.DeviceOrientationEvent) {
 
 window.addEventListener("touchstart", handleStart, false);
 window.addEventListener("touchend", handleEnd, false);
+
+function Room(width, height, topLeftX, topLeftY) {
+    'use strict';
+    this.width = width;
+    this.height = height;
+    this.x = topLeftX;
+    this.y = topLeftY;
+    this.exit1 = Math.floor(Math.random() * 4 + 1);
+    this.exit2 = Math.floor(Math.random() * 4 + 1);
+    this.exit3 = Math.floor(Math.random() * 4 + 1);
+    this.exit4 = Math.floor(Math.random() * 4 + 1);
+
+}
+
+var room = new Room(canvas.width / 2, canvas.height / 2, canvas.width / 2, canvas.height / 2);
+
+function drawRoom() {
+    'use strict';
+    var door = 10;
+    ctx.beginPath();
+    ctx.strokeStyle = randRGB();
+    ctx.lineWidth = 2;
+    ctx.moveTo(room.x - room.width / 2, room.y - room.height / 2);
+    ctx.lineTo(room.x + room.width / 2, room.y - room.height / 2);
+    ctx.lineTo(room.x + room.width / 2, room.y + room.height / 2);
+    ctx.lineTo(room.x - room.width / 2, room.y + room.height / 2);
+    ctx.lineTo(room.x - room.width / 2, room.y - room.height / 2);
+    //ctx.fillStyle = randRGB();
+    //ctx.fill();
+    ctx.stroke();
+    ctx.closePath();
+    ctx.beginPath();
+    ctx.strokeStyle = "#000";
+    ctx.moveTo(room.x - (room.width / 2 - door), room.y - room.height / 2);
+    ctx.lineTo(room.x - room.width / 2, room.y - room.height / 2);
+    ctx.stroke();
+    ctx.closePath();
+
+    //ctx.strokeRect(room.x - room.width / 2, room.y - room.height / 2, room.width, room.height);
+}
 
 function Ship(orientation, width, height, tipX, tipY) {
     'use strict';
@@ -270,10 +298,6 @@ var dust = {
 	x: 0,
 	y: 0
 };
-
-var randGreen = 0;
-var randRed = 0;
-var randBlue = 0;
 
 function drawHero() {
     'use strict';
@@ -567,25 +591,11 @@ function moveHeroLeft() {
     }
 }
 
-function moveHeroUp() {
-    'use strict';
-    hero.tipY -= speed;
-    hero.leftY -= speed;
-    hero.rightY -= speed;
-}
-
-function moveHeroDown() {
-    'use strict';
-    hero.tipY += speed;
-    hero.leftY += speed;
-    hero.rightY += speed;
-}
-
 function moveStuff() {
     'use strict';
     var i;
     
-    if ((evt.shift || evt.leftTouch) && mwEnergy > 0) {
+    if ((evt.down || evt.leftTouch) && mwEnergy > 0) {
         if (magWave.radius < hero.width) {
             magWave.radius += 0.5;
             mwEnergy -= 0.02;
@@ -597,7 +607,7 @@ function moveStuff() {
         magWave.radius = 0;
     }
 
-    if ((!(evt.shift || evt.leftTouch)) && mwEnergy < 5) {
+    if ((!(evt.down || evt.leftTouch)) && mwEnergy < 5) {
         mwEnergy += 0.05;
     }
     
@@ -608,34 +618,28 @@ function moveStuff() {
     if ((evt.left || evt.tiltLeft)) {
         moveHeroLeft();
     }
-    if ((evt.up || evt.tiltUp) && hero.tipY > 0) {
-        moveHeroUp();
-    }
-    if ((evt.down || evt.tiltDown) && hero.leftY < canvas.height) {
-        moveHeroDown();
-    }
     
     for (i = 0; i < dust.yList.length; i += 1) {
-        if ((evt.shift || evt.leftTouch) && dust.xList[i] > hero.tipX &&
+        if ((evt.down || evt.leftTouch) && dust.xList[i] > hero.tipX &&
                     dust.xList[i] < (hero.tipX + mwRange) &&
                     dust.yList[i] < hero.tipY - hero.height &&
                     dust.yList[i] > (hero.tipY - hero.height - mwRange) &&
                     mwEnergy > 0) {
             dust.xList[i] -= 3;
             dust.yList[i] += 5;
-        } else if ((evt.shift || evt.leftTouch) && dust.xList[i] > hero.tipX &&
+        } else if ((evt.down || evt.leftTouch) && dust.xList[i] > hero.tipX &&
                     dust.xList[i] < (hero.tipX + mwRange) &&
                     dust.yList[i] > hero.tipY - hero.height && mwEnergy > 0) {
             dust.xList[i] -= 3;
             dust.yList[i] -= 5;
-        } else if ((evt.shift || evt.leftTouch) && dust.xList[i] < hero.tipX &&
+        } else if ((evt.down || evt.leftTouch) && dust.xList[i] < hero.tipX &&
                    dust.xList[i] > (hero.tipX - mwRange) &&
                    dust.yList[i] < hero.tipY - hero.height &&
                    dust.yList[i] > (hero.tipY - hero.height - mwRange) &&
                     mwEnergy > 0) {
             dust.xList[i] += 3;
             dust.yList[i] += 5;
-        } else if ((evt.shift || evt.leftTouch) && dust.xList[i] < hero.tipX &&
+        } else if ((evt.down || evt.leftTouch) && dust.xList[i] < hero.tipX &&
                    dust.xList[i] > (hero.tipX - mwRange) &&
                    dust.yList[i] > hero.tipY - hero.height && mwEnergy > 0) {
             dust.xList[i] += 3;
@@ -645,7 +649,7 @@ function moveStuff() {
             dust.xList[i] += Math.floor(Math.random() * -5 + 3);
         }
 
-        if ((evt.shift || evt.leftTouch) && dust.xList[i] <= hero.tipX + 3 &&
+        if ((evt.down || evt.leftTouch) && dust.xList[i] <= hero.tipX + 3 &&
                 dust.xList[i] >= hero.tipX - magWave.radius - dust.width &&
                 dust.xList[i] <= hero.tipX + magWave.radius + dust.width &&
                 dust.yList[i] >= hero.tipY - hero.height - magWave.radius &&
@@ -681,6 +685,7 @@ function drawGame() {
                 drawHero();
                 drawHeroBullets();
                 moveStuff();
+                //drawRoom();
                 for (i = 0; i < heroBulletList.length; i += 1) {
                     if (heroBulletList[i].x >= badguy.leftX &&
                             heroBulletList[i].x <= badguy.rightX && badguy.tipY > 0 &&
