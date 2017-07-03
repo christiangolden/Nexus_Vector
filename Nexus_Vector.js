@@ -191,13 +191,13 @@ function handleOrientation(event) {
 		evt.tiltRight = false;
 		evt.tiltLeft = false;
     }
-    if (event.beta < -3) {
+    if (event.beta < 85) {
         evt.tiltDown = false;
         evt.tiltUp = true;
-    } else if (event.beta > 3) {
+    } else if (event.beta > 90) {
         evt.tiltUp = false;
         evt.tiltDown = true;
-    } else if (event.beta >= -3 && event.beta <= 3) {
+    } else if (event.beta >= 85 && event.beta <= 90) {
         evt.tiltDown = false;
         evt.tiltUp = false;
     }
@@ -308,16 +308,16 @@ function drawEnemy() {
     badguy.leftX = badguy.tipX - 10;
     badguy.rightX = badguy.tipX + 10;
     
-    if (badguy.tipX > (hero.tipX + 7) && badguy.tipY < hero.tipY) {
-        badguy.leftX -= speed;
-        badguy.rightX -= speed;
-        badguy.tipX -= speed;
-        badguy.tipY += speed;
-    } else if (badguy.tipX < (hero.tipX - 7) && badguy.tipY < hero.tipY) {
-        badguy.leftX += speed;
-        badguy.rightX += speed;
-        badguy.tipX += speed;
-        badguy.tipY += speed;
+    if (badguy.tipX > (hero.tipX + 5) && badguy.tipY < hero.tipY) {
+        badguy.leftX -= 5;
+        badguy.rightX -= 5;
+        badguy.tipX -= 5;
+        badguy.tipY += 5;
+    } else if (badguy.tipX < (hero.tipX - 5) && badguy.tipY < hero.tipY) {
+        badguy.leftX += 5;
+        badguy.rightX += 5;
+        badguy.tipX += 5;
+        badguy.tipY += 5;
     } else if (badguy.tipY > canvas.height + badguy.height) {
         badguy = new Ship("down", 20, 40, Math.floor(Math.random() * canvas.width), 0);
     } else {
