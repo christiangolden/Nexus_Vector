@@ -191,10 +191,10 @@ function handleOrientation(event) {
 		evt.tiltRight = false;
 		evt.tiltLeft = false;
     }
-    if (event.beta > 3) {
+    if (event.beta > 95) {
         evt.tiltDown = false;
         evt.tiltUp = true;
-    } else if (evt.beta < -3) {
+    } else if (evt.beta < 85) {
         evt.tiltUp = false;
         evt.tiltDown = true;
     }
