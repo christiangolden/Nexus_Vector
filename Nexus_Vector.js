@@ -220,44 +220,55 @@ if (window.DeviceOrientationEvent) {
 window.addEventListener("touchstart", handleStart, false);
 window.addEventListener("touchend", handleEnd, false);
 
-function Room(width, height, topLeftX, topLeftY) {
+function Room(x, y, width, height) {
     'use strict';
     this.width = width;
     this.height = height;
-    this.x = topLeftX;
-    this.y = topLeftY;
-    this.exit1 = Math.floor(Math.random() * 4 + 1);
-    this.exit2 = Math.floor(Math.random() * 4 + 1);
-    this.exit3 = Math.floor(Math.random() * 4 + 1);
-    this.exit4 = Math.floor(Math.random() * 4 + 1);
+    this.x = x;
+    this.y = y;
 
 }
 
-var room = new Room(canvas.width / 2, canvas.height / 2, canvas.width / 2, canvas.height / 2);
-
-function drawRoom() {
+//var room = new Room(canvas.width / 2, canvas.height / 2, canvas.width / 2, canvas.height / 2);
+var roomList = [];
+var randX, randY, randWidth, randHeight;
+var i, j;
+function generateRooms() {
     'use strict';
-    var door = 10;
-    ctx.beginPath();
-    ctx.strokeStyle = randRGB();
-    ctx.lineWidth = 2;
-    ctx.moveTo(room.x - room.width / 2, room.y - room.height / 2);
-    ctx.lineTo(room.x + room.width / 2, room.y - room.height / 2);
-    ctx.lineTo(room.x + room.width / 2, room.y + room.height / 2);
-    ctx.lineTo(room.x - room.width / 2, room.y + room.height / 2);
-    ctx.lineTo(room.x - room.width / 2, room.y - room.height / 2);
-    //ctx.fillStyle = randRGB();
-    //ctx.fill();
-    ctx.stroke();
-    ctx.closePath();
-    ctx.beginPath();
-    ctx.strokeStyle = "#000";
-    ctx.moveTo(room.x - (room.width / 2 - door), room.y - room.height / 2);
-    ctx.lineTo(room.x - room.width / 2, room.y - room.height / 2);
-    ctx.stroke();
-    ctx.closePath();
-
-    //ctx.strokeRect(room.x - room.width / 2, room.y - room.height / 2, room.width, room.height);
+    var numFloor = Math.floor(Math.random() * 10 + 5);
+    for (i = 0; i < numFloor; i += 1) {
+        if (roomList.length > 0) {
+            randX = roomList[i - 1].x + Math.floor(Math.random() * roomList[i - 1].width);
+            randY = roomList[i - 1].y + Math.floor(Math.random() * roomList[i - 1].height);
+            randWidth = Math.floor(Math.random() * canvas.width / 2 + 100);
+            randHeight = Math.floor(Math.random() * canvas.height / 2 + 100);
+            roomList[i] = new Room(randX, randY, randWidth, randHeight);
+        } else {
+            randX = Math.floor(Math.random() * canvas.width / 2);
+            randY = Math.floor(Math.random() * -canvas.height - canvas.height);// / 2);
+            randWidth = Math.floor(Math.random() * canvas.width / 2 + 100);
+            randHeight = Math.floor(Math.random() * canvas.height / 2 + 100);
+            roomList[i] = new Room(randX, randY, randWidth, randHeight);
+        }
+    }
+}
+function drawRooms() {
+    'use strict';
+    var i;
+    for (i = 0; i < roomList.length; i += 1) {
+        ctx.beginPath();
+        //ctx.strokeStyle = "#000";
+        //ctx.lineWidth = 2;
+        ctx.moveTo(roomList[i].x, roomList[i].y);
+        ctx.lineTo(roomList[i].x + roomList[i].width, roomList[i].y);
+        ctx.lineTo(roomList[i].x + roomList[i].width, roomList[i].y + roomList[i].height);
+        ctx.lineTo(roomList[i].x, roomList[i].y + roomList[i].height);
+        ctx.lineTo(roomList[i].x, roomList[i].y);
+        ctx.fillStyle = "#222";
+        ctx.fill();
+        //ctx.stroke();
+        ctx.closePath();
+    }
 }
 
 function Ship(orientation, width, height, tipX, tipY) {
@@ -318,7 +329,7 @@ function drawHero() {
     ctx.lineTo(hero.rightX, hero.rightY);
     ctx.lineTo(hero.leftX, hero.leftY);
     ctx.lineTo(hero.tipX, hero.tipY);
-    ctx.fillStyle = randColor();
+    ctx.fillStyle = randRGB();
     ctx.fill();
     ctx.closePath();
 }
@@ -466,6 +477,8 @@ function startScreen() {
         ctx.font = "20px Courier New";
         ctx.fillText("PRESS ENTER OR TAP TO START", canvas.width / 2, canvas.height / 2 + 40);
     } else {
+        
+        generateRooms();
         start = true;
     }
 }
@@ -503,6 +516,7 @@ function drawHelps() {
 
 function drawGameOver() {
     'use strict';
+    drawRooms();
     ctx.font = "48px Consolas";
     ctx.fillStyle = randRGB();
     ctx.textAlign = "center";
@@ -661,7 +675,7 @@ function moveStuff() {
         }
     }
 }
-
+    
 function drawGame() {
     'use strict';
     var i, j;
@@ -679,13 +693,18 @@ function drawGame() {
                 }
                 //draw/update game screen
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
-                drawScore();
                 drawStars();
+                drawRooms();
+                for (i = 0; i < roomList.length; i += 1) {
+                    if (roomList[i].y < canvas.height) {
+                        roomList[i].y += 0.5;
+                    }
+                }
                 drawDust();
                 drawHero();
                 drawHeroBullets();
+                drawScore();
                 moveStuff();
-                //drawRoom();
                 for (i = 0; i < heroBulletList.length; i += 1) {
                     if (heroBulletList[i].x >= badguy.leftX &&
                             heroBulletList[i].x <= badguy.rightX && badguy.tipY > 0 &&
@@ -699,7 +718,6 @@ function drawGame() {
                 }
                 drawEnemy();
                 drawBullets();
-                
                 //check if enemy shot hero & if hero is dead
                 for (i = 0; i < bulletList.length; i += 1) {
                     if (bulletList[i].x > hero.leftX && bulletList[i].x < hero.rightX &&
@@ -776,8 +794,10 @@ function drawGame() {
                     heroBulletList.splice(0, heroBulletList.length);
                     dust.xList.splice(0, dust.xList.length);
                     dust.yList.splice(0, dust.yList.length);
+                    roomList.splice(0, roomList.length);
                     deadHero = false;
                     unDeadHero = false;
+                    generateRooms();
                 }
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
                 drawStars();
