@@ -8,16 +8,6 @@ canvas.width = document.body.clientWidth;
 canvas.height = document.body.clientHeight;
 var ctx = canvas.getContext("2d");
 
-/*var health = [
-    "*****","\u1694",*****
-    "****","\u1693"
-    //"***",//"\u1692",
-    //"**",//"\u1691",
-    //"*"//"\u1690"
-];*/
-/*var hit = 0;
-var healthChar = health[hit];*/
-
 var wait = false; //delay between hero bullets
 
 var downUp = true;
@@ -31,61 +21,22 @@ var startColor = 0;
 
 var deadHero = false;
 var unDeadHero = false;
-//var swiped = false;
 
 var shotDrones = 0;
 var destDust = 0;
-//var savedDust = 0;
 
 var gamePaused = false;
 var speed = 7;
-//var heroCollision = false;
 var score = 0;
-//var hp = 100;
-
-//var hpColor = 'rgb(0,255,0)';
 
 //range of magwave mag power
 var mwRange = (canvas.width * canvas.height) * 0.0004;
-
-var laserWidth = 2;
-
-//badguy color
-var red = 50;
-var redder = true;
-
-//hero color
-var green = 50;
-var greener = true;
 
 //magwave duration
 var mwEnergy = 5;
 
 var bulletList = [];
 var heroBulletList = [];
-
-var drones = [
-    "\u26B6",
-    "\u262C",
-    "\u2645",
-    "\u0F12"
-];
-
-function genRandDrone() {
-    'use strict';
-    var r = Math.floor(Math.random() * 4 + 1);
-    if (r === 3) {
-        return drones[0];
-    } else if (r === 2) {
-        return drones[1];
-    } else if (r === 1) {
-        return drones[2];
-    } else {
-        return drones[3];
-    }
-}
-
-var randDrone = genRandDrone();
 
 function randColor() {
     'use strict';
@@ -105,6 +56,7 @@ var evt = {
 	right: false,
 	left: false,
 	down: false,
+    up: false,
 	shift: false,
 	space: false,
     tab: false,
@@ -112,12 +64,14 @@ var evt = {
     rightTouch: false,
     leftTouch: false,
 	tiltRight: false,
-	tiltLeft: false
+	tiltLeft: false,
+    tiltUp: false,
+    tiltDown: false
 };
 
 function keyDownHandler(e) {
     'use strict';
-    if (e.keyCode === 87) {
+    if (e.keyCode === 87) { //rotate screen 90deg if "w" pressed
         if (!rotated) {
             rotated = true;
         } else {
@@ -129,6 +83,9 @@ function keyDownHandler(e) {
     }
     if (e.keyCode === 37) {
         evt.left = true;
+    }
+    if (e.keyCode === 38) {
+        evt.up = true;
     }
     if (e.keyCode === 39) {
         evt.right = true;
@@ -160,6 +117,9 @@ function keyUpHandler(e) {
     }
     if (e.keyCode === 39) {
         evt.right = false;
+    }
+    if (e.keyCode === 38) {
+        evt.up = false;
     }
     if (e.keyCode === 37) {
         evt.left = false;
@@ -230,6 +190,13 @@ function handleOrientation(event) {
     } else if (event.gamma >= -3 && event.gamma <= 3) {
 		evt.tiltRight = false;
 		evt.tiltLeft = false;
+    }
+    if (event.beta > 3) {
+        evt.tiltDown = false;
+        evt.tiltUp = true;
+    } else if (evt.beta < -3) {
+        evt.tiltUp = false;
+        evt.tiltDown = true;
     }
 }
 
@@ -314,12 +281,6 @@ function drawHero() {
             dust.xList.splice(i, 1);
             dust.yList.splice(i, 1);
             destDust += 1;
-            /*if (hit === health.length - 1) {
-                deadHero = true;
-            }*/
-            //hit += 1;
-            //healthChar = health[hit];
-            //hp -= 1;
             deadHero = true;
         }
     }
@@ -330,26 +291,13 @@ function drawHero() {
     ctx.lineTo(hero.rightX, hero.rightY);
     ctx.lineTo(hero.leftX, hero.leftY);
     ctx.lineTo(hero.tipX, hero.tipY);
-    //ctx.font = "40px Courier";
     ctx.fillStyle = randColor();
     ctx.fill();
     ctx.closePath();
-    //ctx.textAlign = "center";
-    //ctx.fillText("\u1CC0", hero.tipX, hero.leftY);
 }
-
-//hero unicode "\u262B"
 
 function drawEnemy() {
     'use strict';
-/*    if (red < 150 && redder === true) {
-        red += 10;
-    } else if (red > 49) {
-        redder = false;
-        red -= 10;
-    } else {
-        redder = true;
-    }*/
     badguy.leftY = badguy.tipY - badguy.height;
     badguy.rightY = badguy.tipY - badguy.height;
     badguy.leftX = badguy.tipX - 10;
@@ -357,21 +305,20 @@ function drawEnemy() {
     badguy.leftX = badguy.tipX - 10;
     badguy.rightX = badguy.tipX + 10;
     
-    if (badguy.tipX > (hero.tipX + 4) && badguy.tipY < hero.tipY) {
-        badguy.leftX -= 4;
-        badguy.rightX -= 4;
-        badguy.tipX -= 4;
-        badguy.tipY += 4;
-    } else if (badguy.tipX < (hero.tipX - 4) && badguy.tipY < hero.tipY) {
-        badguy.leftX += 4;
-        badguy.rightX += 4;
-        badguy.tipX += 4;
-        badguy.tipY += 4;
+    if (badguy.tipX > (hero.tipX + 7) && badguy.tipY < hero.tipY) {
+        badguy.leftX -= speed;
+        badguy.rightX -= speed;
+        badguy.tipX -= speed;
+        badguy.tipY += speed;
+    } else if (badguy.tipX < (hero.tipX - 7) && badguy.tipY < hero.tipY) {
+        badguy.leftX += speed;
+        badguy.rightX += speed;
+        badguy.tipX += speed;
+        badguy.tipY += speed;
     } else if (badguy.tipY > canvas.height + badguy.height) {
-        randDrone = genRandDrone();
         badguy = new Ship("down", 20, 40, Math.floor(Math.random() * canvas.width), 0);
     } else {
-        badguy.tipY += 4;
+        badguy.tipY += 7;
     }
     badguy.width = badguy.rightX - badguy.leftX;
     ctx.beginPath();
@@ -379,12 +326,9 @@ function drawEnemy() {
     ctx.lineTo(badguy.rightX, badguy.rightY);
     ctx.lineTo(badguy.leftX, badguy.leftY);
     ctx.lineTo(badguy.tipX, badguy.tipY);
-    //ctx.font = "48px Courier";
     ctx.fillStyle = randRGB();
     ctx.fill();
     ctx.closePath();
-    //ctx.textAlign = "center";
-    //ctx.fillText(randDrone, badguy.tipX, badguy.tipY);
 }
 
 //stars
@@ -396,16 +340,6 @@ var star = {
 	y: 0
 };
 
-//laser
-var laser = {
-	width: laserWidth,
-	height: canvas.height - 10,
-	x: hero.tipX - (laserWidth / 2),
-	y: canvas.height - 10
-};
-
-//magwave - will eventually be used alternatingly with laser. Use to attract dust
-//as opposed to destroying drones.
 var magWave = {
     x: hero.tipX,
     y: canvas.height - hero.height * 2,
@@ -421,11 +355,8 @@ function genDustXY() {
     if (Math.floor(Math.random() * 50) === 1) {
 		dust.x = Math.floor(Math.random() * (canvas.width - dust.width) + 1);
 		dust.y = Math.floor(Math.random() * -canvas.height - dust.height);
-        //if ((evt.space === false && evt.rightTouch === false) || laser.x < dust.x ||
-                //laser.x > dust.x + dust.width || laserWidth <= 0) {
         dust.xList[dust.xList.length] = dust.x;
         dust.yList[dust.yList.length] = dust.y;
-        //}
     }
 }
 //draw stardust
@@ -441,9 +372,6 @@ function drawDust() {
             ctx.beginPath();
             ctx.fillStyle = randRGB();
             ctx.fillRect(dust.xList[i], dust.yList[i], dust.width, dust.height);
-            //ctx.font = "40px Courier";
-            //ctx.textAlign = "center";
-            //ctx.fillText("*", dust.xList[i] + dust.width / 2, dust.yList[i] + dust.height);
 	    }
 	}
 }
@@ -475,32 +403,11 @@ function drawStars() {
     }
 }
 
-function drawLaser() {
-    'use strict';
-    var i;
-    if (laserWidth > 0) {
-        ctx.beginPath();
-        ctx.rect(laser.x, 0, laser.width, laser.height);
-        ctx.fillStyle = randRGB();
-        ctx.fill();
-        ctx.closePath();
-        for (i = 0; i < dust.xList.length; i += 1) {
-            if (laser.x >= dust.xList[i] && laser.x <= dust.xList[i] +
-                    dust.width && dust.yList[i] > 0 &&
-                    dust.yList[i] < laser.y && (evt.space || evt.rightTouch)) {
-                dust.yList.splice(i, 1);
-                dust.xList.splice(i, 1);
-                destDust += 1;
-            }
-        }
-    }
-}
-
 function drawMagWave() {
     'use strict';
     var i;
     ctx.beginPath();
-    ctx.arc(magWave.x, magWave.y, magWave.radius, magWave.startAngle, magWave.endAngle);
+    ctx.arc(hero.tipX, hero.tipY - hero.height, magWave.radius, magWave.startAngle, magWave.endAngle);
     ctx.strokeStyle = randRGB();
     ctx.lineWidth = mwEnergy;
     ctx.stroke();
@@ -536,24 +443,8 @@ function startScreen() {
     }
 }
 
-/*function drawHealth() {
-    'use strict';
-    ctx.font = "28px Consolas";
-    ctx.fillStyle = randColor();
-    ctx.textAlign = "center";
-    ctx.fillText(healthChar, hero.tipX, hero.leftY + 25);
-}*/
-//controls/stats
-
-
 function drawScore() {
     'use strict';
-    /*if (score > 0) {
-        ctx.font = "30px Consolas";
-        ctx.fillStyle = randColor();
-        ctx.textAlign = "end";
-        ctx.fillText(score, canvas.width - 12, 22);
-    }*/
     ctx.textAlign = "end";
     ctx.fillStyle = randRGB();
     ctx.font = "18px Consolas";
@@ -589,8 +480,6 @@ function drawGameOver() {
     ctx.fillStyle = randRGB();
     ctx.textAlign = "center";
     ctx.fillText("\u2620", canvas.width / 2, canvas.height / 2);
-    //ctx.font = "18px Courier New";
-    //ctx.fillText("Enter/Multi-Touch to Play Again", canvas.width / 2, canvas.height / 2 + 50);
 }
 
 var bulletTimer = 0;
@@ -640,7 +529,7 @@ function drawHeroBullets() {
             ctx.beginPath();
             ctx.rect(heroBulletList[i].x, heroBulletList[i].y, heroBulletList[i].width, heroBulletList[i].height);
             ctx.fillStyle = randRGB();
-            ctx.fill();
+            ctx.fill();//evt.down
         }
         for (j = 0; j < dust.xList.length; j += 1) {
             if (heroBulletList[i].x + heroBulletList[i].width >= dust.xList[j] &&
@@ -660,34 +549,40 @@ function drawHeroBullets() {
 function moveHeroRight() {
     'use strict';
     if (hero.leftX >= canvas.width) {
-        //laser.x -= canvas.width + hero.width;
         hero.tipX -= canvas.width + hero.width;
-        magWave.x -= canvas.width + hero.width;
     } else {
-        //laser.x += speed;
         hero.tipX += speed;
-        magWave.x += speed;
     }
 }
 
 function moveHeroLeft() {
     'use strict';
     if (hero.rightX <= 0) {
-        //laser.x += canvas.width + hero.width;
         hero.tipX += canvas.width + hero.width;
-        magWave.x += canvas.width + hero.width;
     } else {
-        //laser.x -= speed;
         hero.tipX -= speed;
-        magWave.x -= speed;
     }
+}
+
+function moveHeroUp() {
+    'use strict';
+    hero.tipY -= speed;
+    hero.leftY -= speed;
+    hero.rightY -= speed;
+}
+
+function moveHeroDown() {
+    'use strict';
+    hero.tipY += speed;
+    hero.leftY += speed;
+    hero.rightY += speed;
 }
 
 function moveStuff() {
     'use strict';
     var i;
     
-    if ((evt.down || evt.leftTouch) && mwEnergy > 0) {
+    if ((evt.shift || evt.leftTouch) && mwEnergy > 0) {
         if (magWave.radius < hero.width) {
             magWave.radius += 0.5;
             mwEnergy -= 0.02;
@@ -699,7 +594,7 @@ function moveStuff() {
         magWave.radius = 0;
     }
 
-    if ((!(evt.down || evt.leftTouch)) && mwEnergy < 5) {
+    if ((!(evt.shift || evt.leftTouch)) && mwEnergy < 5) {
         mwEnergy += 0.05;
     }
     
@@ -710,45 +605,36 @@ function moveStuff() {
     if ((evt.left || evt.tiltLeft)) {
         moveHeroLeft();
     }
-
-
-    if ((evt.space || evt.rightTouch) && laserWidth > -0.1) {
-        laserWidth -= 0.1;
-        laser.width = laserWidth;
-        laser.x += 0.05;
-    } else if (laserWidth < 2.05) {
-        laserWidth += 0.1;
-        laser.width = laserWidth;
-        laser.x -= 0.05;
+    if ((evt.up || evt.tiltUp) && hero.tipY > 0) {
+        moveHeroUp();
     }
-
-
+    if ((evt.down || evt.tiltDown) && hero.leftY < canvas.height) {
+        moveHeroDown();
+    }
     
     for (i = 0; i < dust.yList.length; i += 1) {
-/*        if (((evt.space === false && evt.rightTouch === false) || laser.x < dust.xList[i] ||
-             laser.x > dust.xList[i] + dust.width || laserWidth <= 0)) {*/
-        if ((evt.down || evt.leftTouch) && dust.xList[i] > magWave.x &&
-                    dust.xList[i] < (magWave.x + mwRange) &&
-                    dust.yList[i] < magWave.y &&
-                    dust.yList[i] > (magWave.y - mwRange) &&
+        if ((evt.shift || evt.leftTouch) && dust.xList[i] > hero.tipX &&
+                    dust.xList[i] < (hero.tipX + mwRange) &&
+                    dust.yList[i] < hero.tipY - hero.height &&
+                    dust.yList[i] > (hero.tipY - hero.height - mwRange) &&
                     mwEnergy > 0) {
             dust.xList[i] -= 3;
             dust.yList[i] += 5;
-        } else if ((evt.down || evt.leftTouch) && dust.xList[i] > magWave.x &&
-                    dust.xList[i] < (magWave.x + mwRange) &&
-                    dust.yList[i] > magWave.y && mwEnergy > 0) {
+        } else if ((evt.shift || evt.leftTouch) && dust.xList[i] > hero.tipX &&
+                    dust.xList[i] < (hero.tipX + mwRange) &&
+                    dust.yList[i] > hero.tipY - hero.height && mwEnergy > 0) {
             dust.xList[i] -= 3;
             dust.yList[i] -= 5;
-        } else if ((evt.down || evt.leftTouch) && dust.xList[i] < magWave.x &&
-                   dust.xList[i] > (magWave.x - mwRange) &&
-                   dust.yList[i] < magWave.y &&
-                   dust.yList[i] > (magWave.y - mwRange) &&
+        } else if ((evt.shift || evt.leftTouch) && dust.xList[i] < hero.tipX &&
+                   dust.xList[i] > (hero.tipX - mwRange) &&
+                   dust.yList[i] < hero.tipY - hero.height &&
+                   dust.yList[i] > (hero.tipY - hero.height - mwRange) &&
                     mwEnergy > 0) {
             dust.xList[i] += 3;
             dust.yList[i] += 5;
-        } else if ((evt.down || evt.leftTouch) && dust.xList[i] < magWave.x &&
-                   dust.xList[i] > (magWave.x - mwRange) &&
-                   dust.yList[i] > magWave.y && mwEnergy > 0) {
+        } else if ((evt.shift || evt.leftTouch) && dust.xList[i] < hero.tipX &&
+                   dust.xList[i] > (hero.tipX - mwRange) &&
+                   dust.yList[i] > hero.tipY - hero.height && mwEnergy > 0) {
             dust.xList[i] += 3;
             dust.yList[i] -= 5;
         } else {
@@ -756,16 +642,15 @@ function moveStuff() {
             dust.xList[i] += Math.floor(Math.random() * -5 + 3);
         }
 
-        if ((evt.down || evt.leftTouch) && dust.xList[i] <= magWave.x + 3 &&
-                dust.xList[i] >= magWave.x - magWave.radius - dust.width &&
-                dust.xList[i] <= magWave.x + magWave.radius + dust.width &&
-                dust.yList[i] >= magWave.y - magWave.radius &&
-                dust.yList[i] <= magWave.y + magWave.radius &&
+        if ((evt.shift || evt.leftTouch) && dust.xList[i] <= hero.tipX + 3 &&
+                dust.xList[i] >= hero.tipX - magWave.radius - dust.width &&
+                dust.xList[i] <= hero.tipX + magWave.radius + dust.width &&
+                dust.yList[i] >= hero.tipY - hero.height - magWave.radius &&
+                dust.yList[i] <= hero.tipY - hero.height + magWave.radius &&
                 mwEnergy > 0) {
             dust.xList.splice(i, 1);
             dust.yList.splice(i, 1);
             score += 1;
-            //}
         }
     }
 }
@@ -788,24 +673,16 @@ function drawGame() {
                 //draw/update game screen
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
                 drawScore();
-                //drawTitle();
                 drawStars();
-
-                /*if ((evt.space || evt.rightTouch) && laserWidth > 0) {
-                    drawLaser();
-                }*/
-
                 drawDust();
                 drawHero();
                 drawHeroBullets();
-                //drawHealth();
                 moveStuff();
                 for (i = 0; i < heroBulletList.length; i += 1) {
                     if (heroBulletList[i].x >= badguy.leftX &&
                             heroBulletList[i].x <= badguy.rightX && badguy.tipY > 0 &&
                             heroBulletList[i].y >= badguy.leftY && heroBulletList[i].y <= badguy.tipY) {
                         shotDrones += 1;
-                        randDrone = genRandDrone();
                         badguy = new Ship("down", 20, 40, Math.floor(Math.random() * canvas.width),
                                           Math.floor(Math.random() * -canvas.height));
                         heroBulletList.splice(i, 1);
@@ -820,21 +697,6 @@ function drawGame() {
                     if (bulletList[i].x > hero.leftX && bulletList[i].x < hero.rightX &&
                             bulletList[i].y > hero.tipY && bulletList[i].y < hero.tipY + hero.height) {
                         bulletList.splice(i, 1);
-                        /*if (hit === health.length - 1) {
-                            deadHero = true;
-                        }
-                        hit += 1;
-                        healthChar = health[hit];*/
-                        /*hp -= 1;
-                        if (hp < 65) {
-                            hpColor = 'rgb(255,255,0)';
-                        }
-                        if (hp < 25) {
-                            hpColor = 'rgb(255,0,0)';
-                        }
-                        if (hp < 1) {
-                            deadHero = true;
-                        }*/
                         deadHero = true;
                     }
                 }
@@ -898,36 +760,25 @@ function drawGame() {
             } else {
                 //reset game upon confirmation of replay
                 if (evt.enter || unDeadHero) {
-                    //hp = 100;
                     score = 0;
                     shotDrones = 0;
                     destDust = 0;
-                    //savedDust = 0;
-                    //hpColor = 'rgb(0,255,0)';
-                    randDrone = genRandDrone();
-                    badguy = new Ship("down", 20, 40, Math.floor(Math.random() * canvas.width),
-                                      Math.floor(Math.random() * -canvas.height));
+                    badguy = new Ship("down", 20, 40, Math.floor(Math.random() * canvas.width), 0);
                     bulletList.splice(0, bulletList.length);
-                    star.xList.splice(0, star.xList.length);
-                    star.yList.splice(0, star.yList.length);
+                    heroBulletList.splice(0, heroBulletList.length);
                     dust.xList.splice(0, dust.xList.length);
                     dust.yList.splice(0, dust.yList.length);
-                    /*hit = 0;
-                    healthChar = health[hit];*/
                     deadHero = false;
                     unDeadHero = false;
                 }
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
                 drawStars();
                 drawGameOver();
-
             }
         } else {
-            //display pause screen
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             drawStars();
             drawHelps();
-            //drawScore();
         }
     } else {
         //display start screen
