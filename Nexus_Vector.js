@@ -38,6 +38,8 @@ var mwEnergy = 5;
 var bulletList = [];
 var heroBulletList = [];
 
+var dock = "\u27D0\uFE0E"; //place to land ship on generated room
+
 function randColor() {
     'use strict';
     return Math.floor(Math.random() * 255);
@@ -241,6 +243,7 @@ function generateRooms() {
             randX = roomList[i - 1].x + Math.floor(Math.random() * roomList[i - 1].width);
             randY = roomList[i - 1].y + Math.floor(Math.random() * roomList[i - 1].height);
             randWidth = Math.floor(Math.random() * canvas.width / 2 + 100);
+
             randHeight = Math.floor(Math.random() * canvas.height / 2 + 100);
             roomList[i] = new Room(randX, randY, randWidth, randHeight);
         } else {
@@ -268,6 +271,16 @@ function drawRooms() {
         ctx.fill();
         //ctx.stroke();
         ctx.closePath();
+    }
+}
+
+function drawDock() {
+    'use strict';
+    var i;
+    ctx.font = "48px Consolas";
+    ctx.fillStyle = randRGB();
+    for (i = 0; i < roomList.length; i += 1) {
+        ctx.fillText(dock, roomList[i].x + (roomList[i].width / 2), roomList[i].y + (roomList[i].height / 2));
     }
 }
 
@@ -705,6 +718,7 @@ function drawGame() {
                 drawHeroBullets();
                 drawScore();
                 moveStuff();
+                drawDock();
                 for (i = 0; i < heroBulletList.length; i += 1) {
                     if (heroBulletList[i].x >= badguy.leftX &&
                             heroBulletList[i].x <= badguy.rightX && badguy.tipY > 0 &&
@@ -806,6 +820,7 @@ function drawGame() {
         } else {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             drawStars();
+            drawRooms();
             drawHelps();
         }
     } else {
