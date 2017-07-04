@@ -15,7 +15,9 @@ var leftRight = false;
 var upDown = false;
 var rightLeft = false;
 
+/*
 var rotated = false;
+*/
 var start = false;
 var startColor = 0;
 
@@ -39,6 +41,12 @@ var bulletList = [];
 var heroBulletList = [];
 
 var dock = "\u27D0\uFE0E"; //place to land ship on generated room
+var docking = false;
+
+var man = [
+    "\u263A\uFE0E", //walking hero after docked
+    0,
+    0];
 
 function randColor() {
     'use strict';
@@ -71,13 +79,13 @@ var evt = {
 
 function keyDownHandler(e) {
     'use strict';
-    if (e.keyCode === 87) { //rotate screen 90deg if "w" pressed
+/*    if (e.keyCode === 87) { //rotate screen 90deg if "w" pressed
         if (!rotated) {
             rotated = true;
         } else {
             rotated = false;
         }
-    }
+    }*/
     if (e.keyCode === 32) {
         evt.space = true;
     }
@@ -282,6 +290,33 @@ function drawDock() {
     for (i = 0; i < roomList.length; i += 1) {
         ctx.fillText(dock, roomList[i].x + (roomList[i].width / 2), roomList[i].y + (roomList[i].height / 2));
     }
+}
+
+function drawMan() {
+    'use strict';
+    ctx.font = "36px Consolas";
+    ctx.fillStyle = randRGB();
+    ctx.fillText(man[0], man[1], man[2]);
+}
+
+function moveManLeft() {
+    'use strict';
+    man[1] -= 1;
+}
+
+function moveManRight() {
+    'use strict';
+    man[1] += 1;
+}
+
+function moveManUp() {
+    'use strict';
+    man[2] -= 1;
+}
+
+function moveManDown() {
+    'use strict';
+    man[2] += 1;
 }
 
 function Ship(orientation, width, height, tipX, tipY) {
@@ -695,107 +730,147 @@ function drawGame() {
     if (start) {
         if (!gamePaused) {
             if (!deadHero) {
-                if (rotated) {
-                    if (downUp) {
-                        ctx.clearRect(0, 0, canvas.width, canvas.height);
-                        ctx.save();
-                        ctx.translate(canvas.width / 2, canvas.height / 2);
-                        ctx.rotate(Math.PI / 2);
-                        ctx.translate(-(canvas.width / 2), -(canvas.height / 2));
+                if (!docking) {
+     /*               if (rotated) {
+                        if (downUp) {
+                            ctx.clearRect(0, 0, canvas.width, canvas.height);
+                            ctx.save();
+                            ctx.translate(canvas.width / 2, canvas.height / 2);
+                            ctx.rotate(Math.PI / 2);
+                            ctx.translate(-(canvas.width / 2), -(canvas.height / 2));
+                        }
+                    }*/
+                    //draw/update game screen
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    drawStars();
+                    drawRooms();
+                    for (i = 0; i < roomList.length; i += 1) {
+                        if (roomList[i].y < canvas.height) {
+                            roomList[i].y += 0.5;
+                        }
                     }
-                }
-                //draw/update game screen
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-                drawStars();
-                drawRooms();
-                for (i = 0; i < roomList.length; i += 1) {
-                    if (roomList[i].y < canvas.height) {
-                        roomList[i].y += 0.5;
+                    drawDust();
+                    drawHero();
+                    drawHeroBullets();
+                    drawScore();
+                    moveStuff();
+                    drawDock();
+
+                    for (i = 0; i < roomList.length; i += 1) {
+                        if (hero.tipY <= roomList[i].y + (roomList[i].height / 2) + 15 &&
+                                hero.tipY >= roomList[i].y + (roomList[i].height / 2) - 15 &&
+                                hero.tipX >= roomList[i].x + (roomList[i].width / 2) - 15 &&
+                                hero.tipX <= roomList[i].x + (roomList[i].width / 2) + 15) {
+                            ctx.fillText("Docking...", hero.tipX, hero.tipY);
+                            docking = true;
+                            man[1] = hero.tipX;
+                            man[2] = hero.tipY;
+                        }
                     }
-                }
-                drawDust();
-                drawHero();
-                drawHeroBullets();
-                drawScore();
-                moveStuff();
-                drawDock();
-                for (i = 0; i < heroBulletList.length; i += 1) {
-                    if (heroBulletList[i].x >= badguy.leftX &&
-                            heroBulletList[i].x <= badguy.rightX && badguy.tipY > 0 &&
-                            heroBulletList[i].y >= badguy.leftY && heroBulletList[i].y <= badguy.tipY) {
-                        shotDrones += 1;
-                        badguy = new Ship("down", 20, 40, Math.floor(Math.random() * canvas.width),
-                                          Math.floor(Math.random() * -canvas.height));
-                        heroBulletList.splice(i, 1);
-                        break;
+                    for (i = 0; i < heroBulletList.length; i += 1) {
+                        if (heroBulletList[i].x >= badguy.leftX &&
+                                heroBulletList[i].x <= badguy.rightX && badguy.tipY > 0 &&
+                                heroBulletList[i].y >= badguy.leftY && heroBulletList[i].y <= badguy.tipY) {
+                            shotDrones += 1;
+                            badguy = new Ship("down", 20, 40, Math.floor(Math.random() * canvas.width),
+                                              Math.floor(Math.random() * -canvas.height));
+                            heroBulletList.splice(i, 1);
+                            break;
+                        }
                     }
-                }
-                drawEnemy();
-                drawBullets();
-                //check if enemy shot hero & if hero is dead
-                for (i = 0; i < bulletList.length; i += 1) {
-                    if (bulletList[i].x > hero.leftX && bulletList[i].x < hero.rightX &&
-                            bulletList[i].y > hero.tipY && bulletList[i].y < hero.tipY + hero.height) {
-                        bulletList.splice(i, 1);
-                        deadHero = true;
-                    }
-                }
-                
-                //check if enemy shot stardust
-                for (i = 0; i < bulletList.length; i += 1) {
-                    for (j = 0; j < dust.xList.length; j += 1) {
-                        if (bulletList[i].x + bulletList[i].width > dust.xList[j] &&
-                                bulletList[i].x < dust.xList[j] + dust.width &&
-                                bulletList[i].y + bulletList[i].height > dust.yList[j] &&
-                                bulletList[i].y < dust.yList[j] + dust.height) {
+                    //drawEnemy();
+                    //drawBullets();
+                    //check if enemy shot hero & if hero is dead
+                    for (i = 0; i < bulletList.length; i += 1) {
+                        if (bulletList[i].x > hero.leftX && bulletList[i].x < hero.rightX &&
+                                bulletList[i].y > hero.tipY && bulletList[i].y < hero.tipY + hero.height) {
                             bulletList.splice(i, 1);
-                            dust.xList.splice(j, 1);
-                            dust.yList.splice(j, 1);
+                            deadHero = true;
+                        }
+                    }
+
+                    //check if enemy shot stardust
+                    for (i = 0; i < bulletList.length; i += 1) {
+                        for (j = 0; j < dust.xList.length; j += 1) {
+                            if (bulletList[i].x + bulletList[i].width > dust.xList[j] &&
+                                    bulletList[i].x < dust.xList[j] + dust.width &&
+                                    bulletList[i].y + bulletList[i].height > dust.yList[j] &&
+                                    bulletList[i].y < dust.yList[j] + dust.height) {
+                                bulletList.splice(i, 1);
+                                dust.xList.splice(j, 1);
+                                dust.yList.splice(j, 1);
+                                destDust += 1;
+                                if (i >= bulletList.length) {
+                                    break;
+                                }
+                            }
+                        }
+                    }
+
+                    //descending stars, spliced if pass canvas bottom
+                    for (i = 0; i < star.xList.length; i += 1) {
+                        if (star.yList[i] < canvas.height) {
+                            star.yList[i] += 1;
+                        } else {
+                            star.yList.splice(i, 1);
+                            star.xList.splice(i, 1);
+                        }
+                    }
+
+                    for (i = 0; i < dust.xList.length; i += 1) {
+                        if (badguy.rightX >= dust.xList[i] &&
+                                   badguy.leftX <= dust.xList[i] + dust.width &&
+                                   badguy.tipY >= dust.yList[i] &&
+                                   badguy.leftY <= dust.yList[i] + dust.height) {
+                            dust.xList.splice(i, 1);
+                            dust.yList.splice(i, 1);
                             destDust += 1;
-                            if (i >= bulletList.length) {
+                            if (i >= dust.xList.length) {
                                 break;
                             }
                         }
                     }
-                }
-                
-                //descending stars, spliced if pass canvas bottom
-                for (i = 0; i < star.xList.length; i += 1) {
-                    if (star.yList[i] < canvas.height) {
-                        star.yList[i] += 1;
-                    } else {
-                        star.yList.splice(i, 1);
-                        star.xList.splice(i, 1);
+
+                    if (badguy.tipY > hero.tipY && badguy.leftY < hero.tipY + hero.height &&
+                            badguy.rightX > hero.leftX && badguy.leftX < hero.rightX) {
+                        deadHero = true;
                     }
-                }
-                
-                for (i = 0; i < dust.xList.length; i += 1) {
-                    if (badguy.rightX >= dust.xList[i] &&
-                               badguy.leftX <= dust.xList[i] + dust.width &&
-                               badguy.tipY >= dust.yList[i] &&
-                               badguy.leftY <= dust.yList[i] + dust.height) {
-                        dust.xList.splice(i, 1);
-                        dust.yList.splice(i, 1);
-                        destDust += 1;
-                        if (i >= dust.xList.length) {
-                            break;
+                    //descending enemy bullets, spliced if pass canvas bottom
+                    for (i = 0; i < bulletList.length; i += 1) {
+                        if (bulletList[i].y > canvas.height) {
+                            bulletList.splice(i, 1);
                         }
                     }
-                }
-                
-                if (badguy.tipY > hero.tipY && badguy.leftY < hero.tipY + hero.height &&
-                        badguy.rightX > hero.leftX && badguy.leftX < hero.rightX) {
-                    deadHero = true;
-                }
-                //descending enemy bullets, spliced if pass canvas bottom
-                for (i = 0; i < bulletList.length; i += 1) {
-                    if (bulletList[i].y > canvas.height) {
-                        bulletList.splice(i, 1);
+
+    /*                if (rotated) {
+                        ctx.restore();
+                    }*/
+                } else {
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    drawStars();
+                    drawRooms();
+                    drawDock();
+                    drawMan();
+                    if (evt.right) {
+                        moveManRight();
                     }
-                }
-                
-                if (rotated) {
-                    ctx.restore();
+                    if (evt.left) {
+                        moveManLeft();
+                    }
+                    if (evt.down) {
+                        moveManDown();
+                    }
+                    if (evt.up) {
+                        moveManUp();
+                    }
+                    for (i = 0; i < star.xList.length; i += 1) {
+                        if (star.yList[i] < canvas.height) {
+                            star.yList[i] += 0.5;
+                        } else {
+                            star.yList.splice(i, 1);
+                            star.xList.splice(i, 1);
+                        }
+                    }
                 }
             } else {
                 //reset game upon confirmation of replay
