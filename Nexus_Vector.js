@@ -778,8 +778,8 @@ function drawGame() {
                             break;
                         }
                     }
-                    //drawEnemy();
-                    //drawBullets();
+                    drawEnemy();
+                    drawBullets();
                     //check if enemy shot hero & if hero is dead
                     for (i = 0; i < bulletList.length; i += 1) {
                         if (bulletList[i].x > hero.leftX && bulletList[i].x < hero.rightX &&
