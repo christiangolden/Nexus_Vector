@@ -8,16 +8,6 @@ canvas.width = document.body.clientWidth;
 canvas.height = document.body.clientHeight;
 var ctx = canvas.getContext("2d");
 
-function resizeCanvas() {
-    canvas = document.getElementById("myCanvas");
-    canvas.width = document.body.clientWidth;
-    canvas.height = document.body.clientHeight;
-    ctx = canvas.getContext("2d");
-}
-
-window.addEventListener('resize', resizeCanvas, false);
-window.addEventListener('orientationchange', resizeCanvas, false);
-
 var wait = false; //delay between hero bullets
 
 var downUp = true;
@@ -25,9 +15,6 @@ var leftRight = false;
 var upDown = false;
 var rightLeft = false;
 
-/*
-var rotated = false;
-*/
 var start = false;
 var startColor = 0;
 
@@ -89,13 +76,6 @@ var evt = {
 
 function keyDownHandler(e) {
     'use strict';
-/*    if (e.keyCode === 87) { //rotate screen 90deg if "w" pressed
-        if (!rotated) {
-            rotated = true;
-        } else {
-            rotated = false;
-        }
-    }*/
     if (e.keyCode === 32) {
         evt.space = true;
     }
@@ -127,6 +107,7 @@ function keyDownHandler(e) {
 			gamePaused = false;
 		}
     }
+    evt.preventDefault();
 }
 function keyUpHandler(e) {
     'use strict';
@@ -157,6 +138,7 @@ function keyUpHandler(e) {
     if (e.keyCode === 13) {
         evt.enter = false;
     }
+    evt.preventDefault();
 }
 var touchX1, touchY1, touchX2, touchY2;
 function handleStart(event) {
@@ -167,20 +149,28 @@ function handleStart(event) {
         touchY1 = event.touches[0].pageY;
         if (event.touches[0].pageX > canvas.width / 2) {
             evt.rightTouch = true;
+            event.preventDefault();
         } else if (event.touches[0].pageX <= canvas.width / 2) {
             evt.leftTouch = true;
+            event.preventDefault();
         }
         if (event.touches.length > 1) {
             if (deadHero) {
                 unDeadHero = true;
+                event.preventDefault();
             }
             if (!gamePaused && !deadHero) {
                 gamePaused = true;
+                event.preventDefault();
             } else {
                 gamePaused = false;
+                event.preventDefault();
             }
+            event.preventDefault();
         }
+        event.preventDefault();
     }
+    event.preventDefault();
 }
 
 function handleEnd(event) {
@@ -193,6 +183,7 @@ function handleEnd(event) {
 		evt.touch = false;
         evt.rightTouch = false;
         evt.leftTouch = false;
+        event.preventDefault();
     }
 }
 
@@ -202,12 +193,15 @@ function handleOrientation(event) {
     if (event.gamma > 3) {
 		evt.tiltLeft = false;
 		evt.tiltRight = true;
+        event.preventDefault();
     } else if (event.gamma < -3) {
 		evt.tiltRight = false;
 		evt.tiltLeft = true;
+        event.preventDefault();
     } else if (event.gamma >= -3 && event.gamma <= 3) {
 		evt.tiltRight = false;
 		evt.tiltLeft = false;
+        event.preventDefault();
     }
 }
 
@@ -217,12 +211,15 @@ function handleMotion(event) {
     if (event.acceleration.x > 5) {
         evt.tiltLeft = false;
         evt.tiltRight = true;
+        event.preventDefault();
     } else if (event.acceleration.x < -5) {
         evt.tiltRight = false;
         evt.tiltLeft = true;
+        event.preventDefault();
     } else {
         evt.tiltRight = false;
         evt.tiltLeft = false;
+        event.preventDefault();
     }
 }
 
@@ -278,8 +275,6 @@ function drawRooms() {
     var i;
     for (i = 0; i < roomList.length; i += 1) {
         ctx.beginPath();
-        //ctx.strokeStyle = "#000";
-        //ctx.lineWidth = 2;
         ctx.moveTo(roomList[i].x, roomList[i].y);
         ctx.lineTo(roomList[i].x + roomList[i].width, roomList[i].y);
         ctx.lineTo(roomList[i].x + roomList[i].width, roomList[i].y + roomList[i].height);
@@ -287,7 +282,6 @@ function drawRooms() {
         ctx.lineTo(roomList[i].x, roomList[i].y);
         ctx.fillStyle = "#222";
         ctx.fill();
-        //ctx.stroke();
         ctx.closePath();
     }
 }
@@ -733,6 +727,18 @@ function moveStuff() {
         }
     }
 }
+
+function resizeCanvas() {
+    'use strict';
+    canvas = document.getElementById("myCanvas");
+    canvas.width = document.body.clientWidth;
+    canvas.height = document.body.clientHeight;
+    ctx = canvas.getContext("2d");
+    hero = new Ship("up", 20, 40, canvas.width / 2, canvas.height - 50);
+}
+
+window.addEventListener('resize', resizeCanvas, false);
+window.addEventListener('orientationchange', resizeCanvas, false);
     
 function drawGame() {
     'use strict';
@@ -741,15 +747,6 @@ function drawGame() {
         if (!gamePaused) {
             if (!deadHero) {
                 if (!docking) {
-     /*               if (rotated) {
-                        if (downUp) {
-                            ctx.clearRect(0, 0, canvas.width, canvas.height);
-                            ctx.save();
-                            ctx.translate(canvas.width / 2, canvas.height / 2);
-                            ctx.rotate(Math.PI / 2);
-                            ctx.translate(-(canvas.width / 2), -(canvas.height / 2));
-                        }
-                    }*/
                     //draw/update game screen
                     ctx.clearRect(0, 0, canvas.width, canvas.height);
                     drawStars();
@@ -851,10 +848,6 @@ function drawGame() {
                             bulletList.splice(i, 1);
                         }
                     }
-
-    /*                if (rotated) {
-                        ctx.restore();
-                    }*/
                 } else {
                     ctx.clearRect(0, 0, canvas.width, canvas.height);
                     drawStars();
