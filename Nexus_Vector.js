@@ -8,6 +8,16 @@ canvas.width = document.body.clientWidth;
 canvas.height = document.body.clientHeight;
 var ctx = canvas.getContext("2d");
 
+function resizeCanvas() {
+    canvas = document.getElementById("myCanvas");
+    canvas.width = document.body.clientWidth;
+    canvas.height = document.body.clientHeight;
+    ctx = canvas.getContext("2d");
+}
+
+window.addEventListener('resize', resizeCanvas, false);
+window.addEventListener('orientationchange', resizeCanvas, false);
+
 var wait = false; //delay between hero bullets
 
 var downUp = true;
