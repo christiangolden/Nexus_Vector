@@ -78,27 +78,35 @@ function keyDownHandler(e) {
     'use strict';
     if (e.keyCode === 32) {
         evt.space = true;
+        e.preventDefault();
     }
     if (e.keyCode === 37) {
         evt.left = true;
+        e.preventDefault();
     }
     if (e.keyCode === 38) {
         evt.up = true;
+        e.preventDefault();
     }
     if (e.keyCode === 39) {
         evt.right = true;
+        e.preventDefault();
     }
     if (e.keyCode === 40) {
         evt.down = true;
+        e.preventDefault();
     }
     if (e.keyCode === 16) {
 		evt.shift = true;
+        e.preventDefault();
     }
     if (e.keyCode === 9) {
         evt.tab = true;
+        e.preventDefault();
     }
     if (e.keyCode === 13) {
         evt.enter = true;
+        e.preventDefault();
     }
     if (e.keyCode === 80) {
 		if (!gamePaused && !deadHero && start) {
@@ -107,38 +115,47 @@ function keyDownHandler(e) {
 			gamePaused = false;
 		}
     }
-    evt.preventDefault();
+    e.preventDefault();
 }
 function keyUpHandler(e) {
     'use strict';
     if (e.keyCode === 87) {
         evt.w = false;
+        e.preventDefault();
     }
     if (e.keyCode === 39) {
         evt.right = false;
+        e.preventDefault();
     }
     if (e.keyCode === 38) {
         evt.up = false;
+        e.preventDefault();
     }
     if (e.keyCode === 37) {
         evt.left = false;
+        e.preventDefault();
     }
     if (e.keyCode === 32) {
         evt.space = false;
+        e.preventDefault();
     }
     if (e.keyCode === 40) {
         evt.down = false;
+        e.preventDefault();
     }
     if (e.keyCode === 16) {
 		evt.shift = false;
+        e.preventDefault();
     }
     if (e.keyCode === 9) {
         evt.tab = false;
+        e.preventDefault();
     }
     if (e.keyCode === 13) {
         evt.enter = false;
+        e.preventDefault();
     }
-    evt.preventDefault();
+    e.preventDefault();
 }
 var touchX1, touchY1, touchX2, touchY2;
 function handleStart(event) {
