@@ -41,7 +41,7 @@ var dock = "\u27D0\uFE0E"; //place to land ship on generated room
 var docking = false;
 
 var man = [
-    "\u263A\uFE0E", //walking hero after docked
+    "@", //walking hero after docked
     0,
     0];
 
@@ -280,8 +280,10 @@ function drawRooms() {
         ctx.lineTo(roomList[i].x + roomList[i].width, roomList[i].y + roomList[i].height);
         ctx.lineTo(roomList[i].x, roomList[i].y + roomList[i].height);
         ctx.lineTo(roomList[i].x, roomList[i].y);
+        //ctx.strokeStyle = "#999";
         ctx.fillStyle = "#222";
         ctx.fill();
+        //ctx.stroke();
         ctx.closePath();
     }
 }
@@ -298,30 +300,11 @@ function drawDock() {
 
 function drawMan() {
     'use strict';
-    ctx.font = "36px Consolas";
+    ctx.font = "16px Consolas";
     ctx.fillStyle = randRGB();
     ctx.fillText(man[0], man[1], man[2]);
 }
 
-function moveManLeft() {
-    'use strict';
-    man[1] -= 1;
-}
-
-function moveManRight() {
-    'use strict';
-    man[1] += 1;
-}
-
-function moveManUp() {
-    'use strict';
-    man[2] -= 1;
-}
-
-function moveManDown() {
-    'use strict';
-    man[2] += 1;
-}
 
 function Ship(orientation, width, height, tipX, tipY) {
     'use strict';
@@ -654,6 +637,55 @@ function moveHeroLeft() {
         hero.tipX += canvas.width + hero.width;
     } else {
         hero.tipX -= speed;
+    }
+}
+
+
+function moveManLeft() {
+    'use strict';
+    var i;
+    //man[1] -= 1;
+    for (i = 0; i < roomList.length; i += 1) {
+        roomList[i].x += 1;
+    }
+    for (i = 0; i < star.xList.length; i += 1) {
+        star.xList[i] += 1;
+    }
+}
+
+function moveManRight() {
+    'use strict';
+    var i;
+    //man[1] += 1;
+    for (i = 0; i < roomList.length; i += 1) {
+        roomList[i].x -= 1;
+    }
+    for (i = 0; i < star.xList.length; i += 1) {
+        star.xList[i] -= 1;
+    }
+}
+
+function moveManUp() {
+    'use strict';
+    var i;
+    //man[2] -= 1;
+    for (i = 0; i < roomList.length; i += 1) {
+        roomList[i].y += 1;
+    }
+    for (i = 0; i < star.xList.length; i += 1) {
+        star.yList[i] += 1;
+    }
+}
+
+function moveManDown() {
+    'use strict';
+    var i;
+    //man[2] += 1;
+    for (i = 0; i < roomList.length; i += 1) {
+        roomList[i].y -= 1;
+    }
+    for (i = 0; i < star.xList.length; i += 1) {
+        star.yList[i] -= 1;
     }
 }
 
