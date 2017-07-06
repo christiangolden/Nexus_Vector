@@ -70,6 +70,8 @@ var evt = {
 	touch: false,
     rightTouch: false,
     leftTouch: false,
+    downTouch: false,
+    upTouch: false,
 	tiltRight: false,
 	tiltLeft: false
 };
@@ -169,6 +171,13 @@ function handleStart(event) {
             event.preventDefault();
         } else if (event.touches[0].pageX <= canvas.width / 2) {
             evt.leftTouch = true;
+            event.preventDefault();
+        }
+        if (event.touches[0].pageY > canvas.height / 2) {
+            evt.downTouch = true;
+            event.preventDefault();
+        } else if (event.touches[0].pageY <= canvas.height / 2) {
+            evt.upTouch = true;
             event.preventDefault();
         }
         if (event.touches.length > 1) {
@@ -777,6 +786,18 @@ function moveStuff() {
     }
 }
 
+function inRoom(x, y) {
+    'use strict';
+    for (i = 0; i < roomList.length; i += 1) {
+        if (x < roomList[i].x + roomList[i].width &&
+                x > roomList[i].x &&
+                y > roomList[i].y &&
+                y < roomList[i].y + roomList[i].height) {
+            return true;
+        }
+    }
+    return false;
+}
 function resizeCanvas() {
     'use strict';
     canvas = document.getElementById("myCanvas");
@@ -791,7 +812,7 @@ window.addEventListener('orientationchange', resizeCanvas, false);
     
 function drawGame() {
     'use strict';
-    var i, j;
+    var i, j, xdist, ydist;
     if (start) {
         if (!gamePaused) {
             if (!deadHero) {
@@ -898,21 +919,43 @@ function drawGame() {
                         }
                     }
                 } else {
+                    xdist = canvas.width / 2 - man[1];
+                    ydist = canvas.height / 2 - man[2];
                     ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                    if (Math.abs(xdist)) {
+                        man[1] += xdist / 20;
+
+                        for (i = 0; i < roomList.length; i += 1) {
+                            roomList[i].x += xdist / 20;
+                        }
+                    }
+                    if (Math.abs(ydist)) {
+                        man[2] += ydist / 20;
+                        for (i = 0; i < roomList.length; i += 1) {
+                            roomList[i].y += ydist / 20;
+                        }
+                    }
+                        /*man[1] += xdist / 10;
+                        man[2] += ydist / 10;
+                        for (i = 0; i < roomList.length; i += 1) {
+                            roomList[i].x += xdist;
+                            roomList[i].y += ydist;
+                        }*/
                     drawStars();
                     drawRooms();
                     drawDock();
                     drawMan();
-                    if (evt.right) {
+                    if ((evt.right || evt.rightTouch) && inRoom(man[1] + 8, man[2])) {
                         moveManRight();
                     }
-                    if (evt.left) {
+                    if ((evt.left || evt.leftTouch) && inRoom(man[1] - 7, man[2])) {
                         moveManLeft();
                     }
-                    if (evt.down) {
+                    if ((evt.down || evt.downTouch) && inRoom(man[1], man[2] + 5)) {
                         moveManDown();
                     }
-                    if (evt.up) {
+                    if ((evt.up || evt.upTouch) && inRoom(man[1], man[2] - 10)) {
                         moveManUp();
                     }
                     for (i = 0; i < star.xList.length; i += 1) {
