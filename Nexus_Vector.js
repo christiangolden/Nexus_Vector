@@ -209,6 +209,8 @@ function handleEnd(event) {
 		evt.touch = false;
         evt.rightTouch = false;
         evt.leftTouch = false;
+        evt.downTouch = false;
+        evt.upTouch = false;
         event.preventDefault();
     }
 }
