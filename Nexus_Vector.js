@@ -828,9 +828,7 @@ function drawGame() {
                             roomList[i].y += 0.5;
                         }
                     }
-/*
                     drawDust();
-*/
                     drawHero();
                     drawHeroBullets();
                     drawScore();
@@ -859,8 +857,8 @@ function drawGame() {
                             break;
                         }
                     }
-             /*       drawEnemy();
-                    drawBullets();*/
+                    drawEnemy();
+                    drawBullets();
                     //check if enemy shot hero & if hero is dead
                     for (i = 0; i < bulletList.length; i += 1) {
                         if (bulletList[i].x > hero.leftX && bulletList[i].x < hero.rightX &&
@@ -940,12 +938,7 @@ function drawGame() {
                             roomList[i].y += ydist / 20;
                         }
                     }
-                        /*man[1] += xdist / 10;
-                        man[2] += ydist / 10;
-                        for (i = 0; i < roomList.length; i += 1) {
-                            roomList[i].x += xdist;
-                            roomList[i].y += ydist;
-                        }*/
+
                     drawStars();
                     drawRooms();
                     drawDock();
