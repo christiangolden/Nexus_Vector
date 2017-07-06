@@ -491,7 +491,7 @@ function genStarXY() {
 
 function drawStars() {
     'use strict';
-    if (star.xList.length < 100) {
+    if (star.xList.length < 300) {
         genStarXY();
     }
     var i, randTwinkle;
@@ -652,19 +652,55 @@ function drawHeroBullets() {
 
 function moveHeroRight() {
     'use strict';
-    if (hero.leftX >= canvas.width) {
-        hero.tipX -= canvas.width + hero.width;
+    if (evt.shift) {
+        for (i = 0; i < star.xList.length; i += 1) {
+            star.xList[i] -= speed;
+        }
+        for (i = 0; i < roomList.length; i += 1) {
+            roomList[i].x -= speed;
+        }
+        for (i = 0; i < dust.xList.length; i += 1) {
+            dust.xList[i] -= speed;
+        }
+        for (i = 0; i < bulletList.length; i += 1) {
+            bulletList[i].x -= speed;
+        }
+        badguy.leftX -= speed;
+        badguy.rightX -= speed;
+        badguy.tipX -= speed;
     } else {
-        hero.tipX += speed;
+        if (hero.leftX >= canvas.width) {
+            hero.tipX -= canvas.width + hero.width;
+        } else {
+            hero.tipX += speed;
+        }
     }
 }
 
 function moveHeroLeft() {
     'use strict';
-    if (hero.rightX <= 0) {
-        hero.tipX += canvas.width + hero.width;
+    if (evt.shift) {
+        for (i = 0; i < star.xList.length; i += 1) {
+            star.xList[i] += speed;
+        }
+        for (i = 0; i < roomList.length; i += 1) {
+            roomList[i].x += speed;
+        }
+        for (i = 0; i < dust.xList.length; i += 1) {
+            dust.xList[i] += speed;
+        }
+        for (i = 0; i < bulletList.length; i += 1) {
+            bulletList[i].x += speed;
+        }
+        badguy.leftX += speed;
+        badguy.rightX += speed;
+        badguy.tipX += speed;
     } else {
-        hero.tipX -= speed;
+        if (hero.rightX <= 0) {
+            hero.tipX += canvas.width + hero.width;
+        } else {
+            hero.tipX -= speed;
+        }
     }
 }
 
