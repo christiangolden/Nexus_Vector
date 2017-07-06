@@ -672,10 +672,13 @@ function moveHeroLeft() {
 function moveManLeft() {
     'use strict';
     var i;
-    //man[1] -= 1;
+    hero.tipX += 1;
+    hero.leftX += 1;
+    hero.rightX += 1;   //man[1] -= 1;
     for (i = 0; i < roomList.length; i += 1) {
         roomList[i].x += 1;
     }
+
     for (i = 0; i < star.xList.length; i += 1) {
         star.xList[i] += 1;
     }
@@ -684,37 +687,46 @@ function moveManLeft() {
 function moveManRight() {
     'use strict';
     var i;
-    //man[1] += 1;
+    hero.tipX -= 1;
+    hero.leftX -= 1;
+    hero.rightX -= 1;    //man[1] += 1;
     for (i = 0; i < roomList.length; i += 1) {
         roomList[i].x -= 1;
     }
     for (i = 0; i < star.xList.length; i += 1) {
         star.xList[i] -= 1;
     }
+
 }
 
 function moveManUp() {
     'use strict';
     var i;
-    //man[2] -= 1;
+    hero.tipY += 1;
+    hero.rightY += 1;
+    hero.leftY += 1;    //man[2] -= 1;
     for (i = 0; i < roomList.length; i += 1) {
         roomList[i].y += 1;
     }
     for (i = 0; i < star.xList.length; i += 1) {
         star.yList[i] += 1;
     }
+
 }
 
 function moveManDown() {
     'use strict';
     var i;
-    //man[2] += 1;
+    hero.tipY -= 1;
+    hero.rightY -= 1;
+    hero.leftY -= 1;   //man[2] += 1;
     for (i = 0; i < roomList.length; i += 1) {
         roomList[i].y -= 1;
     }
     for (i = 0; i < star.xList.length; i += 1) {
         star.yList[i] -= 1;
     }
+
 }
 
 function moveStuff() {
@@ -828,18 +840,18 @@ function drawGame() {
                             roomList[i].y += 0.5;
                         }
                     }
+                    drawDock();
                     drawDust();
                     drawHero();
                     drawHeroBullets();
                     drawScore();
                     moveStuff();
-                    drawDock();
 
                     for (i = 0; i < roomList.length; i += 1) {
                         if (hero.tipY <= roomList[i].y + (roomList[i].height / 2) + 15 &&
-                                hero.tipY >= roomList[i].y + (roomList[i].height / 2) - 15 &&
-                                hero.tipX >= roomList[i].x + (roomList[i].width / 2) - 15 &&
-                                hero.tipX <= roomList[i].x + (roomList[i].width / 2) + 15) {
+                                hero.leftY >= roomList[i].y + (roomList[i].height / 2) - 15 &&
+                                hero.rightX >= roomList[i].x + (roomList[i].width / 2) - 15 &&
+                                hero.leftX <= roomList[i].x + (roomList[i].width / 2) + 15) {
                             ctx.fillText("Docking...", hero.tipX, hero.tipY);
                             docking = true;
                             man[1] = hero.tipX;
@@ -927,6 +939,9 @@ function drawGame() {
 
                     if (Math.abs(xdist)) {
                         man[1] += xdist / 20;
+                        hero.tipX += xdist / 20;
+                        hero.leftX += xdist / 20;
+                        hero.rightX += xdist / 20;
 
                         for (i = 0; i < roomList.length; i += 1) {
                             roomList[i].x += xdist / 20;
@@ -934,6 +949,9 @@ function drawGame() {
                     }
                     if (Math.abs(ydist)) {
                         man[2] += ydist / 20;
+                        hero.tipY += ydist / 20;
+                        hero.leftY += ydist / 20;
+                        hero.rightY += ydist / 20;
                         for (i = 0; i < roomList.length; i += 1) {
                             roomList[i].y += ydist / 20;
                         }
@@ -942,6 +960,7 @@ function drawGame() {
                     drawStars();
                     drawRooms();
                     drawDock();
+                    drawHero();
                     drawMan();
                     if ((evt.right || evt.rightTouch) && inRoom(man[1] + 8, man[2])) {
                         moveManRight();
