@@ -992,6 +992,7 @@ function drawGame() {
                             roomList[i].y += ydist / 20;
                         }
                     }
+                    
 
                     drawStars();
                     drawRooms();
@@ -1017,6 +1018,20 @@ function drawGame() {
                             star.yList.splice(i, 1);
                             star.xList.splice(i, 1);
                         }
+                    }
+                    if (man[1] > hero.leftX && man[1] < hero.rightX &&
+                            man[2] > hero.tipY + hero.height / 2 &&
+                            man[2] < hero.leftY) {
+/*                        hero.tipX = canvas.width / 2;
+                        hero.leftX = hero.tipX - hero.width / 2;
+                        hero.rightX = hero.tipX + hero.width / 2;*/
+                        hero.tipY = canvas.height - 50;
+                        hero.leftY = hero.tipY + hero.height;
+                        hero.rightY = hero.tipY + hero.height;
+                        for (i = 0; i < roomList.length; i += 1) {
+                            roomList[i].y += canvas.height / 2 + hero.height;
+                        }
+                        docking = false;
                     }
                 }
             } else {
