@@ -166,17 +166,17 @@ function handleStart(event) {
 		evt.touch = true;
         touchX1 = event.touches[0].pageX;
         touchY1 = event.touches[0].pageY;
-        if (event.touches[0].pageX > canvas.width / 2) {
+        if (event.touches[0].pageX > canvas.width / 2 + 100) {
             evt.rightTouch = true;
             event.preventDefault();
-        } else if (event.touches[0].pageX <= canvas.width / 2) {
+        } else if (event.touches[0].pageX <= canvas.width / 2 - 100) {
             evt.leftTouch = true;
             event.preventDefault();
         }
-        if (event.touches[0].pageY > canvas.height / 2) {
+        if (event.touches[0].pageY > canvas.height / 2 + 100) {
             evt.downTouch = true;
             event.preventDefault();
-        } else if (event.touches[0].pageY <= canvas.height / 2) {
+        } else if (event.touches[0].pageY <= canvas.height / 2 - 100) {
             evt.upTouch = true;
             event.preventDefault();
         }
@@ -828,7 +828,9 @@ function drawGame() {
                             roomList[i].y += 0.5;
                         }
                     }
+/*
                     drawDust();
+*/
                     drawHero();
                     drawHeroBullets();
                     drawScore();
@@ -857,8 +859,8 @@ function drawGame() {
                             break;
                         }
                     }
-                    drawEnemy();
-                    drawBullets();
+             /*       drawEnemy();
+                    drawBullets();*/
                     //check if enemy shot hero & if hero is dead
                     for (i = 0; i < bulletList.length; i += 1) {
                         if (bulletList[i].x > hero.leftX && bulletList[i].x < hero.rightX &&
