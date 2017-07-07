@@ -168,35 +168,25 @@ function handleStart(event) {
         touchY1 = event.touches[0].pageY;
         if (event.touches[0].pageX > canvas.width / 2 + 100) {
             evt.rightTouch = true;
-            event.preventDefault();
         } else if (event.touches[0].pageX <= canvas.width / 2 - 100) {
             evt.leftTouch = true;
-            event.preventDefault();
         }
         if (event.touches[0].pageY > canvas.height / 2 + 100) {
             evt.downTouch = true;
-            event.preventDefault();
         } else if (event.touches[0].pageY <= canvas.height / 2 - 100) {
             evt.upTouch = true;
-            event.preventDefault();
         }
         if (event.touches.length > 1) {
             if (deadHero) {
                 unDeadHero = true;
-                event.preventDefault();
             }
             if (!gamePaused && !deadHero) {
                 gamePaused = true;
-                event.preventDefault();
             } else {
                 gamePaused = false;
-                event.preventDefault();
             }
-            event.preventDefault();
         }
-        event.preventDefault();
     }
-    event.preventDefault();
 }
 
 function handleEnd(event) {
@@ -274,7 +264,6 @@ function Room(x, y, width, height) {
 
 }
 
-//var room = new Room(canvas.width / 2, canvas.height / 2, canvas.width / 2, canvas.height / 2);
 var roomList = [];
 var randX, randY, randWidth, randHeight;
 var i, j;
@@ -290,8 +279,8 @@ function generateRooms() {
             randHeight = Math.floor(Math.random() * canvas.height / 2 + 100);
             roomList[i] = new Room(randX, randY, randWidth, randHeight);
         } else {
-            randX = Math.floor(Math.random() * canvas.width / 2);
-            randY = Math.floor(Math.random() * -canvas.height - canvas.height);// / 2);
+            randX = Math.floor(Math.random() * canvas.width / 2) - canvas.width / 2;
+            randY = Math.floor(Math.random() * -canvas.height * numFloor) - canvas.height;
             randWidth = Math.floor(Math.random() * canvas.width / 2 + 100);
             randHeight = Math.floor(Math.random() * canvas.height / 2 + 100);
             roomList[i] = new Room(randX, randY, randWidth, randHeight);
@@ -308,11 +297,20 @@ function drawRooms() {
         ctx.lineTo(roomList[i].x + roomList[i].width, roomList[i].y + roomList[i].height);
         ctx.lineTo(roomList[i].x, roomList[i].y + roomList[i].height);
         ctx.lineTo(roomList[i].x, roomList[i].y);
-        //ctx.strokeStyle = "#999";
         ctx.fillStyle = "#222";
         ctx.fill();
-        //ctx.stroke();
         ctx.closePath();
+    }
+}
+
+function genShipLevels() {
+    'use strict';
+    var i, shipLevels, numLevels;
+    shipLevels = [];
+    numLevels = Math.floor(Math.random() * 5 + 3);
+    for (i = 0; i < numLevels; i += 1) {
+        generateRooms();
+        shipLevels[i] = roomList;
     }
 }
 
@@ -871,6 +869,11 @@ function drawGame() {
                     ctx.clearRect(0, 0, canvas.width, canvas.height);
                     drawStars();
                     drawRooms();
+                    if (roomList[0].y >= canvas.height) {
+                        roomList.splice(0, roomList.length);
+                        generateRooms();
+                        drawRooms();
+                    }
                     for (i = 0; i < roomList.length; i += 1) {
                         if (roomList[i].y < canvas.height) {
                             roomList[i].y += 0.5;
@@ -972,7 +975,7 @@ function drawGame() {
                     xdist = canvas.width / 2 - man[1];
                     ydist = canvas.height / 2 - man[2];
                     ctx.clearRect(0, 0, canvas.width, canvas.height);
-
+                    
                     if (Math.abs(xdist)) {
                         man[1] += xdist / 20;
                         hero.tipX += xdist / 20;
@@ -1019,12 +1022,10 @@ function drawGame() {
                             star.xList.splice(i, 1);
                         }
                     }
+
                     if (man[1] > hero.leftX && man[1] < hero.rightX &&
                             man[2] > hero.tipY + hero.height / 2 &&
                             man[2] < hero.leftY) {
-/*                        hero.tipX = canvas.width / 2;
-                        hero.leftX = hero.tipX - hero.width / 2;
-                        hero.rightX = hero.tipX + hero.width / 2;*/
                         hero.tipY = canvas.height - 50;
                         hero.leftY = hero.tipY + hero.height;
                         hero.rightY = hero.tipY + hero.height;
