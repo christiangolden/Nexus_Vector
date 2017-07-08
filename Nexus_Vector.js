@@ -255,6 +255,13 @@ if (window.DeviceOrientationEvent) {
 window.addEventListener("touchstart", handleStart, false);
 window.addEventListener("touchend", handleEnd, false);
 
+function Creature(x, y, size) {
+    'use strict';
+    this.x = x;
+    this.y = y;
+    this.size = size;
+}
+
 function Room(x, y, width, height) {
     'use strict';
     this.width = width;
@@ -265,6 +272,9 @@ function Room(x, y, width, height) {
 }
 
 var roomList = [];
+var ratList = [];
+var goblinList = [];
+
 var randX, randY, randWidth, randHeight;
 var i, j;
 function generateRooms() {
@@ -285,8 +295,14 @@ function generateRooms() {
             randHeight = Math.floor(Math.random() * canvas.height / 2 + 100);
             roomList[i] = new Room(randX, randY, randWidth, randHeight);
         }
+        ratList[ratList.length] = new Creature(roomList[i].x +
+                                      roomList[i].width * Math.random(),
+                                      roomList[i].y +
+                                      roomList[i].height * Math.random(),
+                                      12);
     }
 }
+
 function drawRooms() {
     'use strict';
     var i;
@@ -300,6 +316,15 @@ function drawRooms() {
         ctx.fillStyle = "#222";
         ctx.fill();
         ctx.closePath();
+    }
+}
+
+function drawRats() {
+    'use strict';
+    for (i = 0; i < ratList.length; i += 1) {
+        ctx.font = "12px Consolas";
+        ctx.fillStyle = "rgb(128,128,0)";
+        ctx.fillText("r", ratList[i].x, ratList[i].y);
     }
 }
 
@@ -330,7 +355,6 @@ function drawMan() {
     ctx.fillStyle = randRGB();
     ctx.fillText(man[0], man[1], man[2]);
 }
-
 
 function Ship(orientation, width, height, tipX, tipY) {
     'use strict';
@@ -657,6 +681,9 @@ function moveHeroRight() {
         for (i = 0; i < roomList.length; i += 1) {
             roomList[i].x -= speed;
         }
+        for (i = 0; i < ratList.length; i += 1) {
+            ratList[i].x -= speed;
+        }
         for (i = 0; i < dust.xList.length; i += 1) {
             dust.xList[i] -= speed;
         }
@@ -683,6 +710,9 @@ function moveHeroLeft() {
         }
         for (i = 0; i < roomList.length; i += 1) {
             roomList[i].x += speed;
+        }
+        for (i = 0; i < ratList.length; i += 1) {
+            ratList[i].x += speed;
         }
         for (i = 0; i < dust.xList.length; i += 1) {
             dust.xList[i] += speed;
@@ -712,6 +742,9 @@ function moveManLeft() {
     for (i = 0; i < roomList.length; i += 1) {
         roomList[i].x += 1;
     }
+    for (i = 0; i < ratList.length; i += 1) {
+        ratList[i].x += 1;
+    }
 
     for (i = 0; i < star.xList.length; i += 1) {
         star.xList[i] += 1;
@@ -726,6 +759,9 @@ function moveManRight() {
     hero.rightX -= 1;    //man[1] += 1;
     for (i = 0; i < roomList.length; i += 1) {
         roomList[i].x -= 1;
+    }
+    for (i = 0; i < ratList.length; i += 1) {
+        ratList[i].x -= 1;
     }
     for (i = 0; i < star.xList.length; i += 1) {
         star.xList[i] -= 1;
@@ -742,6 +778,9 @@ function moveManUp() {
     for (i = 0; i < roomList.length; i += 1) {
         roomList[i].y += 1;
     }
+    for (i = 0; i < ratList.length; i += 1) {
+        ratList[i].y += 1;
+    }
     for (i = 0; i < star.xList.length; i += 1) {
         star.yList[i] += 1;
     }
@@ -756,6 +795,9 @@ function moveManDown() {
     hero.leftY -= 1;   //man[2] += 1;
     for (i = 0; i < roomList.length; i += 1) {
         roomList[i].y -= 1;
+    }
+    for (i = 0; i < ratList.length; i += 1) {
+        ratList[i].y -= 1;
     }
     for (i = 0; i < star.xList.length; i += 1) {
         star.yList[i] -= 1;
@@ -874,13 +916,22 @@ function drawGame() {
                         generateRooms();
                         drawRooms();
                     }
+                    drawRats();
                     for (i = 0; i < roomList.length; i += 1) {
                         if (roomList[i].y < canvas.height) {
                             roomList[i].y += 0.5;
                         }
                     }
+                    
+                    for (i = 0; i < ratList.length; i += 1) {
+                        if (ratList[i].y < canvas.height) {
+                            ratList[i].y += 0.5;
+                        }
+                    }
                     drawDock();
+/*
                     drawDust();
+*/
                     drawHero();
                     drawHeroBullets();
                     drawScore();
@@ -908,8 +959,8 @@ function drawGame() {
                             break;
                         }
                     }
-                    drawEnemy();
-                    drawBullets();
+        /*            drawEnemy();
+                    drawBullets();*/
                     //check if enemy shot hero & if hero is dead
                     for (i = 0; i < bulletList.length; i += 1) {
                         if (bulletList[i].x > hero.leftX && bulletList[i].x < hero.rightX &&
@@ -985,6 +1036,9 @@ function drawGame() {
                         for (i = 0; i < roomList.length; i += 1) {
                             roomList[i].x += xdist / 20;
                         }
+                        for (i = 0; i < ratList.length; i += 1) {
+                            ratList[i].x += xdist / 20;
+                        }
                     }
                     if (Math.abs(ydist)) {
                         man[2] += ydist / 20;
@@ -994,11 +1048,15 @@ function drawGame() {
                         for (i = 0; i < roomList.length; i += 1) {
                             roomList[i].y += ydist / 20;
                         }
+                        for (i = 0; i < ratList.length; i += 1) {
+                            ratList[i].y += ydist / 20;
+                        }
                     }
                     
 
                     drawStars();
                     drawRooms();
+                    drawRats();
                     drawDock();
                     drawHero();
                     drawMan();
@@ -1031,6 +1089,9 @@ function drawGame() {
                         hero.rightY = hero.tipY + hero.height;
                         for (i = 0; i < roomList.length; i += 1) {
                             roomList[i].y += canvas.height / 2 + hero.height;
+                        }
+                        for (i = 0; i < ratList.length; i += 1) {
+                            ratList[i].y += canvas.height / 2 + hero.height;
                         }
                         docking = false;
                     }
