@@ -1,8 +1,4 @@
-/*TODO: 
-	Design Menu Button/Menu
-*/
-
-//set up canvas
+//canvas & drawing functions in drawings.js file
 var canvas = document.getElementById("myCanvas");
 canvas.width = document.body.clientWidth;
 canvas.height = document.body.clientHeight;
@@ -10,13 +6,7 @@ var ctx = canvas.getContext("2d");
 
 var wait = false; //delay between hero bullets
 
-var downUp = true;
-var leftRight = false;
-var upDown = false;
-var rightLeft = false;
-
 var start = false;
-var startColor = 0;
 
 var deadHero = false;
 var unDeadHero = false;
@@ -45,18 +35,6 @@ var man = [
     0,
     0];
 
-function randColor() {
-    'use strict';
-    return Math.floor(Math.random() * 255);
-}
-
-function randRGB() {
-    'use strict';
-    return ("rgb(" + randColor() + "," + randColor() + "," + randColor() + ")");
-}
-
-//event listeners
-//events
 var evt = {
     w: false,
     enter: false,
@@ -159,6 +137,7 @@ function keyUpHandler(e) {
     }
     e.preventDefault();
 }
+
 var touchX1, touchY1, touchX2, touchY2;
 function handleStart(event) {
     'use strict';
@@ -255,6 +234,18 @@ if (window.DeviceOrientationEvent) {
 window.addEventListener("touchstart", handleStart, false);
 window.addEventListener("touchend", handleEnd, false);
 
+function randColor() {
+    'use strict';
+    return Math.floor(Math.random() * 255);
+}
+
+function randRGB() {
+    'use strict';
+    return ("rgb(" + randColor() + "," + randColor() + "," + randColor() + ")");
+}
+
+//event listeners kept in "events.js" file
+
 function Creature(x, y, size) {
     'use strict';
     this.x = x;
@@ -275,8 +266,8 @@ var roomList = [];
 var ratList = [];
 var goblinList = [];
 
-var randX, randY, randWidth, randHeight;
-var i, j;
+var i, j, randX, randY, randWidth, randHeight;
+
 function generateRooms() {
     'use strict';
     var numFloor = Math.floor(Math.random() * 10 + 5);
@@ -305,7 +296,6 @@ function generateRooms() {
 
 function drawRooms() {
     'use strict';
-    var i;
     for (i = 0; i < roomList.length; i += 1) {
         ctx.beginPath();
         ctx.moveTo(roomList[i].x, roomList[i].y);
@@ -330,7 +320,7 @@ function drawRats() {
 
 function genShipLevels() {
     'use strict';
-    var i, shipLevels, numLevels;
+    var shipLevels, numLevels;
     shipLevels = [];
     numLevels = Math.floor(Math.random() * 5 + 3);
     for (i = 0; i < numLevels; i += 1) {
@@ -341,7 +331,6 @@ function genShipLevels() {
 
 function drawDock() {
     'use strict';
-    var i;
     ctx.font = "48px Consolas";
     ctx.fillStyle = randRGB();
     for (i = 0; i < roomList.length; i += 1) {
@@ -397,7 +386,6 @@ var dust = {
 
 function drawHero() {
     'use strict';
-    var i;
 	for (i = 0; i <= dust.xList.length; i += 1) {
         if (dust.xList[i] + dust.width > hero.leftX && dust.xList[i] < hero.rightX &&
                 dust.yList[i] > hero.tipY && dust.yList[i] < hero.leftY) {
@@ -474,7 +462,6 @@ var magWave = {
 //generate xy lists for stardust
 function genDustXY() {
     'use strict';
-    var i;
     if (Math.floor(Math.random() * 50) === 1) {
 		dust.x = Math.floor(Math.random() * (canvas.width - dust.width) + 1);
 		dust.y = Math.floor(Math.random() * -canvas.height - dust.height);
@@ -485,7 +472,6 @@ function genDustXY() {
 //draw stardust
 function drawDust() {
     'use strict';
-    var i;
 	genDustXY();
 	for (i = 0; i < dust.yList.length; i += 1) {
 	    if (dust.yList[i] >= canvas.height) {
@@ -516,7 +502,6 @@ function drawStars() {
     if (star.xList.length < 300) {
         genStarXY();
     }
-    var i, randTwinkle;
     for (i = 0; i < star.yList.length; i += 1) {
         star.size = Math.floor(Math.random() * 12 + 10);
         ctx.font = star.size + "px Courier";
@@ -528,7 +513,6 @@ function drawStars() {
 
 function drawMagWave() {
     'use strict';
-    var i;
     ctx.beginPath();
     ctx.arc(hero.tipX, hero.tipY - hero.height, magWave.radius, magWave.startAngle, magWave.endAngle);
     ctx.strokeStyle = randRGB();
@@ -536,21 +520,6 @@ function drawMagWave() {
     ctx.stroke();
     ctx.closePath();
 }
-
-var titleX = canvas.width;
-function drawTitle() {
-    'use strict';
-    ctx.font = "62px Consolas";
-    ctx.fillStyle = randRGB();
-    ctx.textAlign = "start";
-    ctx.fillText("Nexus \u2A58\u2A57 Vector", titleX, canvas.height / 2);
-    if (titleX > -444) {
-        titleX -= 1;
-    } else {
-        titleX = canvas.width;
-    }
-}
-
 
 function startScreen() {
     'use strict';
@@ -613,7 +582,6 @@ var bulletWait = false;
 
 function drawBullets() {
     'use strict';
-    var i;
     if (Math.floor(Math.random() * 10) === 3 && badguy.tipY > 0) {
         bulletList[bulletList.length] = new Bullet(2, 16, badguy.tipX - 1, badguy.tipY - 9);
     }
@@ -632,7 +600,6 @@ var timer = 0;
 
 function drawHeroBullets() {
     'use strict';
-    var i, j;
     if (wait) {
         timer += 1;
         if (timer === 7) {
@@ -672,6 +639,7 @@ function drawHeroBullets() {
     }
 }
 
+//movement functions in movemens.js file
 function moveHeroRight() {
     'use strict';
     if (evt.shift) {
@@ -875,7 +843,6 @@ function moveStuff() {
         }
     }
 }
-
 function inRoom(x, y) {
     'use strict';
     for (i = 0; i < roomList.length; i += 1) {
@@ -894,7 +861,6 @@ function resizeCanvas() {
     canvas.width = document.body.clientWidth;
     canvas.height = document.body.clientHeight;
     ctx = canvas.getContext("2d");
-    hero = new Ship("up", 20, 40, canvas.width / 2, canvas.height - 50);
 }
 
 window.addEventListener('resize', resizeCanvas, false);
@@ -902,7 +868,7 @@ window.addEventListener('orientationchange', resizeCanvas, false);
     
 function drawGame() {
     'use strict';
-    var i, j, xdist, ydist;
+    var xdist, ydist;
     if (start) {
         if (!gamePaused) {
             if (!deadHero) {
@@ -915,6 +881,11 @@ function drawGame() {
                         roomList.splice(0, roomList.length);
                         generateRooms();
                         drawRooms();
+                    }
+                    for (i = 0; i < ratList.length; i += 1) {
+                        if (ratList[i].y > canvas.height) {
+                            ratList.splice(i, 1);
+                        }
                     }
                     drawRats();
                     for (i = 0; i < roomList.length; i += 1) {
@@ -929,9 +900,7 @@ function drawGame() {
                         }
                     }
                     drawDock();
-/*
                     drawDust();
-*/
                     drawHero();
                     drawHeroBullets();
                     drawScore();
@@ -959,8 +928,8 @@ function drawGame() {
                             break;
                         }
                     }
-        /*            drawEnemy();
-                    drawBullets();*/
+                    drawEnemy();
+                    drawBullets();
                     //check if enemy shot hero & if hero is dead
                     for (i = 0; i < bulletList.length; i += 1) {
                         if (bulletList[i].x > hero.leftX && bulletList[i].x < hero.rightX &&
@@ -1023,6 +992,12 @@ function drawGame() {
                         }
                     }
                 } else {
+                    badguy = new Ship("down", 20, 40, Math.floor(Math.random() * canvas.width), 0);
+                    bulletList.splice(0, bulletList.length);
+                    heroBulletList.splice(0, heroBulletList.length);
+                    dust.xList.splice(0, dust.xList.length);
+                    dust.yList.splice(0, dust.yList.length);
+                    
                     xdist = canvas.width / 2 - man[1];
                     ydist = canvas.height / 2 - man[2];
                     ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -1095,6 +1070,15 @@ function drawGame() {
                         }
                         docking = false;
                     }
+                    for (i = 0; i < ratList.length; i += 1) {
+                        if (man[1] > ratList[i].x - 5 &&
+                                man[1] < ratList[i].x + 5 &&
+                                man[2] > ratList[i].y - 5 &&
+                                man[2] < ratList[i].y + 5) {
+                            ctx.fillText("Rat: 'Oy, ya stapped on meh!'",
+                                        ratList[i].x, ratList[i].y - ratList[i].size);
+                        }
+                    }
                 }
             } else {
                 //reset game upon confirmation of replay
@@ -1108,6 +1092,7 @@ function drawGame() {
                     dust.xList.splice(0, dust.xList.length);
                     dust.yList.splice(0, dust.yList.length);
                     roomList.splice(0, roomList.length);
+                    ratList.splice(0, ratList.length);
                     deadHero = false;
                     unDeadHero = false;
                     generateRooms();
