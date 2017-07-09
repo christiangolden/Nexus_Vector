@@ -882,22 +882,13 @@ function drawGame() {
                         generateRooms();
                         drawRooms();
                     }
-                    for (i = 0; i < ratList.length; i += 1) {
-                        if (ratList[i].y > canvas.height) {
-                            ratList.splice(i, 1);
-                        }
-                    }
                     drawRats();
                     for (i = 0; i < roomList.length; i += 1) {
-                        if (roomList[i].y < canvas.height) {
-                            roomList[i].y += 0.5;
-                        }
+                        roomList[i].y += 0.5;
                     }
                     
                     for (i = 0; i < ratList.length; i += 1) {
-                        if (ratList[i].y < canvas.height) {
-                            ratList[i].y += 0.5;
-                        }
+                        ratList[i].y += 0.5;
                     }
                     drawDock();
                     drawDust();
