@@ -1,4 +1,3 @@
-//canvas & drawing functions in drawings.js file
 var canvas = document.getElementById("myCanvas");
 canvas.width = document.body.clientWidth;
 canvas.height = document.body.clientHeight;
@@ -243,8 +242,6 @@ function randRGB() {
     'use strict';
     return ("rgb(" + randColor() + "," + randColor() + "," + randColor() + ")");
 }
-
-//event listeners kept in "events.js" file
 
 function Creature(x, y, size) {
     'use strict';
@@ -639,7 +636,6 @@ function drawHeroBullets() {
     }
 }
 
-//movement functions in movemens.js file
 function moveHeroRight() {
     'use strict';
     if (evt.shift) {
@@ -773,11 +769,38 @@ function moveManDown() {
 
 }
 
+function inRoom(x, y) {
+    'use strict';
+    for (i = 0; i < roomList.length; i += 1) {
+        if (x < roomList[i].x + roomList[i].width &&
+                x > roomList[i].x &&
+                y > roomList[i].y &&
+                y < roomList[i].y + roomList[i].height) {
+            return true;
+        }
+    }
+    return false;
+}
+/*
+function wanderingRats() {
+    'use strict';
+    for (i = 0; i < ratList.length; i += 1) {
+        randX = Math.random() * 2 - 1;
+        randY = Math.random() * 2 - 1;
+        if (inRoom(ratList[i].x + randX, ratList[i].y)) {
+            ratList[i].x += randX;
+        }
+        if (inRoom(ratList[i].x, ratList[i].y + randY)) {
+            ratList[i].y += randY;
+        }
+    }
+}*/
+
 function moveStuff() {
     'use strict';
     var i;
     
-    if ((evt.down || evt.leftTouch) && mwEnergy > 0) {
+    if ((evt.down || evt.leftTouch) && mwEnergy > 0 && !docking) {
         if (magWave.radius < hero.width) {
             magWave.radius += 0.5;
             mwEnergy -= 0.02;
@@ -794,11 +817,23 @@ function moveStuff() {
     }
     
     
-    if ((evt.right || evt.tiltRight)) {
+    if ((evt.right || evt.tiltRight) && !docking) {
         moveHeroRight();
     }
-    if ((evt.left || evt.tiltLeft)) {
+    if ((evt.left || evt.tiltLeft) && !docking) {
         moveHeroLeft();
+    }
+    
+                    
+    for (i = 0; i < ratList.length; i += 1) {
+        randX = Math.random() * 2 - 1;
+        randY = Math.random() * 2 - 1;
+        if (inRoom(ratList[i].x + randX, ratList[i].y)) {
+            ratList[i].x += randX;
+        }
+        if (inRoom(ratList[i].x, ratList[i].y + randY)) {
+            ratList[i].y += randY;
+        }
     }
     
     for (i = 0; i < dust.yList.length; i += 1) {
@@ -843,18 +878,7 @@ function moveStuff() {
         }
     }
 }
-function inRoom(x, y) {
-    'use strict';
-    for (i = 0; i < roomList.length; i += 1) {
-        if (x < roomList[i].x + roomList[i].width &&
-                x > roomList[i].x &&
-                y > roomList[i].y &&
-                y < roomList[i].y + roomList[i].height) {
-            return true;
-        }
-    }
-    return false;
-}
+
 function resizeCanvas() {
     'use strict';
     canvas = document.getElementById("myCanvas");
@@ -883,6 +907,7 @@ function drawGame() {
                         drawRooms();
                     }
                     drawRats();
+                    
                     for (i = 0; i < roomList.length; i += 1) {
                         roomList[i].y += 0.5;
                     }
@@ -1018,7 +1043,6 @@ function drawGame() {
                             ratList[i].y += ydist / 20;
                         }
                     }
-                    
 
                     drawStars();
                     drawRooms();
@@ -1026,6 +1050,7 @@ function drawGame() {
                     drawDock();
                     drawHero();
                     drawMan();
+                    moveStuff();
                     if ((evt.right || evt.rightTouch) && inRoom(man[1] + 8, man[2])) {
                         moveManRight();
                     }
