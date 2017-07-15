@@ -270,7 +270,8 @@ function generateRooms() {
     var numFloor = Math.floor(Math.random() * 10 + 5);
     for (i = 0; i < numFloor; i += 1) {
         if (roomList.length > 0) {
-            randX = roomList[i - 1].x + Math.floor(Math.random() * roomList[i - 1].width);
+            randX = roomList[i - 1].x + Math.floor(Math.random() * -roomList[i - 1].width) +
+                    roomList[i -1].width / 2;
             randY = roomList[i - 1].y + Math.floor(Math.random() * roomList[i - 1].height);
             randWidth = Math.floor(Math.random() * canvas.width / 2 + 100);
 
@@ -975,7 +976,7 @@ function drawGame() {
 
                     //descending stars, spliced if pass canvas bottom
                     for (i = 0; i < star.xList.length; i += 1) {
-                        if (star.yList[i] < canvas.height) {
+                        if (star.yList[i] < canvas.height * 2) {
                             star.yList[i] += 1;
                         } else {
                             star.yList.splice(i, 1);
@@ -1064,7 +1065,7 @@ function drawGame() {
                         moveManUp();
                     }
                     for (i = 0; i < star.xList.length; i += 1) {
-                        if (star.yList[i] < canvas.height) {
+                        if (star.yList[i] < canvas.height * 2) {
                             star.yList[i] += 0.5;
                         } else {
                             star.yList.splice(i, 1);
