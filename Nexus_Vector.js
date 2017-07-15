@@ -501,7 +501,7 @@ function drawStars() {
         genStarXY();
     }
     for (i = 0; i < star.yList.length; i += 1) {
-        star.size = Math.floor(Math.random() * 12 + 10);
+        star.size = Math.floor(Math.random() * 12 + 5);
         ctx.font = star.size + "px Courier";
         ctx.fillStyle = randRGB();
         ctx.textAlign = "center";
