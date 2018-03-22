@@ -261,7 +261,6 @@ function Room(x, y, width, height) {
 
 var roomList = [];
 var ratList = [];
-var goblinList = [];
 
 var i, j, randX, randY, randWidth, randHeight;
 
@@ -313,17 +312,6 @@ function drawRats() {
         ctx.font = "12px Consolas";
         ctx.fillStyle = "rgb(128,128,0)";
         ctx.fillText("r", ratList[i].x, ratList[i].y);
-    }
-}
-
-function genShipLevels() {
-    'use strict';
-    var shipLevels, numLevels;
-    shipLevels = [];
-    numLevels = Math.floor(Math.random() * 5 + 3);
-    for (i = 0; i < numLevels; i += 1) {
-        generateRooms();
-        shipLevels[i] = roomList;
     }
 }
 
@@ -575,9 +563,6 @@ function drawGameOver() {
     ctx.fillText("\u2620", canvas.width / 2, canvas.height / 2);
 }
 
-var bulletTimer = 0;
-var bulletWait = false;
-
 function drawBullets() {
     'use strict';
     if (Math.floor(Math.random() * 10) === 3 && badguy.tipY > 0) {
@@ -620,7 +605,7 @@ function drawHeroBullets() {
             ctx.beginPath();
             ctx.rect(heroBulletList[i].x, heroBulletList[i].y, heroBulletList[i].width, heroBulletList[i].height);
             ctx.fillStyle = randRGB();
-            ctx.fill();//evt.down
+            ctx.fill();
         }
         for (j = 0; j < dust.xList.length; j += 1) {
             if (heroBulletList[i].x + heroBulletList[i].width >= dust.xList[j] &&
@@ -703,7 +688,7 @@ function moveManLeft() {
     var i;
     hero.tipX += 1;
     hero.leftX += 1;
-    hero.rightX += 1;   //man[1] -= 1;
+    hero.rightX += 1;
     for (i = 0; i < roomList.length; i += 1) {
         roomList[i].x += 1;
     }
@@ -721,7 +706,7 @@ function moveManRight() {
     var i;
     hero.tipX -= 1;
     hero.leftX -= 1;
-    hero.rightX -= 1;    //man[1] += 1;
+    hero.rightX -= 1;
     for (i = 0; i < roomList.length; i += 1) {
         roomList[i].x -= 1;
     }
@@ -739,7 +724,7 @@ function moveManUp() {
     var i;
     hero.tipY += 1;
     hero.rightY += 1;
-    hero.leftY += 1;    //man[2] -= 1;
+    hero.leftY += 1;
     for (i = 0; i < roomList.length; i += 1) {
         roomList[i].y += 1;
     }
@@ -757,7 +742,7 @@ function moveManDown() {
     var i;
     hero.tipY -= 1;
     hero.rightY -= 1;
-    hero.leftY -= 1;   //man[2] += 1;
+    hero.leftY -= 1;
     for (i = 0; i < roomList.length; i += 1) {
         roomList[i].y -= 1;
     }
@@ -782,20 +767,6 @@ function inRoom(x, y) {
     }
     return false;
 }
-/*
-function wanderingRats() {
-    'use strict';
-    for (i = 0; i < ratList.length; i += 1) {
-        randX = Math.random() * 2 - 1;
-        randY = Math.random() * 2 - 1;
-        if (inRoom(ratList[i].x + randX, ratList[i].y)) {
-            ratList[i].x += randX;
-        }
-        if (inRoom(ratList[i].x, ratList[i].y + randY)) {
-            ratList[i].y += randY;
-        }
-    }
-}*/
 
 function moveStuff() {
     'use strict';
