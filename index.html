@@ -1,33 +1,44 @@
 <!DOCTYPE html>
 <html>
 <head>
-    
-    <!-- favicon/home screen icon
-    <link rel="apple-touch-icon-precomposed" sizes="57x57" href="apple-icon-57x57-precomposed.png" />
-    <link rel="apple-touch-icon-precomposed" sizes="72x72" href="apple-icon-72x72-precomposed.png" />
-    <link rel="apple-touch-icon-precomposed" sizes="114x114" href="apple-icon-114x114-precomposed.png" />
-    <link rel="apple-touch-icon-precomposed" sizes="144x144" href="apple-icon-144x144-precomposed.png" />
-    <link rel="icon" 
-          type="image/ico" 
-          href="favicon.ico"/>
+    <!-- Favicon/home screen icons -->
+    <link rel="apple-touch-icon-precomposed" sizes="57x57" href="assets/images/apple-icon-57x57-precomposed.png" />
+    <link rel="apple-touch-icon-precomposed" sizes="72x72" href="assets/images/apple-icon-72x72-precomposed.png" />
+    <link rel="apple-touch-icon-precomposed" sizes="114x114" href="assets/images/apple-icon-114x114-precomposed.png" />
+    <link rel="apple-touch-icon-precomposed" sizes="144x144" href="assets/images/apple-icon-144x144-precomposed.png" />
+    <link rel="icon" type="image/ico" href="assets/images/favicon.ico"/>
 
-    <!-- bootstrap cdn
-    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+    <meta charset="utf-8" />
     
-	<meta charset="utf-8" />
-    
-    <!-- disable tap zoom on mobile -->
+    <!-- Disable tap zoom on mobile -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0"> 
     
-    <title>Nexus Vector!</title>		
+    <title>Nexus Vector!</title>
+    <link rel="stylesheet" href="css/Nexus_Vector.css">
 </head>
 <body> 
-	<link rel="stylesheet" href="Nexus_Vector.css">
-	<canvas id="myCanvas"></canvas>
-<!--    <script src="events.js"></script>
-    <script src="movements.js"></script>
-    <script src="drawings.js"></script>-->
-	<script src="Nexus_Vector.js"></script>
+    <canvas id="gameCanvas"></canvas>
+    
+    <!-- Utility modules -->
+    <script src="js/utils/colors.js"></script>
+    <script src="js/utils/collision.js"></script>
+    <script src="js/utils/performance.js"></script>
+    
+    <!-- Core modules -->
+    <script src="js/core/input.js"></script>
+    <script src="js/core/game.js"></script>
+    <script src="js/core/docking.js"></script>
+    <script src="js/core/movement.js"></script>
+    
+    <!-- Entity modules -->
+    <script src="js/entities/star.js"></script>
+    <script src="js/entities/ship.js"></script>
+    <script src="js/entities/bullet.js"></script>
+    <script src="js/entities/room.js"></script>
+    <script src="js/entities/dust.js"></script>
+    
+    <!-- Main entry point -->
+    <script src="js/main.js"></script>
 </body>
 </html>
-    
+

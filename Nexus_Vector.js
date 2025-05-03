@@ -238,10 +238,37 @@ function randColor() {
     return Math.floor(Math.random() * 255);
 }
 
+// Cache commonly used values and colors
+var cachedColors = [];
+var colorUpdateInterval = 10;
+var frameCount = 0;
+
+// Pre-generate some colors to avoid constant randomization
+function initColorCache() {
+    'use strict';
+    for (var i = 0; i < 20; i++) {
+        cachedColors.push("rgb(" + randColor() + "," + randColor() + "," + randColor() + ")");
+    }
+}
+
+function getRandomCachedColor() {
+    'use strict';
+    return cachedColors[Math.floor(Math.random() * cachedColors.length)];
+}
+
+// Replace the original randRGB function with cached version
 function randRGB() {
     'use strict';
-    return ("rgb(" + randColor() + "," + randColor() + "," + randColor() + ")");
+    // Update colors periodically instead of every frame
+    if (frameCount % colorUpdateInterval === 0) {
+        var index = Math.floor(Math.random() * cachedColors.length);
+        cachedColors[index] = "rgb(" + randColor() + "," + randColor() + "," + randColor() + ")";
+    }
+    return getRandomCachedColor();
 }
+
+// Call this at startup
+initColorCache();
 
 function Creature(x, y, size) {
     'use strict';
@@ -370,19 +397,33 @@ var dust = {
 	y: 0
 };
 
+// Improved collision detection functions
+function isColliding(x1, y1, width1, height1, x2, y2, width2, height2) {
+    'use strict';
+    return x1 < x2 + width2 && 
+           x1 + width1 > x2 && 
+           y1 < y2 + height2 && 
+           y1 + height1 > y2;
+}
+
+// Optimize drawHero function with better collision detection
 function drawHero() {
     'use strict';
-	for (i = 0; i <= dust.xList.length; i += 1) {
-        if (dust.xList[i] + dust.width > hero.leftX && dust.xList[i] < hero.rightX &&
-                dust.yList[i] > hero.tipY && dust.yList[i] < hero.leftY) {
+    // Use iterators correctly to avoid out-of-bounds
+    for (i = 0; i < dust.xList.length; i += 1) {
+        if (isColliding(dust.xList[i], dust.yList[i], dust.width, dust.height,
+                       hero.leftX, hero.tipY, hero.width, hero.height)) {
             dust.xList.splice(i, 1);
             dust.yList.splice(i, 1);
             destDust += 1;
             deadHero = true;
+            // Important: adjust loop counter when removing element
+            i -= 1;
         }
     }
-    hero.leftX = hero.tipX - 10;
-    hero.rightX = hero.tipX + 10;
+    
+    hero.leftX = hero.tipX - hero.width/2;
+    hero.rightX = hero.tipX + hero.width/2;
     ctx.beginPath();
     ctx.moveTo(hero.tipX, hero.tipY);
     ctx.lineTo(hero.rightX, hero.rightY);
@@ -445,54 +486,130 @@ var magWave = {
     endAngle: 2 * Math.PI
 };
 
-//generate xy lists for stardust
+// Create a dust object pool similar to bullets
+var dustPool = {
+    pool: [],
+    maxSize: 40,
+    
+    init: function() {
+        'use strict';
+        for (var i = 0; i < this.maxSize; i++) {
+            this.pool.push({
+                x: 0,
+                y: 0
+            });
+        }
+    },
+    
+    get: function(x, y) {
+        'use strict';
+        if (this.pool.length > 0) {
+            var dustParticle = this.pool.pop();
+            dustParticle.x = x;
+            dustParticle.y = y;
+            return dustParticle;
+        }
+        return { x: x, y: y };
+    },
+    
+    recycle: function(dustParticle) {
+        'use strict';
+        if (this.pool.length < this.maxSize) {
+            this.pool.push(dustParticle);
+        }
+    }
+};
+
+// Initialize dust pool
+dustPool.init();
+
+// Optimized dust generation
 function genDustXY() {
     'use strict';
-    if (Math.floor(Math.random() * 50) === 1) {
-		dust.x = Math.floor(Math.random() * (canvas.width - dust.width) + 1);
-		dust.y = Math.floor(Math.random() * -canvas.height - dust.height);
-        dust.xList[dust.xList.length] = dust.x;
-        dust.yList[dust.yList.length] = dust.y;
+    // Limit max number of dust particles for performance
+    var maxDustCount = 100;
+    
+    if (dust.xList.length < maxDustCount && Math.floor(Math.random() * 50) === 1) {
+        var x = Math.floor(Math.random() * (canvas.width - dust.width) + 1);
+        var y = Math.floor(Math.random() * -canvas.height - dust.height);
+        
+        var dustParticle = dustPool.get(x, y);
+        dust.xList.push(dustParticle.x);
+        dust.yList.push(dustParticle.y);
     }
 }
-//draw stardust
+
+// Optimized dust drawing with batch rendering
 function drawDust() {
     'use strict';
-	genDustXY();
-	for (i = 0; i < dust.yList.length; i += 1) {
-	    if (dust.yList[i] >= canvas.height) {
-			dust.yList.splice(i, 1);
-			dust.xList.splice(i, 1);
-	    } else {
-            ctx.beginPath();
-            ctx.fillStyle = randRGB();
+    genDustXY();
+    
+    // Use a single color for all dust particles in each frame
+    // to reduce style changes which are costly
+    ctx.fillStyle = randRGB();
+    
+    for (i = 0; i < dust.yList.length; i += 1) {
+        if (dust.yList[i] >= canvas.height) {
+            // Recycle dust particles that go off screen
+            var recycledX = dust.xList.splice(i, 1)[0];
+            var recycledY = dust.yList.splice(i, 1)[0];
+            dustPool.recycle({x: recycledX, y: recycledY});
+            i -= 1;
+        } else {
+            // Begin batch rendering - don't change styles between draws
             ctx.fillRect(dust.xList[i], dust.yList[i], dust.width, dust.height);
-	    }
-	}
+        }
+    }
 }
+
+// Optimize star creation and rendering
+var starMaxCount = 150; // Fewer stars for better performance
 
 function genStarXY() {
     'use strict';
-    if (Math.floor(Math.random() * 3) === 1) {
-		star.x = Math.floor(Math.random() * -canvas.width) +
+    // Only generate stars if we're below the limit
+    if (star.xList.length < starMaxCount && Math.floor(Math.random() * 3) === 1) {
+        star.x = Math.floor(Math.random() * -canvas.width) +
             Math.floor(Math.random() * canvas.width * 2);
-		star.y = Math.floor(Math.random() * -canvas.height) +
+        star.y = Math.floor(Math.random() * -canvas.height) +
             Math.floor(Math.random() * canvas.height);
-		star.xList[star.xList.length] = star.x;
-		star.yList[star.yList.length] = star.y;
+        star.xList.push(star.x);
+        star.yList.push(star.y);
     }
 }
 
+// Create a star size cache to avoid recalculating for each star
+var starSizes = [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
+var starSizeCache = {};
+
+// Precompute font settings for each star size
+function initStarSizeCache() {
+    'use strict';
+    for (var i = 0; i < starSizes.length; i++) {
+        starSizeCache[starSizes[i]] = starSizes[i] + "px Courier";
+    }
+}
+
+// Call this at startup
+initStarSizeCache();
+
 function drawStars() {
     'use strict';
-    if (star.xList.length < 300) {
+    if (star.xList.length < starMaxCount) {
         genStarXY();
     }
+    
+    // Batch rendering for stars
+    ctx.textAlign = "center";
+    
     for (i = 0; i < star.yList.length; i += 1) {
-        star.size = Math.floor(Math.random() * 12 + 5);
-        ctx.font = star.size + "px Courier";
+        // Use a predefined set of sizes instead of random generation each time
+        var sizeIndex = Math.floor(Math.random() * starSizes.length);
+        star.size = starSizes[sizeIndex];
+        
+        // Use cached font string
+        ctx.font = starSizeCache[star.size];
         ctx.fillStyle = randRGB();
-        ctx.textAlign = "center";
         ctx.fillText("*", star.xList[i], star.yList[i] + star.size / 2);
     }
 }
@@ -563,10 +680,45 @@ function drawGameOver() {
     ctx.fillText("\u2620", canvas.width / 2, canvas.height / 2);
 }
 
+// Object pool implementation for bullets
+var bulletPool = {
+    pool: [],
+    maxSize: 30,
+    
+    init: function() {
+        'use strict';
+        for (var i = 0; i < this.maxSize; i++) {
+            this.pool.push(new Bullet(2, 16, 0, 0));
+        }
+    },
+    
+    get: function(x, y) {
+        'use strict';
+        if (this.pool.length > 0) {
+            var bullet = this.pool.pop();
+            bullet.x = x;
+            bullet.y = y;
+            return bullet;
+        }
+        return new Bullet(2, 16, x, y); // Fallback if pool is empty
+    },
+    
+    recycle: function(bullet) {
+        'use strict';
+        if (this.pool.length < this.maxSize) {
+            this.pool.push(bullet);
+        }
+    }
+};
+
+// Initialize the object pool
+bulletPool.init();
+
+// Updated bullet functions to use object pooling
 function drawBullets() {
     'use strict';
     if (Math.floor(Math.random() * 10) === 3 && badguy.tipY > 0) {
-        bulletList[bulletList.length] = new Bullet(2, 16, badguy.tipX - 1, badguy.tipY - 9);
+        bulletList.push(bulletPool.get(badguy.tipX - 1, badguy.tipY - 9));
     }
     for (i = 0; i < bulletList.length; i += 1) {
         if (bulletList[i].y < canvas.height) {
@@ -575,11 +727,14 @@ function drawBullets() {
             ctx.rect(bulletList[i].x, bulletList[i].y, bulletList[i].width, bulletList[i].height);
             ctx.fillStyle = randRGB();
             ctx.fill();
+        } else {
+            // Recycle bullets that are off-screen
+            var bullet = bulletList.splice(i, 1)[0];
+            bulletPool.recycle(bullet);
+            i -= 1;
         }
     }
 }
-
-var timer = 0;
 
 function drawHeroBullets() {
     'use strict';
@@ -590,16 +745,20 @@ function drawHeroBullets() {
         }
     } else {
         if (evt.space || evt.rightTouch) {
-            heroBulletList[heroBulletList.length] = new Bullet(2, 16, hero.tipX - 1, hero.tipY);
+            heroBulletList.push(bulletPool.get(hero.tipX - 1, hero.tipY));
             timer = 0;
             wait = true;
         }
     }
+    
     for (i = 0; i < heroBulletList.length; i += 1) {
         if (heroBulletList[i].y < 1) {
-            heroBulletList.splice(i, 1);
-            break;
+            var recycledBullet = heroBulletList.splice(i, 1)[0];
+            bulletPool.recycle(recycledBullet);
+            i -= 1;
+            continue;
         }
+        
         if (heroBulletList[i].y > 0) {
             heroBulletList[i].y -= 20;
             ctx.beginPath();
@@ -607,20 +766,26 @@ function drawHeroBullets() {
             ctx.fillStyle = randRGB();
             ctx.fill();
         }
+        
+        // Check for bullet collision with dust
         for (j = 0; j < dust.xList.length; j += 1) {
-            if (heroBulletList[i].x + heroBulletList[i].width >= dust.xList[j] &&
-                    heroBulletList[i].x <= dust.xList[j] + dust.width &&
-                    heroBulletList[i].y <= dust.yList[j] + dust.height &&
-                    heroBulletList[i].y + heroBulletList[i].height >= dust.yList[j]) {
+            if (isColliding(heroBulletList[i].x, heroBulletList[i].y, 
+                           heroBulletList[i].width, heroBulletList[i].height,
+                           dust.xList[j], dust.yList[j], dust.width, dust.height)) {
                 destDust += 1;
                 dust.yList.splice(j, 1);
                 dust.xList.splice(j, 1);
-                heroBulletList.splice(i, 1);
+                
+                var bulletToRecycle = heroBulletList.splice(i, 1)[0];
+                bulletPool.recycle(bulletToRecycle);
+                i -= 1;
                 break;
             }
         }
     }
 }
+
+var timer = 0;
 
 function moveHeroRight() {
     'use strict';
@@ -851,20 +1016,67 @@ function moveStuff() {
     }
 }
 
+// Original resizeCanvas function remains with added mwRange recalculation
 function resizeCanvas() {
     'use strict';
     canvas = document.getElementById("myCanvas");
     canvas.width = document.body.clientWidth;
     canvas.height = document.body.clientHeight;
     ctx = canvas.getContext("2d");
+    
+    // Update range calculation on resize
+    mwRange = (canvas.width * canvas.height) * 0.0004;
 }
 
 window.addEventListener('resize', resizeCanvas, false);
 window.addEventListener('orientationchange', resizeCanvas, false);
     
-function drawGame() {
+// Add performance monitoring and FPS counter
+var fpsCounter = {
+    frameCount: 0,
+    lastTime: 0,
+    fps: 0,
+    
+    update: function(now) {
+        'use strict';
+        // Update every second
+        if (!this.lastTime) { 
+            this.lastTime = now;
+            return;
+        }
+        
+        this.frameCount++;
+        
+        // If a second has passed
+        if (now - this.lastTime >= 1000) {
+            this.fps = this.frameCount;
+            this.frameCount = 0;
+            this.lastTime = now;
+        }
+    },
+    
+    draw: function() {
+        'use strict';
+        if (this.fps > 0) {
+            ctx.font = "14px Consolas";
+            ctx.fillStyle = "#FFF";
+            ctx.textAlign = "start";
+            ctx.fillText("FPS: " + this.fps, 10, 20);
+        }
+    }
+};
+
+// Update main game loop to include FPS counter
+function drawGame(timestamp) {
     'use strict';
     var xdist, ydist;
+    
+    // Update FPS counter
+    fpsCounter.update(timestamp);
+    
+    // Increment frame counter for color rotation and other timing
+    frameCount++;
+    
     if (start) {
         if (!gamePaused) {
             if (!deadHero) {
@@ -873,20 +1085,24 @@ function drawGame() {
                     ctx.clearRect(0, 0, canvas.width, canvas.height);
                     drawStars();
                     drawRooms();
-                    if (roomList[0].y >= canvas.height) {
+                    if (roomList.length > 0 && roomList[0].y >= canvas.height) {
                         roomList.splice(0, roomList.length);
                         generateRooms();
                         drawRooms();
                     }
                     drawRats();
                     
-                    for (i = 0; i < roomList.length; i += 1) {
+                    // Batch operations for better performance
+                    var roomLength = roomList.length;
+                    for (i = 0; i < roomLength; i += 1) {
                         roomList[i].y += 0.5;
                     }
                     
-                    for (i = 0; i < ratList.length; i += 1) {
+                    var ratLength = ratList.length;
+                    for (i = 0; i < ratLength; i += 1) {
                         ratList[i].y += 0.5;
                     }
+                    
                     drawDock();
                     drawDust();
                     drawHero();
@@ -894,92 +1110,125 @@ function drawGame() {
                     drawScore();
                     moveStuff();
 
+                    // Use isColliding for docking detection
                     for (i = 0; i < roomList.length; i += 1) {
-                        if (hero.tipY <= roomList[i].y + (roomList[i].height / 2) + 15 &&
-                                hero.leftY >= roomList[i].y + (roomList[i].height / 2) - 15 &&
-                                hero.rightX >= roomList[i].x + (roomList[i].width / 2) - 15 &&
-                                hero.leftX <= roomList[i].x + (roomList[i].width / 2) + 15) {
+                        if (isColliding(
+                            hero.tipX - 5, hero.tipY - 5, 10, 10,
+                            roomList[i].x + (roomList[i].width / 2) - 15,
+                            roomList[i].y + (roomList[i].height / 2) - 15,
+                            30, 30)) {
                             ctx.fillText("Docking...", hero.tipX, hero.tipY);
                             docking = true;
                             man[1] = hero.tipX;
                             man[2] = hero.tipY;
-                        }
-                    }
-                    for (i = 0; i < heroBulletList.length; i += 1) {
-                        if (heroBulletList[i].x >= badguy.leftX &&
-                                heroBulletList[i].x <= badguy.rightX && badguy.tipY > 0 &&
-                                heroBulletList[i].y >= badguy.leftY && heroBulletList[i].y <= badguy.tipY) {
-                            shotDrones += 1;
-                            badguy = new Ship("down", 20, 40, Math.floor(Math.random() * canvas.width),
-                                              Math.floor(Math.random() * -canvas.height));
-                            heroBulletList.splice(i, 1);
                             break;
                         }
                     }
+                    
+                    // Use improved collision detection for hero bullets hitting badguy
+                    for (i = 0; i < heroBulletList.length; i += 1) {
+                        if (isColliding(
+                            heroBulletList[i].x, heroBulletList[i].y,
+                            heroBulletList[i].width, heroBulletList[i].height,
+                            badguy.leftX, badguy.leftY,
+                            badguy.width, badguy.tipY - badguy.leftY) && badguy.tipY > 0) {
+                            shotDrones += 1;
+                            badguy = new Ship("down", 20, 40, Math.floor(Math.random() * canvas.width),
+                                            Math.floor(Math.random() * -canvas.height));
+                            var recycledHeroBullet = heroBulletList.splice(i, 1)[0];
+                            bulletPool.recycle(recycledHeroBullet);
+                            i -= 1;
+                            break;
+                        }
+                    }
+                    
                     drawEnemy();
                     drawBullets();
-                    //check if enemy shot hero & if hero is dead
+                    
+                    // Improved collision detection for bullets hitting hero
                     for (i = 0; i < bulletList.length; i += 1) {
-                        if (bulletList[i].x > hero.leftX && bulletList[i].x < hero.rightX &&
-                                bulletList[i].y > hero.tipY && bulletList[i].y < hero.tipY + hero.height) {
-                            bulletList.splice(i, 1);
+                        if (isColliding(
+                            bulletList[i].x, bulletList[i].y,
+                            bulletList[i].width, bulletList[i].height,
+                            hero.leftX, hero.tipY,
+                            hero.width, hero.height)) {
+                            var recycledEnemyBullet = bulletList.splice(i, 1)[0];
+                            bulletPool.recycle(recycledEnemyBullet);
+                            i -= 1;
                             deadHero = true;
                         }
                     }
 
-                    //check if enemy shot stardust
+                    // Improved double-loop collision detection for bullets and dust
                     for (i = 0; i < bulletList.length; i += 1) {
                         for (j = 0; j < dust.xList.length; j += 1) {
-                            if (bulletList[i].x + bulletList[i].width > dust.xList[j] &&
-                                    bulletList[i].x < dust.xList[j] + dust.width &&
-                                    bulletList[i].y + bulletList[i].height > dust.yList[j] &&
-                                    bulletList[i].y < dust.yList[j] + dust.height) {
-                                bulletList.splice(i, 1);
+                            if (isColliding(
+                                bulletList[i].x, bulletList[i].y,
+                                bulletList[i].width, bulletList[i].height,
+                                dust.xList[j], dust.yList[j],
+                                dust.width, dust.height)) {
+                                var recycledBullet = bulletList.splice(i, 1)[0];
+                                bulletPool.recycle(recycledBullet);
                                 dust.xList.splice(j, 1);
                                 dust.yList.splice(j, 1);
                                 destDust += 1;
-                                if (i >= bulletList.length) {
-                                    break;
-                                }
-                            }
-                        }
-                    }
-
-                    //descending stars, spliced if pass canvas bottom
-                    for (i = 0; i < star.xList.length; i += 1) {
-                        if (star.yList[i] < canvas.height * 2) {
-                            star.yList[i] += 1;
-                        } else {
-                            star.yList.splice(i, 1);
-                            star.xList.splice(i, 1);
-                        }
-                    }
-
-                    for (i = 0; i < dust.xList.length; i += 1) {
-                        if (badguy.rightX >= dust.xList[i] &&
-                                   badguy.leftX <= dust.xList[i] + dust.width &&
-                                   badguy.tipY >= dust.yList[i] &&
-                                   badguy.leftY <= dust.yList[i] + dust.height) {
-                            dust.xList.splice(i, 1);
-                            dust.yList.splice(i, 1);
-                            destDust += 1;
-                            if (i >= dust.xList.length) {
+                                i -= 1;
                                 break;
                             }
                         }
                     }
 
-                    if (badguy.tipY > hero.tipY && badguy.leftY < hero.tipY + hero.height &&
-                            badguy.rightX > hero.leftX && badguy.leftX < hero.rightX) {
-                        deadHero = true;
-                    }
-                    //descending enemy bullets, spliced if pass canvas bottom
-                    for (i = 0; i < bulletList.length; i += 1) {
-                        if (bulletList[i].y > canvas.height) {
-                            bulletList.splice(i, 1);
+                    // Process stars with optimized loop
+                    var starLength = star.xList.length;
+                    for (i = 0; i < starLength; i += 1) {
+                        if (star.yList[i] < canvas.height * 2) {
+                            star.yList[i] += 1;
+                        } else {
+                            star.yList.splice(i, 1);
+                            star.xList.splice(i, 1);
+                            i -= 1;
+                            starLength -= 1;
                         }
                     }
-                } else {
+
+                    // Use isColliding for badguy-dust collision
+                    var dustLength = dust.xList.length;
+                    for (i = 0; i < dustLength; i += 1) {
+                        if (isColliding(
+                            dust.xList[i], dust.yList[i],
+                            dust.width, dust.height,
+                            badguy.leftX, badguy.leftY,
+                            badguy.width, badguy.tipY - badguy.leftY)) {
+                            dust.xList.splice(i, 1);
+                            dust.yList.splice(i, 1);
+                            destDust += 1;
+                            i -= 1;
+                            dustLength -= 1;
+                        }
+                    }
+
+                    // Use isColliding for badguy-hero collision
+                    if (isColliding(
+                        badguy.leftX, badguy.leftY,
+                        badguy.width, badguy.tipY - badguy.leftY,
+                        hero.leftX, hero.tipY,
+                        hero.width, hero.height)) {
+                        deadHero = true;
+                    }
+                    
+                    // More efficient bullet recycling
+                    var bulletCount = bulletList.length;
+                    for (i = 0; i < bulletCount; i += 1) {
+                        if (bulletList[i].y > canvas.height) {
+                            var outOfBoundsBullet = bulletList.splice(i, 1)[0];
+                            bulletPool.recycle(outOfBoundsBullet);
+                            i -= 1;
+                            bulletCount -= 1;
+                        }
+                    }
+                }
+                // The rest of the docking case remains the same
+                else {
                     badguy = new Ship("down", 20, 40, Math.floor(Math.random() * canvas.width), 0);
                     bulletList.splice(0, bulletList.length);
                     heroBulletList.splice(0, heroBulletList.length);
@@ -1075,12 +1324,20 @@ function drawGame() {
                     shotDrones = 0;
                     destDust = 0;
                     badguy = new Ship("down", 20, 40, Math.floor(Math.random() * canvas.width), 0);
-                    bulletList.splice(0, bulletList.length);
-                    heroBulletList.splice(0, heroBulletList.length);
-                    dust.xList.splice(0, dust.xList.length);
-                    dust.yList.splice(0, dust.yList.length);
-                    roomList.splice(0, roomList.length);
-                    ratList.splice(0, ratList.length);
+                    
+                    // Properly recycle all objects
+                    while (bulletList.length > 0) {
+                        bulletPool.recycle(bulletList.pop());
+                    }
+                    
+                    while (heroBulletList.length > 0) {
+                        bulletPool.recycle(heroBulletList.pop());
+                    }
+                    
+                    dust.xList = [];
+                    dust.yList = [];
+                    roomList = [];
+                    ratList = [];
                     deadHero = false;
                     unDeadHero = false;
                     generateRooms();
@@ -1101,6 +1358,24 @@ function drawGame() {
         drawStars();
         startScreen();
     }
+    
     window.requestAnimationFrame(drawGame);
 }
-drawGame();
+
+// Set initial game state - call object pool initialization before starting game
+function initGame() {
+    'use strict';
+    // Initialize all caches
+    initColorCache();
+    initStarSizeCache();
+    
+    // Initialize all object pools
+    bulletPool.init();
+    dustPool.init();
+    
+    // Start the game loop
+    window.requestAnimationFrame(drawGame);
+}
+
+// Replace direct drawGame() call with initGame()
+initGame();
