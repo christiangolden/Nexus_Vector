@@ -224,21 +224,34 @@ const DustSystem = (function() {
     }
     
     /**
-     * Check if enemy ship is colliding with dust
+     * Check if enemy ships are colliding with dust
      */
     function checkEnemyCollisions() {
-        for (let i = 0; i < dust.xList.length; i++) {
-            if (CollisionSystem.isColliding(
-                dust.xList[i], dust.yList[i],
-                dust.width, dust.height,
-                ShipSystem.badguy.leftX, ShipSystem.badguy.leftY,
-                ShipSystem.badguy.width, ShipSystem.badguy.tipY - ShipSystem.badguy.leftY
-            )) {
-                dust.xList.splice(i, 1);
-                dust.yList.splice(i, 1);
-                Game.incrementDestDust();
-                i--;
+        const enemies = ShipSystem.activeEnemies;
+        
+        for (let i = dust.xList.length - 1; i >= 0; i--) {
+            let hit = false;
+            
+            // Loop through all active enemy ships
+            for (let j = enemies.length - 1; j >= 0; j--) {
+                const enemy = enemies[j].ship;
+                
+                if (CollisionSystem.isColliding(
+                    dust.xList[i], dust.yList[i],
+                    dust.width, dust.height,
+                    enemy.leftX, enemy.leftY,
+                    enemy.width, enemy.tipY - enemy.leftY
+                )) {
+                    // Remove the dust particle
+                    dust.xList.splice(i, 1);
+                    dust.yList.splice(i, 1);
+                    Game.incrementDestDust();
+                    hit = true;
+                    break; // Exit the enemy loop since this dust particle is gone
+                }
             }
+            
+            if (hit) break; // Exit the dust loop if a hit was found
         }
     }
     

@@ -24,20 +24,22 @@
     <script src="js/utils/collision.js"></script>
     <script src="js/utils/performance.js"></script>
     
-    <!-- Core modules -->
+    <!-- Core modules (Input, Docking, Movement - less likely to depend on entities) -->
     <script src="js/core/input.js"></script>
-    <script src="js/core/game.js"></script>
     <script src="js/core/docking.js"></script>
     <script src="js/core/movement.js"></script>
     
-    <!-- Entity modules -->
+    <!-- Entity modules (These define the systems) -->
     <script src="js/entities/star.js"></script>
     <script src="js/entities/ship.js"></script>
     <script src="js/entities/bullet.js"></script>
     <script src="js/entities/room.js"></script>
     <script src="js/entities/dust.js"></script>
+
+    <!-- Game Core (Depends on Utils and Entities) -->
+    <script src="js/core/game.js"></script>
     
-    <!-- Main entry point -->
+    <!-- Main entry point (Initializes the game) -->
     <script src="js/main.js"></script>
 </body>
 </html>

@@ -184,12 +184,16 @@ const Game = (function() {
         
         // Check docking
         RoomSystem.checkDocking();
+
+        // Update and draw enemies
+        ShipSystem.updateEnemies(); // Updates position, shooting, and spawning
+        ShipSystem.drawEnemies(ctx); // Draws all active enemies
         
-        // Check hero bullets hitting enemy
-        BulletSystem.checkHeroHits();
+        // Update and draw bullets (enemy bullets are now spawned in ShipSystem.updateEnemies)
+        BulletSystem.updateBullets(ctx); // Renamed from drawBullets, handles movement/drawing
         
-        ShipSystem.drawEnemy(ctx);
-        BulletSystem.drawBullets(ctx);
+        // Check hero bullets hitting enemies
+        BulletSystem.checkHeroHits(); // Needs update to check against activeEnemies
         
         // Check enemy bullets hitting hero
         BulletSystem.checkEnemyHits();
@@ -201,16 +205,10 @@ const Game = (function() {
         StarSystem.updateStars();
         
         // Check enemy-dust collisions
-        DustSystem.checkEnemyCollisions();
+        DustSystem.checkEnemyCollisions(); // Needs update to check against activeEnemies
         
-        // Check enemy-hero collision
-        if (CollisionSystem.isColliding(
-            ShipSystem.badguy.leftX, ShipSystem.badguy.leftY,
-            ShipSystem.badguy.width, ShipSystem.badguy.tipY - ShipSystem.badguy.leftY,
-            ShipSystem.hero.leftX, ShipSystem.hero.tipY,
-            ShipSystem.hero.width, ShipSystem.hero.height)) {
-            deadHero = true;
-        }
+        // Check enemy-hero collision (Needs update to check against activeEnemies)
+        ShipSystem.checkHeroCollisions(); // New function needed in ShipSystem
         
         // Clean up bullets that are off screen
         BulletSystem.cleanupBullets();
@@ -259,9 +257,13 @@ const Game = (function() {
         if (InputSystem.isEnterPressed() || unDeadHero) {
             resetGame();
         }
+        // Draw relevant elements for game over screen
         ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ParallaxSystem.draw(ctx); // Keep background
         StarSystem.drawStars(ctx);
-        drawGameOver();
+        // RoomSystem.drawRooms(ctx); // Optional: show rooms where player died
+        drawGameOver(); // Draws the skull icon
+        // Optionally draw final score here too
     }
     
     // Reset the game state
@@ -269,7 +271,7 @@ const Game = (function() {
         score = 0;
         shotDrones = 0;
         destDust = 0;
-        ShipSystem.resetEnemy();
+        ShipSystem.resetEnemy(); // Resets all enemies
         
         // Recycle all objects
         BulletSystem.clearAllBullets();
@@ -280,6 +282,8 @@ const Game = (function() {
         unDeadHero = false;
         RoomSystem.generateRooms();
         resetPlayerStats();
+        // Reset difficulty scaling in ShipSystem if needed, or rely on level reset
+        // ShipSystem.resetDifficulty(); // Example if needed
     }
     
     // Canvas resize handler
@@ -371,6 +375,7 @@ const Game = (function() {
         getScore: function() { return score; },
         getFrameCount: function() { return frameCount; },
         getSpeed: function() { return speed; },
-        gainXP: gainXP
+        gainXP: gainXP,
+        get level() { return level; } // Expose level for ShipSystem
     };
 })();

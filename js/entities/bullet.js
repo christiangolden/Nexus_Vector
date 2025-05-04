@@ -116,28 +116,31 @@ const BulletSystem = (function() {
     }
     
     /**
-     * Draw enemy bullets
+     * Updates and draws enemy bullets. Renamed from drawBullets.
      * @param {CanvasRenderingContext2D} ctx - Canvas rendering context
      */
-    function drawBullets(ctx) {
-        // Random chance to fire a bullet
-        if (Math.floor(Math.random() * 10) === 3 && ShipSystem.badguy.tipY > 0) {
-            bulletList.push(bulletPool.get(ShipSystem.badguy.tipX - 1, ShipSystem.badguy.tipY - 9));
-        }
+    function updateBullets(ctx) {
+        // No longer randomly fires bullets here; ShipSystem handles enemy firing.
         
-        // Update and draw bullets
-        for (let i = 0; i < bulletList.length; i++) {
-            if (bulletList[i].y < Game.getCanvas().height) {
-                bulletList[i].y += 10;
-                ctx.beginPath();
-                ctx.rect(bulletList[i].x, bulletList[i].y, bulletList[i].width, bulletList[i].height);
-                ctx.fillStyle = ColorUtils.randRGB();
-                ctx.fill();
-            } else {
+        // Update and draw enemy bullets
+        for (let i = bulletList.length - 1; i >= 0; i--) {
+            const bullet = bulletList[i];
+            
+            // Move bullet based on its velocity
+            bullet.x += bullet.dx;
+            bullet.y += bullet.dy;
+
+            // Check if bullet is off-screen (top, bottom, left, right)
+            if (bullet.y < 0 || bullet.y > Game.getCanvas().height || bullet.x < 0 || bullet.x > Game.getCanvas().width) {
                 // Recycle bullets that are off-screen
-                const bullet = bulletList.splice(i, 1)[0];
+                bulletList.splice(i, 1);
                 bulletPool.recycle(bullet);
-                i--;
+            } else {
+                // Draw the bullet
+                ctx.beginPath();
+                ctx.rect(bullet.x, bullet.y, bullet.width, bullet.height);
+                ctx.fillStyle = ColorUtils.randRGB(); // Keep flashy colors for now
+                ctx.fill();
             }
         }
     }
@@ -208,25 +211,42 @@ const BulletSystem = (function() {
     }
     
     /**
-     * Check if hero bullets hit enemy ship
+     * Check if hero bullets hit any enemy ship.
      */
     function checkHeroHits() {
-        for (let i = 0; i < heroBulletList.length; i++) {
-            if (CollisionSystem.isColliding(
-                heroBulletList[i].x, heroBulletList[i].y,
-                heroBulletList[i].width, heroBulletList[i].height,
-                ShipSystem.badguy.leftX, ShipSystem.badguy.leftY,
-                ShipSystem.badguy.width, ShipSystem.badguy.tipY - ShipSystem.badguy.leftY
-            ) && ShipSystem.badguy.tipY > 0) {
-                Game.incrementShotDrones();
-                Game.gainXP(10);
-                ShipSystem.resetEnemy();
-                
-                const recycledBullet = heroBulletList.splice(i, 1)[0];
-                bulletPool.recycle(recycledBullet);
-                i--;
-                break;
+        const enemies = ShipSystem.activeEnemies; // Get the list of active enemies
+
+        for (let i = heroBulletList.length - 1; i >= 0; i--) {
+            const bullet = heroBulletList[i];
+            let hit = false; // Flag to check if bullet hit any enemy
+
+            // Loop through active enemies
+            for (let j = enemies.length - 1; j >= 0; j--) {
+                const enemy = enemies[j].ship; // Get the ship object from the enemy entry
+
+                // Check collision using enemy's bounding box
+                if (CollisionSystem.isColliding(
+                    bullet.x, bullet.y,
+                    bullet.width, bullet.height,
+                    enemy.leftX, enemy.leftY, 
+                    enemy.width, enemy.tipY - enemy.leftY 
+                )) {
+                    Game.incrementShotDrones();
+                    Game.gainXP(10); // Grant XP for destroying an enemy
+                    
+                    // Remove the enemy ship
+                    enemies.splice(j, 1); 
+                    
+                    // Remove and recycle the hero bullet
+                    heroBulletList.splice(i, 1);
+                    bulletPool.recycle(bullet);
+
+                    hit = true;
+                    break; // Exit inner loop, bullet is gone
+                }
             }
+            // If bullet hit an enemy, continue to the next bullet (outer loop)
+            if (hit) continue; 
         }
     }
     
@@ -315,7 +335,7 @@ const BulletSystem = (function() {
     // Public API
     return {
         init: init,
-        drawBullets: drawBullets,
+        updateBullets: updateBullets, // Use this now for enemy bullets
         drawHeroBullets: drawHeroBullets,
         checkHeroHits: checkHeroHits,
         checkEnemyHits: checkEnemyHits,
@@ -323,12 +343,10 @@ const BulletSystem = (function() {
         cleanupBullets: cleanupBullets,
         moveBulletsX: moveBulletsX,
         clearAllBullets: clearAllBullets,
-        getBulletPool: function() { return bulletPool; },
-        getBulletList: function() { return bulletList; },
-        getHeroBulletList: function() { return heroBulletList; },
-        getBulletCount: getBulletCount,
-        incrementBulletCount: incrementBulletCount,
-        decrementBulletCount: decrementBulletCount,
-        spawnBullet: spawnBullet
+        spawnBullet: spawnBullet, // Expose spawnBullet
+        // Expose bullet count functions if needed by Game or UI
+        getBulletCount: getBulletCount, 
+        incrementBulletCount: incrementBulletCount, 
+        decrementBulletCount: decrementBulletCount 
     };
 })();
