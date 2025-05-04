@@ -20,6 +20,77 @@ const Game = (function() {
     let score = 0;
     let frameCount = 0;
     
+    // Add XP and leveling system
+    let xp = 0;
+    let level = 1;
+
+    // Fix XP counter to prevent negative values
+    function gainXP(amount, isStardust = false) {
+        xp += amount;
+        if (isStardust) {
+            BulletSystem.incrementBulletCount(10); // Add 10 bullets per stardust
+        }
+        while (xp >= level * 100) { // Level up every 100 XP
+            xp -= level * 100;
+            level++;
+            increaseEnemyDifficulty();
+        }
+    }
+
+    function increaseEnemyDifficulty() {
+        ShipSystem.increaseEnemySpeed(1); // Increase enemy speed
+        ShipSystem.decreaseEnemySpawnCooldown(10); // Decrease spawn cooldown
+    }
+
+    // Reset player's stats upon death
+    function resetPlayerStats() {
+        xp = 0;
+        level = 1;
+        BulletSystem.clearAllBullets();
+        BulletSystem.incrementBulletCount(-BulletSystem.getBulletCount()); // Reset bullet count to 0
+    }
+
+    // Add parallax background system
+    const ParallaxSystem = {
+        layers: [
+            { stars: [], speed: 0.5, color: "#555" },
+            { stars: [], speed: 1, color: "#888" },
+            { stars: [], speed: 1.5, color: "#FFF" }
+        ],
+
+        init: function() {
+            this.layers.forEach(layer => {
+                for (let i = 0; i < 100; i++) {
+                    layer.stars.push({
+                        x: Math.random() * canvas.width,
+                        y: Math.random() * canvas.height,
+                        size: Math.random() * 2 + 1
+                    });
+                }
+            });
+        },
+
+        draw: function(ctx) {
+            this.layers.forEach(layer => {
+                ctx.fillStyle = layer.color;
+                layer.stars.forEach(star => {
+                    ctx.beginPath();
+                    ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    // Move stars downward
+                    star.y += layer.speed;
+
+                    // Reset stars that move off-screen
+                    if (star.y > canvas.height) {
+                        star.y = 0;
+                        star.x = Math.random() * canvas.width;
+                    }
+                });
+            });
+        }
+    };
+
     // Initialize the game
     function init() {
         canvas = document.getElementById("gameCanvas");
@@ -34,6 +105,7 @@ const Game = (function() {
         ShipSystem.init();
         BulletSystem.init();
         DustSystem.init();
+        ParallaxSystem.init();
         
         // Set up event listeners
         window.addEventListener('resize', resizeCanvas, false);
@@ -57,6 +129,7 @@ const Game = (function() {
                     if (!DockingSystem.isDocking()) {
                         // Game active state
                         ctx.clearRect(0, 0, canvas.width, canvas.height);
+                        ParallaxSystem.draw(ctx); // Draw parallax background
                         updateActiveGame();
                     } else {
                         // Docked state
@@ -69,6 +142,7 @@ const Game = (function() {
             } else {
                 // Paused state
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ParallaxSystem.draw(ctx); // Draw parallax background
                 StarSystem.drawStars(ctx);
                 RoomSystem.drawRooms(ctx);
                 drawHelps();
@@ -76,6 +150,7 @@ const Game = (function() {
         } else {
             // Start screen
             ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ParallaxSystem.draw(ctx); // Draw parallax background
             StarSystem.drawStars(ctx);
             drawStartScreen();
         }
@@ -85,6 +160,7 @@ const Game = (function() {
     
     // Update game when in active play state
     function updateActiveGame() {
+        ParallaxSystem.draw(ctx);
         StarSystem.drawStars(ctx);
         RoomSystem.drawRooms(ctx);
         
@@ -203,6 +279,7 @@ const Game = (function() {
         deadHero = false;
         unDeadHero = false;
         RoomSystem.generateRooms();
+        resetPlayerStats();
     }
     
     // Canvas resize handler
@@ -230,7 +307,7 @@ const Game = (function() {
         }
     }
     
-    // Draw the score display
+    // Update drawScore to include player's level and remove radar
     function drawScore() {
         ctx.textAlign = "end";
         ctx.fillStyle = ColorUtils.randRGB();
@@ -240,6 +317,12 @@ const Game = (function() {
         ctx.fillText("Stardust Destroyed:" + destDust, canvas.width - 12, 42);
         ctx.fillStyle = ColorUtils.randRGB();
         ctx.fillText("Drones Destroyed:" + shotDrones, canvas.width - 12, 62);
+        ctx.fillStyle = ColorUtils.randRGB();
+        ctx.fillText("Bullets Available:" + BulletSystem.getBulletCount(), canvas.width - 12, 82);
+        ctx.fillStyle = ColorUtils.randRGB();
+        ctx.fillText("XP:" + xp, canvas.width - 12, 102);
+        ctx.fillStyle = ColorUtils.randRGB();
+        ctx.fillText("Level:" + level, canvas.width - 12, 122);
     }
     
     // Draw help text in pause screen
@@ -287,6 +370,7 @@ const Game = (function() {
         incrementShotDrones: function() { shotDrones += 1; },
         getScore: function() { return score; },
         getFrameCount: function() { return frameCount; },
-        getSpeed: function() { return speed; }
+        getSpeed: function() { return speed; },
+        gainXP: gainXP
     };
 })();

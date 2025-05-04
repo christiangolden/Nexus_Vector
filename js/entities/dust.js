@@ -217,6 +217,7 @@ const DustSystem = (function() {
                 dust.xList.splice(i, 1);
                 dust.yList.splice(i, 1);
                 Game.incrementScore();
+                Game.gainXP(1, true); // Gain 1 XP and increment bullet count by 10
                 i--;
             }
         }

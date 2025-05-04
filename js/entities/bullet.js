@@ -27,6 +27,37 @@ const BulletSystem = (function() {
     let timer = 0;
     let wait = false;  // delay between hero bullets
     
+    // Limit bullets based on stardust collected
+    let maxBullets = 0;
+
+    function updateMaxBullets() {
+        maxBullets = Game.getScore() * 10; // 10 bullets per stardust
+    }
+
+    // Initialize bullet count to 0
+    let bulletCount = 0;
+
+    function getBulletCount() {
+        return bulletCount;
+    }
+
+    function incrementBulletCount(amount) {
+        bulletCount += amount;
+    }
+
+    function decrementBulletCount() {
+        if (bulletCount > 0) {
+            bulletCount--;
+        }
+    }
+
+    function spawnHeroBullet(x, y) {
+        if (bulletCount > 0) {
+            BulletSystem.spawnBullet(x, y, 0, -10, "hero");
+            decrementBulletCount();
+        }
+    }
+    
     /**
      * Bullet pool for efficient object reuse
      */
@@ -56,6 +87,22 @@ const BulletSystem = (function() {
             }
         }
     };
+    
+    /**
+     * Add spawnBullet function to handle bullet creation
+     */
+    function spawnBullet(x, y, dx, dy, type) {
+        const bullet = bulletPool.get(x, y);
+        bullet.dx = dx;
+        bullet.dy = dy;
+        bullet.type = type;
+
+        if (type === "hero") {
+            heroBulletList.push(bullet);
+        } else {
+            bulletList.push(bullet);
+        }
+    }
     
     /**
      * Initialize the bullet system
@@ -108,8 +155,9 @@ const BulletSystem = (function() {
                 wait = false;
             }
         } else {
+            // Replace direct heroBulletList.push with spawnHeroBullet
             if (InputSystem.isSpacePressed() || InputSystem.isRightTouchActive()) {
-                heroBulletList.push(bulletPool.get(ShipSystem.hero.tipX - 1, ShipSystem.hero.tipY));
+                spawnHeroBullet(ShipSystem.hero.tipX - 1, ShipSystem.hero.tipY);
                 timer = 0;
                 wait = true;
             }
@@ -171,6 +219,7 @@ const BulletSystem = (function() {
                 ShipSystem.badguy.width, ShipSystem.badguy.tipY - ShipSystem.badguy.leftY
             ) && ShipSystem.badguy.tipY > 0) {
                 Game.incrementShotDrones();
+                Game.gainXP(10);
                 ShipSystem.resetEnemy();
                 
                 const recycledBullet = heroBulletList.splice(i, 1)[0];
@@ -276,6 +325,10 @@ const BulletSystem = (function() {
         clearAllBullets: clearAllBullets,
         getBulletPool: function() { return bulletPool; },
         getBulletList: function() { return bulletList; },
-        getHeroBulletList: function() { return heroBulletList; }
+        getHeroBulletList: function() { return heroBulletList; },
+        getBulletCount: getBulletCount,
+        incrementBulletCount: incrementBulletCount,
+        decrementBulletCount: decrementBulletCount,
+        spawnBullet: spawnBullet
     };
 })();

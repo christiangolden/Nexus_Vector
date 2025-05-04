@@ -81,6 +81,40 @@ const ShipSystem = (function() {
         ctx.closePath();
     }
     
+    // Add dynamic movement patterns for the enemy
+    let enemyMovementPattern = "zigzag"; // Default movement pattern
+    let zigzagDirection = 1; // 1 for right, -1 for left
+
+    function updateEnemyMovement() {
+        const canvas = Game.getCanvas();
+
+        switch (enemyMovementPattern) {
+            case "zigzag":
+                badguy.tipX += zigzagDirection * 3; // Move horizontally
+                badguy.tipY += 5; // Move downward
+
+                // Reverse direction if hitting canvas edges
+                if (badguy.tipX <= 0 || badguy.tipX >= canvas.width) {
+                    zigzagDirection *= -1;
+                }
+                break;
+
+            case "random":
+                badguy.tipX += (Math.random() - 0.5) * 10; // Random horizontal movement
+                badguy.tipY += 5; // Move downward
+                break;
+
+            default:
+                badguy.tipY += 7; // Default downward movement
+                break;
+        }
+
+        // Reset enemy if it goes off screen
+        if (badguy.tipY > canvas.height + badguy.height) {
+            badguy = new Ship("down", 20, 40, Math.floor(Math.random() * canvas.width), 0);
+        }
+    }
+
     /**
      * Draw the enemy ship
      * @param {CanvasRenderingContext2D} ctx - Canvas rendering context
@@ -91,31 +125,13 @@ const ShipSystem = (function() {
         badguy.rightY = badguy.tipY - badguy.height;
         badguy.leftX = badguy.tipX - 10;
         badguy.rightX = badguy.tipX + 10;
-        
-        const canvas = Game.getCanvas();
-        
-        // Move enemy based on hero location
-        if (badguy.tipX > (hero.tipX + 5) && badguy.tipY < hero.tipY) {
-            badguy.leftX -= 5;
-            badguy.rightX -= 5;
-            badguy.tipX -= 5;
-            badguy.tipY += 5;
-        } else if (badguy.tipX < (hero.tipX - 5) && badguy.tipY < hero.tipY) {
-            badguy.leftX += 5;
-            badguy.rightX += 5;
-            badguy.tipX += 5;
-            badguy.tipY += 5;
-        } else if (badguy.tipY > canvas.height + badguy.height) {
-            // Reset enemy if it goes off screen
-            badguy = new Ship("down", 20, 40, Math.floor(Math.random() * canvas.width), 0);
-        } else {
-            // Normal downward movement
-            badguy.tipY += 7;
-        }
-        
+
+        // Apply dynamic movement
+        updateEnemyMovement();
+
         // Update ship width
         badguy.width = badguy.rightX - badguy.leftX;
-        
+
         // Draw enemy ship
         ctx.beginPath();
         ctx.moveTo(badguy.tipX, badguy.tipY);
@@ -194,6 +210,143 @@ const ShipSystem = (function() {
         const canvas = Game.getCanvas();
         badguy = new Ship("down", 20, 40, Math.floor(Math.random() * canvas.width), 0);
     }
+
+    // Define enemy types with movement and shooting patterns
+    const enemyTypes = [
+        {
+            type: "basic",
+            movement: "wave",
+            shootCooldown: 100,
+            bulletPattern: "straight"
+        },
+        {
+            type: "sniper",
+            movement: "linear",
+            shootCooldown: 200,
+            bulletPattern: "aimed"
+        },
+        {
+            type: "swarm",
+            movement: "zigzag",
+            shootCooldown: 150,
+            bulletPattern: "spread"
+        }
+    ];
+
+    // Array to hold active enemies
+    let activeEnemies = [];
+    let enemySpawnCooldown = 0;
+
+    function spawnEnemy() {
+        const canvas = Game.getCanvas();
+        const enemyType = enemyTypes[Math.floor(Math.random() * enemyTypes.length)];
+        const newEnemy = {
+            ...enemyType,
+            ship: new Ship("down", 20, 40, Math.random() * canvas.width, -40),
+            shootTimer: 0
+        };
+        activeEnemies.push(newEnemy);
+    }
+
+    // Add difficulty scaling for enemies
+    let enemySpeed = 5;
+    let enemySpawnCooldownReduction = 0;
+
+    function increaseEnemySpeed(amount) {
+        enemySpeed += amount;
+    }
+
+    function decreaseEnemySpawnCooldown(amount) {
+        enemySpawnCooldownReduction += amount;
+    }
+
+    function updateEnemyMovements() {
+        const canvas = Game.getCanvas();
+
+        activeEnemies.forEach((enemy, index) => {
+            const { movement, ship } = enemy;
+
+            switch (movement) {
+                case "wave":
+                    ship.tipX += Math.sin(Game.getFrameCount() / 20) * 5;
+                    ship.tipY += enemySpeed;
+                    break;
+
+                case "linear":
+                    ship.tipY += enemySpeed;
+                    break;
+
+                case "zigzag":
+                    ship.tipX += zigzagDirection * 3;
+                    ship.tipY += enemySpeed;
+                    if (ship.tipX <= 0 || ship.tipX >= canvas.width) {
+                        zigzagDirection *= -1;
+                    }
+                    break;
+            }
+
+            // Remove enemies that go off-screen
+            if (ship.tipY > canvas.height + ship.height) {
+                activeEnemies.splice(index, 1);
+                // Increment XP by 10 when an enemy is killed
+                Game.gainXP(10);
+            }
+        });
+    }
+
+    function updateEnemyShooting(ctx) {
+        activeEnemies.forEach(enemy => {
+            if (enemy.shootTimer <= 0) {
+                switch (enemy.bulletPattern) {
+                    case "straight":
+                        BulletSystem.spawnBullet(enemy.ship.tipX, enemy.ship.tipY, 0, 10, "enemy");
+                        break;
+
+                    case "aimed":
+                        const angle = Math.atan2(ShipSystem.hero.tipY - enemy.ship.tipY, ShipSystem.hero.tipX - enemy.ship.tipX);
+                        BulletSystem.spawnBullet(enemy.ship.tipX, enemy.ship.tipY, Math.cos(angle) * 10, Math.sin(angle) * 10, "enemy");
+                        break;
+
+                    case "spread":
+                        for (let i = -1; i <= 1; i++) {
+                            BulletSystem.spawnBullet(enemy.ship.tipX, enemy.ship.tipY, i * 5, 10, "enemy");
+                        }
+                        break;
+                }
+                enemy.shootTimer = enemy.shootCooldown;
+            } else {
+                enemy.shootTimer--;
+            }
+        });
+    }
+
+    function drawEnemies(ctx) {
+        activeEnemies.forEach(enemy => {
+            const { ship } = enemy;
+            ship.leftY = ship.tipY - ship.height;
+            ship.rightY = ship.tipY - ship.height;
+            ship.leftX = ship.tipX - 10;
+            ship.rightX = ship.tipX + 10;
+
+            ctx.beginPath();
+            ctx.moveTo(ship.tipX, ship.tipY);
+            ctx.lineTo(ship.rightX, ship.rightY);
+            ctx.lineTo(ship.leftX, ship.leftY);
+            ctx.lineTo(ship.tipX, ship.tipY);
+            ctx.fillStyle = ColorUtils.randRGB();
+            ctx.fill();
+            ctx.closePath();
+        });
+    }
+
+    function updateEnemySpawning() {
+        if (enemySpawnCooldown <= 0) {
+            spawnEnemy();
+            enemySpawnCooldown = Math.random() * 100 + 50 - enemySpawnCooldownReduction; // Adjust spawn interval
+        } else {
+            enemySpawnCooldown--;
+        }
+    }
     
     // Public API
     return {
@@ -206,6 +359,12 @@ const ShipSystem = (function() {
         drawEnemy: drawEnemy,
         moveHeroRight: moveHeroRight,
         moveHeroLeft: moveHeroLeft,
-        resetEnemy: resetEnemy
+        resetEnemy: resetEnemy,
+        updateEnemyMovements: updateEnemyMovements,
+        updateEnemyShooting: updateEnemyShooting,
+        drawEnemies: drawEnemies,
+        updateEnemySpawning: updateEnemySpawning,
+        increaseEnemySpeed: increaseEnemySpeed,
+        decreaseEnemySpawnCooldown: decreaseEnemySpawnCooldown
     };
 })();
