@@ -151,20 +151,37 @@ const BulletSystem = (function() {
      * @param {Object} dust - Dust system object for collision checking
      */
     function drawHeroBullets(ctx, dust) {
-        // Manage bullet firing rate
+        // Manage bullet firing rate - use PowerUpSystem's fire rate if available
         if (wait) {
             timer++;
-            if (timer === 7) {
+            // Check if using rapid fire rate from power-up
+            const effectiveFireRate = PowerUpSystem ? PowerUpSystem.getFireRate() : 7;
+            if (timer >= effectiveFireRate) {
                 wait = false;
             }
         } else {
-            // Replace direct heroBulletList.push with spawnHeroBullet
             if (InputSystem.isSpacePressed() || InputSystem.isRightTouchActive()) {
-                spawnHeroBullet(ShipSystem.hero.tipX - 1, ShipSystem.hero.tipY);
+                // Check if multi-shot is active
+                if (PowerUpSystem && PowerUpSystem.isMultiShotActive()) {
+                    const count = PowerUpSystem.getMultiShotCount();
+                    const spread = 8; // Pixels between bullets
+                    
+                    // Calculate positions for multiple bullets
+                    for (let i = 0; i < count; i++) {
+                        const offsetX = (i - Math.floor(count / 2)) * spread;
+                        spawnHeroBullet(ShipSystem.hero.tipX - 1 + offsetX, ShipSystem.hero.tipY);
+                    }
+                } else {
+                    // Regular single shot
+                    spawnHeroBullet(ShipSystem.hero.tipX - 1, ShipSystem.hero.tipY);
+                }
+                
                 timer = 0;
                 wait = true;
             }
         }
+        
+        // Rest of the function remains the same...
         
         // Update and draw hero bullets
         for (let i = 0; i < heroBulletList.length; i++) {
@@ -232,10 +249,9 @@ const BulletSystem = (function() {
                     enemy.width, enemy.tipY - enemy.leftY 
                 )) {
                     Game.incrementShotDrones();
-                    Game.gainXP(10); // Grant XP for destroying an enemy
                     
-                    // Remove the enemy ship
-                    enemies.splice(j, 1); 
+                    // Use the new removeEnemy function, indicating it was destroyed
+                    ShipSystem.removeEnemy(j, true);
                     
                     // Remove and recycle the hero bullet
                     heroBulletList.splice(i, 1);
@@ -255,6 +271,25 @@ const BulletSystem = (function() {
      */
     function checkEnemyHits() {
         for (let i = 0; i < bulletList.length; i++) {
+            // Check if shield is active from PowerUpSystem
+            if (PowerUpSystem && PowerUpSystem.isShieldActive()) {
+                // If shield active, destroy bullets that hit the shield (larger radius than hero)
+                const shieldRadius = ShipSystem.hero.width; // Size of shield
+                
+                // Calculate distance between bullet and hero center
+                const dx = bulletList[i].x - ShipSystem.hero.tipX;
+                const dy = bulletList[i].y - ShipSystem.hero.tipY;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                
+                if (distance < shieldRadius) {
+                    const recycledBullet = bulletList.splice(i, 1)[0];
+                    bulletPool.recycle(recycledBullet);
+                    i--;
+                    continue;
+                }
+            }
+            
+            // Normal collision check with hero ship
             if (CollisionSystem.isColliding(
                 bulletList[i].x, bulletList[i].y,
                 bulletList[i].width, bulletList[i].height,

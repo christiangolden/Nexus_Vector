@@ -23,6 +23,55 @@ const Game = (function() {
     // Add XP and leveling system
     let xp = 0;
     let level = 1;
+    
+    // Notification system
+    let notifications = [];
+    const NOTIFICATION_DURATION = 90; // 1.5 seconds at 60fps
+
+    /**
+     * Show a notification message on screen
+     * @param {string} message - The message to display
+     */
+    function showNotification(message) {
+        notifications.push({
+            message: message,
+            duration: NOTIFICATION_DURATION,
+            opacity: 1.0
+        });
+    }
+    
+    /**
+     * Update and draw notifications
+     */
+    function updateNotifications() {
+        for (let i = notifications.length - 1; i >= 0; i--) {
+            const notification = notifications[i];
+            
+            // Update duration and fade out at the end
+            notification.duration--;
+            if (notification.duration < 30) {
+                notification.opacity = notification.duration / 30;
+            }
+            
+            // Remove expired notifications
+            if (notification.duration <= 0) {
+                notifications.splice(i, 1);
+                continue;
+            }
+            
+            // Draw notification
+            ctx.save();
+            ctx.textAlign = "center";
+            ctx.font = "bold 18px Arial";
+            ctx.fillStyle = `rgba(255, 255, 255, ${notification.opacity})`;
+            ctx.fillText(
+                notification.message,
+                canvas.width / 2,
+                100 + (i * 30)
+            );
+            ctx.restore();
+        }
+    }
 
     // Fix XP counter to prevent negative values
     function gainXP(amount, isStardust = false) {
@@ -88,8 +137,33 @@ const Game = (function() {
                     }
                 });
             });
+        },
+        
+        // Add horizontal movement function for parallax layers
+        moveX: function(dx) {
+            this.layers.forEach(layer => {
+                // Move each star horizontally at its proportional parallax speed
+                layer.stars.forEach(star => {
+                    star.x += dx * (layer.speed / 1.5); // Scale by layer speed for parallax effect
+                    
+                    // Wrap stars horizontally if they move off-screen
+                    if (star.x < 0) {
+                        star.x += canvas.width;
+                    } else if (star.x > canvas.width) {
+                        star.x -= canvas.width;
+                    }
+                });
+            });
         }
     };
+    
+    /**
+     * Move parallax background horizontally
+     * @param {number} dx - Distance to move
+     */
+    function moveParallaxX(dx) {
+        ParallaxSystem.moveX(dx);
+    }
 
     // Initialize the game
     function init() {
@@ -105,6 +179,7 @@ const Game = (function() {
         ShipSystem.init();
         BulletSystem.init();
         DustSystem.init();
+        PowerUpSystem.init(); // Initialize PowerUpSystem
         ParallaxSystem.init();
         
         // Set up event listeners
@@ -213,6 +288,13 @@ const Game = (function() {
         // Clean up bullets that are off screen
         BulletSystem.cleanupBullets();
         
+        // Update and draw power-ups
+        PowerUpSystem.update(); 
+        PowerUpSystem.draw(ctx);
+        
+        // Draw notifications
+        updateNotifications();
+        
         // Draw FPS counter
         PerformanceMonitor.draw(ctx);
     }
@@ -276,6 +358,7 @@ const Game = (function() {
         // Recycle all objects
         BulletSystem.clearAllBullets();
         DustSystem.clearAllDust();
+        PowerUpSystem.resetAllPowerUps(); // Reset power-ups
         
         RoomSystem.clearRooms();
         deadHero = false;
@@ -376,6 +459,8 @@ const Game = (function() {
         getFrameCount: function() { return frameCount; },
         getSpeed: function() { return speed; },
         gainXP: gainXP,
-        get level() { return level; } // Expose level for ShipSystem
+        showNotification: showNotification,
+        moveParallaxX: moveParallaxX, // Expose parallax movement function
+        get level() { return level; }
     };
 })();

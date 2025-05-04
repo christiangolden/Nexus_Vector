@@ -8,6 +8,28 @@ const MovementSystem = (function() {
     'use strict';
     
     /**
+     * Move all game elements horizontally when the player uses shift key movement
+     * @param {number} dx - The amount to move horizontally
+     */
+    function moveAllX(dx) {
+        StarSystem.moveStarsX(dx);
+        RoomSystem.moveRoomsX(dx);
+        RoomSystem.moveRatsX(dx);
+        BulletSystem.moveBulletsX(dx);
+        DustSystem.moveDustX(dx);
+        
+        // Add parallax background to movement handling
+        if (Game && Game.moveParallaxX) {
+            Game.moveParallaxX(dx);
+        }
+        
+        // Add PowerUpSystem to movement handling
+        if (PowerUpSystem) {
+            PowerUpSystem.movePowerUpsX(dx);
+        }
+    }
+    
+    /**
      * Process all movement for the current frame
      */
     function moveAll() {
@@ -39,6 +61,7 @@ const MovementSystem = (function() {
     
     // Public API
     return {
-        moveAll: moveAll
+        moveAll: moveAll,
+        moveAllX: moveAllX
     };
 })();

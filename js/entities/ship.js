@@ -401,24 +401,208 @@ const ShipSystem = (function() {
             }
         }
     }
+    
+    /**
+     * Removes an enemy from the active enemies array and handles related effects.
+     * @param {number} index - The index of the enemy in the activeEnemies array
+     * @param {boolean} wasDestroyed - Whether the enemy was destroyed (true) or just went off-screen (false)
+     */
+    function removeEnemy(index, wasDestroyed) {
+        if (index < 0 || index >= activeEnemies.length) return;
+        
+        const enemy = activeEnemies[index];
+        
+        if (wasDestroyed) {
+            // Chance to spawn power-up when enemy is destroyed
+            // More advanced enemies have higher chance of dropping power-ups
+            // Increased base chance from 5% to 15%
+            let dropChance = 0.15; // Base 15% chance (was 5%)
+            
+            switch (enemy.type) {
+                case "tracker":
+                    dropChance = 0.25; // 25% chance (was 10%)
+                    break;
+                case "zigzag":
+                    dropChance = 0.35; // 35% chance (was 15%)
+                    break;
+                case "sniper":
+                    dropChance = 0.45; // 45% chance (was 20%)
+                    break;
+            }
+            
+            // Formation enemies have higher drop chance (increased from 5% to 15%)
+            if (enemy.formation) dropChance += 0.15;
+            
+            // Attempt to spawn power-up
+            if (PowerUpSystem && Math.random() < dropChance) {
+                PowerUpSystem.spawnPowerUp(enemy.ship.tipX, enemy.ship.tipY);
+            }
+            
+            // Award XP for destroying the enemy
+            Game.gainXP(10);
+        }
+        
+        // Remove the enemy from the array
+        activeEnemies.splice(index, 1);
+    }
 
     /**
-     * Draws all active enemy ships.
+     * Draws all active enemy ships with visual distinctions based on type.
      * @param {CanvasRenderingContext2D} ctx - Canvas rendering context
      */
     function drawEnemies(ctx) {
         activeEnemies.forEach(enemy => {
-            const { ship } = enemy;
+            const { ship, type, formation } = enemy;
             
-            // Draw enemy ship
-            ctx.beginPath();
-            ctx.moveTo(ship.tipX, ship.tipY);
-            ctx.lineTo(ship.rightX, ship.rightY);
-            ctx.lineTo(ship.leftX, ship.leftY);
-            ctx.lineTo(ship.tipX, ship.tipY);
-            ctx.fillStyle = ColorUtils.randRGB(); // Keep the flashy colors for now
-            ctx.fill();
-            ctx.closePath();
+            // Define colors based on enemy type
+            let fillColor;
+            switch (type) {
+                case "basic":
+                    fillColor = "#FF5555"; // Red
+                    break;
+                case "tracker":
+                    fillColor = "#55FF55"; // Green
+                    break;
+                case "zigzag":
+                    fillColor = "#5555FF"; // Blue
+                    break;
+                case "sniper":
+                    fillColor = "#FFFF55"; // Yellow
+                    break;
+                default:
+                    fillColor = ColorUtils.randRGB(); // Fallback
+            }
+            
+            // Add slight pulsing effect for formation ships
+            if (formation) {
+                const pulse = 1 + Math.sin(Game.getFrameCount() / 10) * 0.1;
+                ctx.save();
+                ctx.translate(ship.tipX, ship.tipY);
+                ctx.scale(pulse, pulse);
+                ctx.translate(-ship.tipX, -ship.tipY);
+            }
+            
+            // Draw enemy ship based on type
+            switch (type) {
+                case "basic":
+                    // Triangle ship (default shape)
+                    ctx.beginPath();
+                    ctx.moveTo(ship.tipX, ship.tipY);
+                    ctx.lineTo(ship.rightX, ship.rightY);
+                    ctx.lineTo(ship.leftX, ship.leftY);
+                    ctx.closePath();
+                    ctx.fillStyle = fillColor;
+                    ctx.fill();
+                    break;
+                    
+                case "tracker":
+                    // Diamond shape
+                    ctx.beginPath();
+                    const halfHeight = (ship.tipY - ship.leftY) / 2;
+                    ctx.moveTo(ship.tipX, ship.tipY);
+                    ctx.lineTo(ship.tipX + ship.width / 2, ship.tipY - halfHeight);
+                    ctx.lineTo(ship.tipX, ship.tipY - ship.height);
+                    ctx.lineTo(ship.tipX - ship.width / 2, ship.tipY - halfHeight);
+                    ctx.closePath();
+                    ctx.fillStyle = fillColor;
+                    ctx.fill();
+                    
+                    // Add targeting sight
+                    ctx.beginPath();
+                    ctx.arc(ship.tipX, ship.tipY, 5, 0, Math.PI * 2);
+                    ctx.strokeStyle = "#FFFFFF";
+                    ctx.lineWidth = 1;
+                    ctx.stroke();
+                    break;
+                    
+                case "zigzag":
+                    // Box with fins
+                    ctx.beginPath();
+                    ctx.rect(ship.leftX, ship.leftY, ship.width, ship.height);
+                    ctx.fillStyle = fillColor;
+                    ctx.fill();
+                    
+                    // Fins
+                    ctx.beginPath();
+                    ctx.moveTo(ship.leftX, ship.leftY);
+                    ctx.lineTo(ship.leftX - 5, ship.leftY + 10);
+                    ctx.lineTo(ship.leftX, ship.leftY + 20);
+                    ctx.closePath();
+                    ctx.fill();
+                    
+                    ctx.beginPath();
+                    ctx.moveTo(ship.rightX, ship.rightY);
+                    ctx.lineTo(ship.rightX + 5, ship.rightY + 10);
+                    ctx.lineTo(ship.rightX, ship.rightY + 20);
+                    ctx.closePath();
+                    ctx.fill();
+                    break;
+                    
+                case "sniper":
+                    // Long, narrow design with targeting laser
+                    ctx.beginPath();
+                    ctx.rect(ship.tipX - 5, ship.leftY, 10, ship.height);
+                    ctx.fillStyle = fillColor;
+                    ctx.fill();
+                    
+                    // Wings
+                    ctx.beginPath();
+                    ctx.moveTo(ship.tipX, ship.leftY);
+                    ctx.lineTo(ship.tipX - 15, ship.leftY);
+                    ctx.lineTo(ship.tipX - 10, ship.leftY + 10);
+                    ctx.closePath();
+                    ctx.fill();
+                    
+                    ctx.beginPath();
+                    ctx.moveTo(ship.tipX, ship.leftY);
+                    ctx.lineTo(ship.tipX + 15, ship.leftY);
+                    ctx.lineTo(ship.tipX + 10, ship.leftY + 10);
+                    ctx.closePath();
+                    ctx.fill();
+                    
+                    // Targeting laser (only for snipers)
+                    if (enemy.shootTimer < 30) { // Show laser when about to fire
+                        ctx.beginPath();
+                        ctx.moveTo(ship.tipX, ship.tipY);
+                        
+                        // Calculate angle to hero
+                        const angle = Math.atan2(ShipSystem.hero.tipY - ship.tipY, 
+                                               ShipSystem.hero.tipX - ship.tipX);
+                        
+                        // Draw line in direction of hero
+                        const laserLength = Math.min(100, 
+                                                   ShipSystem.hero.tipY - ship.tipY);
+                        ctx.lineTo(
+                            ship.tipX + Math.cos(angle) * laserLength,
+                            ship.tipY + Math.sin(angle) * laserLength
+                        );
+                        
+                        ctx.strokeStyle = "#FF0000";
+                        ctx.lineWidth = 1;
+                        ctx.globalAlpha = 0.7;
+                        ctx.stroke();
+                        ctx.globalAlpha = 1;
+                    }
+                    break;
+                    
+                default:
+                    // Fallback to basic triangle
+                    ctx.beginPath();
+                    ctx.moveTo(ship.tipX, ship.tipY);
+                    ctx.lineTo(ship.rightX, ship.rightY);
+                    ctx.lineTo(ship.leftX, ship.leftY);
+                    ctx.closePath();
+                    ctx.fillStyle = fillColor;
+                    ctx.fill();
+            }
+            
+            // Add highlight for formation ships
+            if (formation) {
+                ctx.strokeStyle = "#FFFFFF";
+                ctx.lineWidth = 1.5;
+                ctx.stroke(); // Outline the current path
+                ctx.restore(); // Restore canvas state from pulsing effect
+            }
         });
     }
     
@@ -430,19 +614,8 @@ const ShipSystem = (function() {
         const speed = Game.getSpeed();
         
         if (InputSystem.isShiftPressed()) {
-            // Move background instead of hero
-            StarSystem.moveStarsX(-speed);
-            RoomSystem.moveRoomsX(-speed);
-            RoomSystem.moveRatsX(-speed);
-            DustSystem.moveDustX(-speed);
-            BulletSystem.moveBulletsX(-speed);
-            
-            // Move enemy with background
-            activeEnemies.forEach(enemy => {
-                enemy.ship.leftX -= speed;
-                enemy.ship.rightX -= speed;
-                enemy.ship.tipX -= speed;
-            });
+            // Move background instead of hero (handled in MovementSystem)
+            MovementSystem.moveAllX(-speed);
         } else {
             // Move hero right
             if (hero.leftX >= canvas.width) {
@@ -462,19 +635,8 @@ const ShipSystem = (function() {
         const speed = Game.getSpeed();
         
         if (InputSystem.isShiftPressed()) {
-            // Move background instead of hero
-            StarSystem.moveStarsX(speed);
-            RoomSystem.moveRoomsX(speed);
-            RoomSystem.moveRatsX(speed);
-            DustSystem.moveDustX(speed);
-            BulletSystem.moveBulletsX(speed);
-            
-            // Move enemy with background
-            activeEnemies.forEach(enemy => {
-                enemy.ship.leftX += speed;
-                enemy.ship.rightX += speed;
-                enemy.ship.tipX += speed;
-            });
+            // Move background instead of hero (handled in MovementSystem)
+            MovementSystem.moveAllX(speed);
         } else {
             // Move hero left
             if (hero.rightX <= 0) {
@@ -520,8 +682,9 @@ const ShipSystem = (function() {
         updateEnemies: updateEnemies, 
         moveHeroRight: moveHeroRight,
         moveHeroLeft: moveHeroLeft,
-        checkHeroCollisions: checkHeroCollisions, // Add this line
+        checkHeroCollisions: checkHeroCollisions,
         resetEnemy: resetEnemy,
+        removeEnemy: removeEnemy, // Export the removeEnemy function
         increaseEnemySpeed: increaseEnemySpeed,
         decreaseEnemySpawnCooldown: decreaseEnemySpawnCooldown
     };
