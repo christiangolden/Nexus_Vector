@@ -746,6 +746,19 @@ const ShipSystem = (function() {
     function getDefaultShipY(canvas) {
         return canvas.height - ShipSystem.hero.height * 2;
     }
+
+    /**
+     * Move all enemy ships horizontally (for shift-move)
+     * @param {number} dx - Distance to move
+     */
+    function moveEnemiesX(dx) {
+        for (let i = 0; i < activeEnemies.length; i++) {
+            const ship = activeEnemies[i].ship;
+            ship.tipX += dx;
+            ship.leftX += dx;
+            ship.rightX += dx;
+        }
+    }
     
     // Public API
     return {
@@ -763,6 +776,7 @@ const ShipSystem = (function() {
         removeEnemy: removeEnemy, // Export the removeEnemy function
         increaseEnemySpeed: increaseEnemySpeed,
         decreaseEnemySpawnCooldown: decreaseEnemySpawnCooldown,
-        getDefaultShipY: getDefaultShipY // Export for use in other modules
+        getDefaultShipY: getDefaultShipY, // Export for use in other modules
+        moveEnemiesX: moveEnemiesX // Export for shift-move
     };
 })();

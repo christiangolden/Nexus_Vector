@@ -16,6 +16,7 @@ const MovementSystem = (function() {
         RoomSystem.moveStationsX(dx);
         BulletSystem.moveBulletsX(dx);
         DustSystem.moveDustX(dx);
+        ShipSystem.moveEnemiesX(dx); // Move enemy ships with scenery
         
         // Add parallax background to movement handling
         if (GameState && GameState.moveParallaxX) {
