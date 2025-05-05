@@ -471,6 +471,10 @@ const GameState = (function() {
         
         // Update power-ups
         PowerUpSystem.update();
+        // Update particles for enemy explosions
+        if (typeof ParticleSystem !== 'undefined') {
+            ParticleSystem.update();
+        }
         
         // Check if player is dead
         if (player.isDead) {
@@ -508,6 +512,10 @@ const GameState = (function() {
         
         // Draw power-ups
         PowerUpSystem.draw(ctx);
+        // Draw particles for enemy explosions
+        if (typeof ParticleSystem !== 'undefined') {
+            ParticleSystem.draw(ctx);
+        }
         
         // Draw UI
         drawScore();

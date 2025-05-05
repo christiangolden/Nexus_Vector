@@ -464,6 +464,17 @@ const ShipSystem = (function() {
         const enemy = activeEnemies[index];
         
         if (wasDestroyed) {
+            // Particle explosion effect
+            let color = '#FFAA00';
+            switch (enemy.type) {
+                case "basic": color = "#FF5555"; break;
+                case "tracker": color = "#55FF55"; break;
+                case "zigzag": color = "#5555FF"; break;
+                case "sniper": color = "#FFFF55"; break;
+            }
+            if (typeof ParticleSystem !== 'undefined') {
+                ParticleSystem.spawnExplosion(enemy.ship.tipX, enemy.ship.tipY, color);
+            }
             // Chance to spawn power-up when enemy is destroyed
             // More advanced enemies have higher chance of dropping power-ups
             // Increased base chance from 5% to 15%
