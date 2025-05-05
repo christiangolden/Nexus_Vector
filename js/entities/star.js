@@ -57,19 +57,25 @@ const StarSystem = (function() {
         if (star.xList.length < starMaxCount) {
             genStarXY();
         }
-        
-        // Batch rendering for stars
         ctx.textAlign = "center";
-        
+        const warp = GameState.getWarpActive();
         for (let i = 0; i < star.yList.length; i++) {
-            // Use a predefined set of sizes instead of random generation each time
             const sizeIndex = Math.floor(Math.random() * starSizes.length);
-            const size = starSizes[sizeIndex];
-            
-            // Use cached font string
-            ctx.font = starSizeCache[size];
+            let size = starSizes[sizeIndex];
+            // Stretch stars vertically in warp mode
+            if (warp) size = size * 2.5;
+            ctx.font = starSizeCache[sizeIndex in starSizeCache ? starSizes[sizeIndex] : size];
             ctx.fillStyle = ColorUtils.randRGB();
-            ctx.fillText("*", star.xList[i], star.yList[i] + size / 2);
+            if (warp) {
+                ctx.save();
+                ctx.transform(1, 0, 0, 2.5, 0, -star.yList[i]); // Stretch vertically
+                ctx.globalAlpha = 0.7;
+                ctx.fillText("*", star.xList[i], star.yList[i] + size / 2);
+                ctx.globalAlpha = 1.0;
+                ctx.restore();
+            } else {
+                ctx.fillText("*", star.xList[i], star.yList[i] + size / 2);
+            }
         }
     }
     
@@ -78,11 +84,12 @@ const StarSystem = (function() {
      */
     function updateStars() {
         const canvas = GameState.getCanvas();
-        
-        // Move stars down and remove if off screen
+        // Warp effect: increase speed if warp is active
+        const warp = GameState.getWarpActive();
+        const speed = warp ? 8 : 1; // Normal: 1, Warp: 8
         for (let i = 0; i < star.xList.length; i++) {
             if (star.yList[i] < canvas.height * 2) {
-                star.yList[i] += 1;
+                star.yList[i] += speed;
             } else {
                 star.yList.splice(i, 1);
                 star.xList.splice(i, 1);

@@ -38,7 +38,8 @@ const GameState = (function() {
         lastTimestamp: 0,
         deltaTime: 0,
         speed: 7,
-        accumulator: 0 // For fixed timestep
+        accumulator: 0, // For fixed timestep
+        warpActive: false // Warp speed mode
     };
     
     // Game settings - configurable options
@@ -155,6 +156,8 @@ const GameState = (function() {
         },
 
         draw: function(ctx) {
+            const warp = session.warpActive;
+            const warpFactor = warp ? 8 : 1;
             this.layers.forEach(layer => {
                 ctx.fillStyle = layer.color;
                 layer.stars.forEach(star => {
@@ -163,7 +166,7 @@ const GameState = (function() {
                     ctx.fill();
 
                     // Move stars downward
-                    star.y += layer.speed;
+                    star.y += layer.speed * warpFactor;
 
                     // Reset stars that move off-screen
                     if (star.y > canvas.height) {
@@ -712,6 +715,9 @@ const GameState = (function() {
         updateFrameTiming: updateFrameTiming,
         getSpeed: function() { return session.speed; },
         setSpeed: function(speed) { session.speed = speed; },
+        // Warp mode accessors
+        getWarpActive: function() { return session.warpActive; },
+        setWarpActive: function(active) { session.warpActive = active; },
         
         // Settings accessors
         getTargetFps: function() { return settings.targetFps; },

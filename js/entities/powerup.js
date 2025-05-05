@@ -220,6 +220,9 @@ const PowerUpSystem = (function() {
         
         // Don't adjust timers anymore since power-ups are persistent
 
+        const warp = GameState.getWarpActive();
+        const warpFactor = warp ? 8 : 1;
+
         // Update power-up positions and check for collection
         for (let i = powerUps.length - 1; i >= 0; i--) {
             const powerUp = powerUps[i];
@@ -258,29 +261,29 @@ const PowerUpSystem = (function() {
                 // Apply movement based on quadrant (same logic as dust)
                 if (inUpperRight) {
                     // Upper right quadrant
-                    powerUp.x -= 4;
-                    powerUp.y += 6;
+                    powerUp.x -= 4 * warpFactor;
+                    powerUp.y += 6 * warpFactor;
                 } else if (inLowerRight) {
                     // Lower right quadrant
-                    powerUp.x -= 4;
-                    powerUp.y -= 6;
+                    powerUp.x -= 4 * warpFactor;
+                    powerUp.y -= 6 * warpFactor;
                 } else if (inUpperLeft) {
                     // Upper left quadrant
-                    powerUp.x += 4;
-                    powerUp.y += 6;
+                    powerUp.x += 4 * warpFactor;
+                    powerUp.y += 6 * warpFactor;
                 } else if (inLowerLeft) {
                     // Lower left quadrant
-                    powerUp.x += 4;
-                    powerUp.y -= 6;
+                    powerUp.x += 4 * warpFactor;
+                    powerUp.y -= 6 * warpFactor;
                 } else {
                     // Normal movement
-                    powerUp.y += powerUp.velocity;
-                    powerUp.x += powerUp.driftX;
+                    powerUp.y += powerUp.velocity * warpFactor;
+                    powerUp.x += powerUp.driftX * warpFactor;
                     // Apply oscillating motion if enabled
                     if (powerUp.oscillate) {
                         powerUp.x += Math.sin(powerUp.age * powerUp.oscillationSpeed) 
                                    * Math.cos(powerUp.age * powerUp.oscillationSpeed * 0.5)
-                                   * powerUp.oscillationAmount * 0.05;
+                                   * powerUp.oscillationAmount * 0.05 * warpFactor;
                     }
                 }
                 
@@ -306,13 +309,13 @@ const PowerUpSystem = (function() {
                 }
             } else {
                 // Normal movement when magwave is not affecting the power-up
-                powerUp.y += powerUp.velocity;
-                powerUp.x += powerUp.driftX;
+                powerUp.y += powerUp.velocity * warpFactor;
+                powerUp.x += powerUp.driftX * warpFactor;
                 // Apply oscillating motion if enabled
                 if (powerUp.oscillate) {
                     powerUp.x += Math.sin(powerUp.age * powerUp.oscillationSpeed) 
                                * Math.cos(powerUp.age * powerUp.oscillationSpeed * 0.5)
-                               * powerUp.oscillationAmount * 0.05;
+                               * powerUp.oscillationAmount * 0.05 * warpFactor;
                 }
             }
             

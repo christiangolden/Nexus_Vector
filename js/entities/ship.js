@@ -339,6 +339,8 @@ const ShipSystem = (function() {
         const deltaTime = GameState.getDeltaTime();
         // Scale for frame rate independence - use 60fps as baseline
         const timeScale = 60 * deltaTime;
+        const warp = GameState.getWarpActive();
+        const warpFactor = warp ? 8 : 1;
 
         // Update spawning
         updateEnemySpawning();
@@ -349,7 +351,7 @@ const ShipSystem = (function() {
             const { ship, movement, formation } = enemy;
 
             // --- Update Movement ---
-            let targetSpeed = (enemySpeed + (GameState.getLevel() * 0.5)) * timeScale; // Scale by deltaTime for frame rate independence
+            let targetSpeed = (enemySpeed + (GameState.getLevel() * 0.5)) * timeScale * warpFactor;
             
             // Special formation movement behaviors
             if (formation) {

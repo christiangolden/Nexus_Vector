@@ -122,14 +122,16 @@ const BulletSystem = (function() {
      */
     function updateBullets(timeStep = 1/60) {
         const timeScale = timeStep * 60; // Scale to 60 fps baseline
+        const warp = GameState.getWarpActive();
+        const warpFactor = warp ? 8 : 1;
         
         // Update enemy bullets
         for (let i = bulletList.length - 1; i >= 0; i--) {
             const bullet = bulletList[i];
             
-            // Move bullet based on its velocity, scaled by timeScale
-            bullet.x += bullet.dx * timeScale;
-            bullet.y += bullet.dy * timeScale;
+            // Move bullet based on its velocity, scaled by timeScale and warp
+            bullet.x += bullet.dx * timeScale * warpFactor;
+            bullet.y += bullet.dy * timeScale * warpFactor;
 
             // Check if bullet is off-screen (top, bottom, left, right)
             if (bullet.y < 0 || bullet.y > GameState.getCanvas().height || bullet.x < 0 || bullet.x > GameState.getCanvas().width) {
@@ -162,7 +164,9 @@ const BulletSystem = (function() {
      * @param {number} timeStep - Fixed timestep in seconds (optional)
      */
     function drawHeroBullets(ctx, dust, timeStep = 1/60) {
-        const timeScale = timeStep * 60; // Scale to 60 fps baseline
+        const timeScale = timeStep * 60;
+        const warp = GameState.getWarpActive();
+        const warpFactor = warp ? 8 : 1;
         
         // Manage bullet firing rate - use PowerUpSystem's fire rate if available
         if (wait) {
@@ -205,9 +209,9 @@ const BulletSystem = (function() {
                 continue;
             }
             
-            // Move and draw bullets - scale movement by timeScale
+            // Move and draw bullets - scale movement by timeScale and warp
             if (heroBulletList[i].y > 0) {
-                heroBulletList[i].y -= 20 * timeScale;
+                heroBulletList[i].y -= 20 * timeScale * warpFactor;
                 ctx.beginPath();
                 ctx.rect(
                     heroBulletList[i].x, 

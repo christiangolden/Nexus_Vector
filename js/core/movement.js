@@ -34,6 +34,19 @@ const MovementSystem = (function() {
      * @param {number} timeStep - Fixed timestep in seconds
      */
     function moveAll(timeStep = 1/60) {
+        // Warp speed logic
+        if (InputSystem.isUpPressed() && !DockingSystem.isDocking()) {
+            if (!GameState.getWarpActive()) {
+                GameState.setWarpActive(true);
+                GameState.setSpeed(14); // Double the normal speed (default is 7)
+            }
+        } else {
+            if (GameState.getWarpActive()) {
+                GameState.setWarpActive(false);
+                GameState.setSpeed(7); // Reset to normal speed
+            }
+        }
+
         // Handle ship movement based on input
         if ((InputSystem.isRightPressed() || InputSystem.isTiltRight()) && !DockingSystem.isDocking()) {
             ShipSystem.moveHeroRight();

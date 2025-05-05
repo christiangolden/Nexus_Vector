@@ -583,11 +583,12 @@ const StationSystem = (function() {
      */
     function updateStations(deltaTime) {
         const canvas = GameState.getCanvas();
-        
+        const warp = GameState.getWarpActive();
+        const warpFactor = warp ? 8 : 1;
         // Update each station
         for (let i = 0; i < stationList.length; i++) {
             stationList[i].update(deltaTime);
-            stationList[i].y += 0.5;
+            stationList[i].y += 0.5 * warpFactor;
             
             // Remove stations that are far below the screen
             if (stationList[i].y - stationList[i].size > canvas.height + 500) {
