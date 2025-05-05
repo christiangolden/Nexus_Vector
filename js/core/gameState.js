@@ -301,8 +301,9 @@ const GameState = (function() {
         // Subscribe to state changes
         onStateChange((newState, oldState) => {
             if (newState === STATE.PLAYING && oldState === STATE.START_SCREEN) {
-                // Generate initial rooms when starting game
-                RoomSystem.generateRooms();
+                // Generate initial stations when starting game
+                StationSystem.init();
+                StationSystem.generateStation();
             }
             
             if (newState === STATE.GAME_OVER) {
@@ -357,6 +358,10 @@ const GameState = (function() {
     
     // Update game logic at fixed timestep intervals
     function updateLogic(timeStep) {
+        // Always update undock cooldown
+        if (typeof DockingSystem !== 'undefined' && DockingSystem.updateUndockCooldown) {
+            DockingSystem.updateUndockCooldown();
+        }
         // Process based on current game state
         switch (currentState) {
             case STATE.START_SCREEN:
@@ -379,6 +384,9 @@ const GameState = (function() {
                 updateGameOverLogic(timeStep);
                 break;
         }
+        
+        // Always update input system to track key state changes
+        InputSystem.update();
     }
     
     // Render the game (can run at variable frame rate)
@@ -437,20 +445,14 @@ const GameState = (function() {
     
     // Game play logic at fixed timestep
     function updatePlayingStateLogic(timeStep) {
-        // Check if rooms need to be regenerated
-        if (RoomSystem.roomList.length > 0 && RoomSystem.roomList[0].y >= canvas.height) {
-            RoomSystem.regenerateRooms();
-        }
-        
-        // Update rooms and creatures
-        RoomSystem.updateRooms();
-        RoomSystem.updateRats();
+        // Check if player is attempting to dock with a space station
+        StationSystem.checkDocking();
         
         // Process movement with consistent physics - pass timeStep
         MovementSystem.moveAll(timeStep);
         
-        // Check docking
-        RoomSystem.checkDocking();
+        // Update space stations
+        StationSystem.updateStations(timeStep);
         
         // Update enemies
         ShipSystem.updateEnemies();
@@ -481,13 +483,11 @@ const GameState = (function() {
         // Draw background elements
         ParallaxSystem.draw(ctx);
         StarSystem.drawStars(ctx);
-        RoomSystem.drawRooms(ctx);
         
-        // Draw rooms and creatures
-        RoomSystem.drawRats(ctx);
+        // Draw monolithic space stations
+        StationSystem.drawStations(ctx);
         
         // Draw other environment elements
-        RoomSystem.drawDock(ctx);
         DustSystem.drawDust(ctx);
         
         // Draw magwave effect if active
@@ -535,29 +535,20 @@ const GameState = (function() {
     function renderPausedState(interpolation) {
         ParallaxSystem.draw(ctx);
         StarSystem.drawStars(ctx);
-        RoomSystem.drawRooms(ctx);
+        StationSystem.drawStations(ctx);
         drawHelpText();
     }
     
     // Docked state logic
     function updateDockedStateLogic(timeStep) {
-        // Handle man movement
-        DockingSystem.handleManMovement();
+        // Check if player wants to exit the station
+        DockingSystem.checkExitStation();
         
-        // Update stars in docked mode
+        // Handle player movement in ASCII map
+        DockingSystem.handlePlayerMovement();
+        
+        // Update stars in docked mode for background effect
         StarSystem.updateStarsInDockedMode();
-        
-        // Check if man returns to ship
-        if (DockingSystem.checkManReturnsToShip()) {
-            DockingSystem.undock();
-            setState('PLAYING');
-        }
-        
-        // Check for rat interactions
-        RoomSystem.checkRatInteractions();
-        
-        // Movement with fixed timestep
-        MovementSystem.moveAll(timeStep);
     }
     
     // Docked state rendering
@@ -567,18 +558,10 @@ const GameState = (function() {
             ShipSystem.resetEnemy();
             BulletSystem.clearAllBullets();
             DustSystem.clearAllDust();
-            
-            // Center the view on the man
-            DockingSystem.centerViewOnMan();
         }
         
-        // Draw the scene
-        StarSystem.drawStars(ctx);
-        RoomSystem.drawRooms(ctx);
-        RoomSystem.drawRats(ctx);
-        RoomSystem.drawDock(ctx);
-        ShipSystem.drawHero(ctx);
-        DockingSystem.drawMan(ctx);
+        // Draw ASCII roguelike interior when docked
+        StationSystem.drawStationInterior(ctx);
     }
     
     // Game over state logic
@@ -595,8 +578,16 @@ const GameState = (function() {
     function renderGameOverState(interpolation) {
         ParallaxSystem.draw(ctx);
         StarSystem.drawStars(ctx);
-        RoomSystem.drawRooms(ctx);
+        StationSystem.drawStations(ctx);
         drawGameOver();
+    }
+    
+    // Draw game over screen
+    function drawGameOver() {
+        ctx.font = "48px Consolas";
+        ctx.fillStyle = ColorUtils.randRGB();
+        ctx.textAlign = "center";
+        ctx.fillText("\u2620", canvas.width / 2, canvas.height / 2);
     }
     
     // Reset the game state
@@ -611,8 +602,8 @@ const GameState = (function() {
         PowerUpSystem.resetAllPowerUps();
         
         // Generate new environment
-        RoomSystem.clearRooms();
-        RoomSystem.generateRooms();
+        StationSystem.init();
+        StationSystem.generateStation();
     }
     
     // Canvas resize handler
@@ -677,7 +668,6 @@ const GameState = (function() {
     
     // Draw game over screen
     function drawGameOver() {
-        RoomSystem.drawRooms(ctx);
         ctx.font = "48px Consolas";
         ctx.fillStyle = ColorUtils.randRGB();
         ctx.textAlign = "center";

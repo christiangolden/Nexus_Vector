@@ -1,1102 +1,773 @@
 /**
- * Nexus Vector - Room System
+ * Nexus Vector - Space Station System
  * 
- * This module handles the generation and management of procedural rooms and rats.
+ * This module handles the generation and management of space stations and their interior.
  */
 
-const RoomSystem = (function() {
+const StationSystem = (function() {
     'use strict';
     
-    // Room and rat lists
-    let roomList = [];
-    let ratList = [];
-    let roomConnections = [];
+    // Space station list
+    let stationList = [];
+    
+    // ASCII map for station interiors (only generated when docked)
+    let asciiMap = [];
+    const MAP_WIDTH = 60;
+    const MAP_HEIGHT = 30;
+    
+    // Player position in ASCII map
+    let playerX = 0;
+    let playerY = 0;
+    
+    // Player is currently inside a station
+    let isInside = false;
+    
+    // Station shapes
+    const STATION_SHAPES = [
+        "HEXAGON",
+        "OCTAGON", 
+        "DIAMOND",
+        "PENTAGON",
+        "STAR"
+    ];
+    
+    // Station colors
+    const STATION_COLORS = [
+        "#334455", 
+        "#445566",
+        "#556677",
+        "#223344",
+        "#112233"
+    ];
     
     // Docking symbol
-    const dock = "\u27D0\uFE0E"; 
-    
-    // Room types with their properties
-    const ROOM_TYPES = {
-        DOCK: { 
-            color: "#223344", 
-            features: ["dockingStation"],
-            name: "Docking Bay",
-            description: "A secure area for spacecraft to dock with the station."
-        },
-        LIVING: { 
-            color: "#336633", 
-            features: ["furniture", "rats"],
-            name: "Living Quarters",
-            description: "Residential area with basic amenities."
-        },
-        STORAGE: { 
-            color: "#553311", 
-            features: ["crates", "loot"],
-            name: "Storage Bay",
-            description: "A room filled with cargo containers and supplies."
-        },
-        ENGINE: { 
-            color: "#664411", 
-            features: ["energy", "hazards"],
-            name: "Engine Room",
-            description: "Critical station infrastructure. Potential hazards present."
-        },
-        COMMAND: { 
-            color: "#334466", 
-            features: ["terminals", "controls"],
-            name: "Command Center",
-            description: "Station command and control systems."
-        }
-    };
-    
-    // Room object pool for efficient object reuse
-    const roomPool = {
-        pool: [],
-        maxSize: 30,
-        
-        init: function() {
-            for (let i = 0; i < this.maxSize; i++) {
-                this.pool.push(new Room(0, 0, 100, 100));
-            }
-        },
-        
-        get: function(x, y, width, height, type, points) {
-            if (this.pool.length > 0) {
-                const room = this.pool.pop();
-                
-                // Reset room properties
-                room.id = generateUniqueId();
-                room.x = x;
-                room.y = y;
-                room.width = width;
-                room.height = height;
-                room.type = type;
-                room.color = ROOM_TYPES[type].color;
-                room.features = [...ROOM_TYPES[type].features];
-                room.name = ROOM_TYPES[type].name;
-                room.description = ROOM_TYPES[type].description;
-                room.visited = false;
-                room.revealed = false;
-                room.points = points;
-                
-                // Reset docking position for docking rooms
-                if (type === "DOCK") {
-                    room.dockingPosition = {
-                        x: room.x + room.width/2,
-                        y: room.y + room.height/2
-                    };
-                } else {
-                    room.dockingPosition = null;
-                }
-                
-                return room;
-            }
-            
-            return new Room(x, y, width, height, type, points);
-        },
-        
-        recycle: function(room) {
-            if (this.pool.length < this.maxSize) {
-                this.pool.push(room);
-            }
-        }
-    };
-    
-    // Creature (rat) object pool
-    const creaturePool = {
-        pool: [],
-        maxSize: 50,
-        
-        init: function() {
-            for (let i = 0; i < this.maxSize; i++) {
-                this.pool.push(new Creature(0, 0, 12));
-            }
-        },
-        
-        get: function(x, y, size) {
-            if (this.pool.length > 0) {
-                const creature = this.pool.pop();
-                creature.x = x;
-                creature.y = y;
-                creature.size = size;
-                return creature;
-            }
-            
-            return new Creature(x, y, size);
-        },
-        
-        recycle: function(creature) {
-            if (this.pool.length < this.maxSize) {
-                this.pool.push(creature);
-            }
-        }
-    };
+    const DOCK_SYMBOL = "\u27D0\uFE0E"; 
     
     /**
-     * Room constructor with enhanced properties
-     * @param {number} x - Room x position
-     * @param {number} y - Room y position
-     * @param {number} width - Room width
-     * @param {number} height - Room height
-     * @param {string} type - Room type from ROOM_TYPES
-     * @param {array} points - Array of points defining the room shape
+     * Space Station constructor
+     * @param {number} x - Station center X position
+     * @param {number} y - Station center Y position
+     * @param {number} size - Station size
+     * @param {string} shape - Station shape
      */
-    function Room(x, y, width, height, type = "STORAGE", points = null) {
-        this.id = generateUniqueId();
-        this.width = width;
-        this.height = height;
-        this.x = x;
-        this.y = y;
-        this.type = type;
-        this.color = ROOM_TYPES[type].color;
-        this.features = [...ROOM_TYPES[type].features];
-        this.name = ROOM_TYPES[type].name;
-        this.description = ROOM_TYPES[type].description;
-        this.visited = false;
-        this.revealed = false;
-        this.points = points; // For non-rectangular rooms
-        
-        // For docking stations
-        if (type === "DOCK") {
-            this.dockingPosition = {
-                x: this.x + this.width/2,
-                y: this.y + this.height/2
-            };
-        }
-    }
-    
-    /**
-     * Generate a unique ID for rooms
-     */
-    function generateUniqueId() {
-        return 'room_' + Math.random().toString(36).substr(2, 9);
-    }
-    
-    /**
-     * Creature constructor (used for rats)
-     * @param {number} x - Creature x position
-     * @param {number} y - Creature y position
-     * @param {number} size - Creature size
-     */
-    function Creature(x, y, size) {
+    function SpaceStation(x, y, size, shape = "HEXAGON") {
+        this.id = 'station_' + Math.random().toString(36).substr(2, 9);
         this.x = x;
         this.y = y;
         this.size = size;
-    }
-    
-    /**
-     * Generate procedural rooms with enhanced variety to form a cohesive space station
-     */
-    function generateRooms() {
-        const canvas = GameState.getCanvas();
-        
-        // Clear previous data
-        roomList = [];
-        ratList = [];
-        roomConnections = [];
-        
-        // Space station layout parameters
-        const stationRadius = Math.min(canvas.width, canvas.height) * 0.6; // Size of the station
-        const numFloors = Math.floor(Math.random() * 3) + 2; // 2-4 floors/rings
-        const roomsPerFloor = Math.floor(Math.random() * 4) + 3; // 3-6 rooms per floor
-        
-        // Generate the central hub first
-        const hubSize = stationRadius * 0.3;
-        const hubX = Math.floor(Math.random() * canvas.width / 2) - canvas.width / 4;
-        const hubY = Math.floor(Math.random() * -canvas.height) - hubSize * 2;
-        
-        const hub = roomPool.get(
-            hubX, 
-            hubY,
-            hubSize * 2,
-            hubSize * 2,
-            "COMMAND"
-        );
-        hub.isHub = true;
-        roomList.push(hub);
-        
-        // Generate concentric rings of rooms around the hub
-        for (let floor = 0; floor < numFloors; floor++) {
-            const floorRadius = hubSize + ((floor + 1) * stationRadius * 0.2);
-            
-            // Calculate rooms for this floor
-            const actualRoomsPerFloor = floor === 0 ? roomsPerFloor - 1 : roomsPerFloor;
-            
-            for (let i = 0; i < actualRoomsPerFloor; i++) {
-                // Calculate room angle and position
-                const angle = (i / actualRoomsPerFloor) * Math.PI * 2;
-                const distance = floorRadius;
-                
-                // Calculate room position
-                const roomX = hubX + hubSize + Math.cos(angle) * distance;
-                const roomY = hubY + hubSize + Math.sin(angle) * distance;
-                
-                // Calculate room size
-                const roomWidth = Math.floor(Math.random() * 50 + 150);
-                const roomHeight = Math.floor(Math.random() * 50 + 150);
-                
-                // Choose room type based on floor and position
-                let roomType;
-                if (floor === 0 && i === 0) {
-                    roomType = "DOCK"; // First floor always has a docking bay
-                } else if (floor === numFloors - 1) {
-                    roomType = Math.random() < 0.7 ? "ENGINE" : "STORAGE"; // Outer ring has engines and storage
-                } else if (floor === 0) {
-                    roomType = Math.random() < 0.6 ? "COMMAND" : "STORAGE"; // Inner ring has command rooms
-                } else {
-                    const types = ["LIVING", "STORAGE", "ENGINE", "COMMAND"];
-                    const weights = [0.4, 0.3, 0.2, 0.1]; // Weights for random selection
-                    
-                    // Weighted random selection of room type
-                    const randomValue = Math.random();
-                    let cumulativeWeight = 0;
-                    for (let t = 0; t < types.length; t++) {
-                        cumulativeWeight += weights[t];
-                        if (randomValue < cumulativeWeight) {
-                            roomType = types[t];
-                            break;
-                        }
-                    }
-                }
-                
-                // Generate points for a more complex room shape
-                const points = generateRoomShape(roomX, roomY, roomWidth, roomHeight, roomType);
-                
-                const room = roomPool.get(
-                    roomX, 
-                    roomY, 
-                    roomWidth,
-                    roomHeight,
-                    roomType,
-                    points
-                );
-                
-                room.floor = floor; // Track what floor this room is on
-                roomList.push(room);
-                
-                // Connect to hub if it's the first floor
-                if (floor === 0) {
-                    connectRooms(hub, room);
-                }
-                
-                // Connect to previous room on the same floor
-                if (i > 0) {
-                    connectRooms(roomList[roomList.length - 2], room);
-                }
-                
-                // Connect first and last rooms to complete the ring
-                if (i === actualRoomsPerFloor - 1 && actualRoomsPerFloor > 1) {
-                    // Find the first room on this floor
-                    const firstRoomOnFloor = roomList.find(r => 
-                        r.floor === floor && r !== room && r !== hub);
-                        
-                    if (firstRoomOnFloor) {
-                        connectRooms(room, firstRoomOnFloor);
-                    }
-                }
-                
-                // Connect to the room above (on the previous floor)
-                if (floor > 0) {
-                    // Find a room on the previous floor at a similar angle
-                    const prevFloorRooms = roomList.filter(r => r.floor === floor - 1 && !r.isHub);
-                    
-                    if (prevFloorRooms.length > 0) {
-                        // Find closest room by angle from hub center
-                        let closestRoom = null;
-                        let smallestAngleDiff = Infinity;
-                        
-                        for (const prevRoom of prevFloorRooms) {
-                            const prevAngle = Math.atan2(
-                                prevRoom.y + prevRoom.height/2 - (hubY + hubSize),
-                                prevRoom.x + prevRoom.width/2 - (hubX + hubSize)
-                            );
-                            
-                            // Calculate angle difference, accounting for wrap-around
-                            let angleDiff = Math.abs(angle - prevAngle);
-                            if (angleDiff > Math.PI) {
-                                angleDiff = 2 * Math.PI - angleDiff;
-                            }
-                            
-                            if (angleDiff < smallestAngleDiff) {
-                                smallestAngleDiff = angleDiff;
-                                closestRoom = prevRoom;
-                            }
-                        }
-                        
-                        if (closestRoom && smallestAngleDiff < Math.PI/4) {
-                            connectRooms(room, closestRoom);
-                        }
-                    }
-                }
-            }
-        }
-        
-        // Add creatures to rooms
-        addCreaturesToRooms();
-    }
-    
-    /**
-     * Generate a room with specific type and features
-     */
-    function generateRoomWithType(prevRoom, type, canvas) {
-        let randX, randY, randWidth, randHeight;
-        
-        if (prevRoom) {
-            // Position relative to previous room with some variability
-            const angle = Math.random() * Math.PI * 2;
-            const distance = Math.random() * 200 + 100;
-            
-            randX = prevRoom.x + Math.cos(angle) * distance;
-            randY = prevRoom.y + Math.sin(angle) * distance;
-            randWidth = Math.floor(Math.random() * canvas.width / 3 + 150);
-            randHeight = Math.floor(Math.random() * canvas.height / 3 + 150);
-        } else {
-            // Initial room position
-            randX = Math.floor(Math.random() * canvas.width / 2) - canvas.width / 2;
-            randY = Math.floor(Math.random() * -canvas.height * 2) - canvas.height;
-            randWidth = Math.floor(Math.random() * canvas.width / 3 + 200);
-            randHeight = Math.floor(Math.random() * canvas.height / 3 + 200);
-        }
-        
-        // Generate room shape
-        let points = null;
-        if (Math.random() < 0.7) {
-            // Basic rectangular room
-            return roomPool.get(randX, randY, randWidth, randHeight, type);
-        } else {
-            // Room with a more complex shape using points
-            points = generateRoomShape(randX, randY, randWidth, randHeight, type);
-            return roomPool.get(randX, randY, randWidth, randHeight, type, points);
-        }
-    }
-    
-    /**
-     * Generate a more complex room shape using points
-     */
-    function generateRoomShape(x, y, width, height, type) {
-        const points = [];
-        const complexity = Math.floor(Math.random() * 3) + 5; // 5-7 points
-        
-        // Different shape patterns based on room type
-        switch(type) {
-            case "ENGINE":
-                // Circular-like for engine rooms
-                for (let i = 0; i < complexity; i++) {
-                    const angle = (i / complexity) * Math.PI * 2;
-                    const radius = width/2 * (0.8 + Math.random() * 0.4);
-                    points.push({
-                        x: x + width/2 + Math.cos(angle) * radius,
-                        y: y + height/2 + Math.sin(angle) * radius
-                    });
-                }
-                break;
-                
-            case "COMMAND":
-                // Polygonal command center
-                for (let i = 0; i < complexity; i++) {
-                    const angle = (i / complexity) * Math.PI * 2;
-                    const radius = (0.8 + Math.random() * 0.4) * (i % 2 === 0 ? width/2 : width/2.5);
-                    points.push({
-                        x: x + width/2 + Math.cos(angle) * radius,
-                        y: y + height/2 + Math.sin(angle) * radius
-                    });
-                }
-                break;
-                
-            default:
-                // Irregularly shaped room
-                points.push({x: x, y: y});
-                points.push({x: x + width, y: y});
-                points.push({x: x + width + (Math.random() * 50 - 25), y: y + height/2});
-                points.push({x: x + width, y: y + height});
-                points.push({x: x, y: y + height});
-                points.push({x: x - (Math.random() * 50), y: y + height/2});
-        }
-        
-        return points;
-    }
-    
-    /**
-     * Connect two rooms with a corridor, with a stable connection point
-     */
-    function connectRooms(roomA, roomB) {
-        // Check if connection already exists
-        for (const conn of roomConnections) {
-            if ((conn.roomA.id === roomA.id && conn.roomB.id === roomB.id) ||
-                (conn.roomA.id === roomB.id && conn.roomB.id === roomA.id)) {
-                return; // Connection already exists
-            }
-        }
-        
-        // Find good connection points between rooms
-        const centerA = {
-            x: roomA.x + roomA.width/2,
-            y: roomA.y + roomA.height/2
+        this.shape = shape;
+        this.color = STATION_COLORS[Math.floor(Math.random() * STATION_COLORS.length)];
+        this.points = [];
+        this.dockingPoint = {
+            x: 0,
+            y: 0,
+            angle: 0
+        };
+        this.visited = false;
+        this.rotationSpeed = 0.01 * (Math.random() * 0.5 + 0.5) * (Math.random() < 0.5 ? 1 : -1);
+        this.rotation = 0;
+        this.interiorGenerated = false;
+        this.specialRooms = {
+            bridge: { x: 0, y: 0 },
+            engine: { x: 0, y: 0 },
+            storage: { x: 0, y: 0 },
+            dock: { x: 0, y: 0 }
         };
         
-        const centerB = {
-            x: roomB.x + roomB.width/2,
-            y: roomB.y + roomB.height/2
+        // Generate the station's points based on shape
+        this.generatePoints();
+        
+        // Place docking point at a logical position
+        this.placeDockingPoint();
+    }
+    
+    /**
+     * Generate the station's points based on shape
+     */
+    SpaceStation.prototype.generatePoints = function() {
+        this.points = [];
+        
+        const numPoints = (() => {
+            switch(this.shape) {
+                case "HEXAGON": return 6;
+                case "OCTAGON": return 8;
+                case "DIAMOND": return 4;
+                case "PENTAGON": return 5;
+                case "STAR": return 10;
+                default: return 6;
+            }
+        })();
+        
+        // For stars, we need to alternate between outer and inner radius
+        const isStarShape = this.shape === "STAR";
+        
+        for (let i = 0; i < numPoints; i++) {
+            const angle = (i / numPoints) * Math.PI * 2;
+            // For stars, use a smaller radius for every second point
+            const radius = isStarShape && i % 2 === 1 ? this.size * 0.5 : this.size;
+            
+            this.points.push({
+                x: Math.cos(angle) * radius,
+                y: Math.sin(angle) * radius
+            });
+        }
+    };
+    
+    /**
+     * Place docking point at a logical position on the station
+     */
+    SpaceStation.prototype.placeDockingPoint = function() {
+        // Find a suitable edge for docking
+        let bestEdgeIndex = 0;
+        let maxY = -Infinity;
+        
+        // Look for the bottom-most edge for docking
+        for (let i = 0; i < this.points.length; i++) {
+            const nextIndex = (i + 1) % this.points.length;
+            const midY = (this.points[i].y + this.points[nextIndex].y) / 2;
+            
+            if (midY > maxY) {
+                maxY = midY;
+                bestEdgeIndex = i;
+            }
+        }
+        
+        // Place dock in the middle of the chosen edge
+        const nextIndex = (bestEdgeIndex + 1) % this.points.length;
+        this.dockingPoint = {
+            x: (this.points[bestEdgeIndex].x + this.points[nextIndex].x) / 2,
+            y: (this.points[bestEdgeIndex].y + this.points[nextIndex].y) / 2,
+            angle: Math.atan2(
+                this.points[nextIndex].y - this.points[bestEdgeIndex].y,
+                this.points[nextIndex].x - this.points[bestEdgeIndex].x
+            ) + Math.PI/2 // Perpendicular to edge
         };
-        
-        // Create a stable bend point using the room IDs as seeds
-        // This ensures it produces the same value every time for the same two rooms
-        const bendSeed = (roomA.id.charCodeAt(5) + roomB.id.charCodeAt(5)) % 100;
-        const bendOffset = {
-            x: Math.cos(bendSeed) * 25,
-            y: Math.sin(bendSeed) * 25
-        };
-        
-        // Create connection with stable bend points
-        roomConnections.push({
-            roomA: roomA,
-            roomB: roomB,
-            pointA: centerA,
-            pointB: centerB,
-            width: 20 + (bendSeed % 10),
-            bendPoint: {
-                x: (centerA.x + centerB.x) / 2 + bendOffset.x,
-                y: (centerA.y + centerB.y) / 2 + bendOffset.y
-            }
-        });
-    }
+    };
     
     /**
-     * Add creatures to rooms based on room type
+     * Draw the space station
+     * @param {CanvasRenderingContext2D} ctx - Canvas context
      */
-    function addCreaturesToRooms() {
-        for (let i = 0; i < roomList.length; i++) {
-            const room = roomList[i];
-            
-            // Add creatures based on room type
-            switch (room.type) {
-                case "LIVING":
-                    // More rats in living areas
-                    const ratCount = Math.floor(Math.random() * 3) + 2;
-                    for (let j = 0; j < ratCount; j++) {
-                        addRatToRoom(room);
-                    }
-                    break;
-                    
-                case "STORAGE":
-                    // Some rats in storage
-                    const storageRats = Math.floor(Math.random() * 2) + 1;
-                    for (let j = 0; j < storageRats; j++) {
-                        addRatToRoom(room);
-                    }
-                    break;
-                    
-                default:
-                    // Other rooms have a chance for a rat
-                    if (Math.random() < 0.4) {
-                        addRatToRoom(room);
-                    }
-            }
+    SpaceStation.prototype.draw = function(ctx) {
+        ctx.save();
+        
+        // Translate to station center
+        ctx.translate(this.x, this.y);
+        ctx.rotate(this.rotation);
+        
+        // Draw station body
+        ctx.fillStyle = this.color;
+        ctx.strokeStyle = "#aabbcc";
+        ctx.lineWidth = 2;
+        
+        ctx.beginPath();
+        ctx.moveTo(this.points[0].x, this.points[0].y);
+        for (let i = 1; i < this.points.length; i++) {
+            ctx.lineTo(this.points[i].x, this.points[i].y);
         }
-    }
-    
-    /**
-     * Add a rat to a specific room
-     */
-    function addRatToRoom(room) {
-        const ratX = room.x + Math.random() * room.width;
-        const ratY = room.y + Math.random() * room.height;
-        ratList.push(creaturePool.get(ratX, ratY, 12));
-    }
-    
-    /**
-     * Draw all rooms with their unique shapes and styles
-     * @param {CanvasRenderingContext2D} ctx - Canvas rendering context
-     */
-    function drawRooms(ctx) {
-        // First draw connections between rooms
-        drawRoomConnections(ctx);
+        ctx.closePath();
         
-        // Then draw the rooms themselves
-        for (let i = 0; i < roomList.length; i++) {
-            const room = roomList[i];
-            
-            ctx.fillStyle = room.color || "#222";
-            
-            if (room.points) {
-                // Draw complex shape rooms
-                ctx.beginPath();
-                ctx.moveTo(room.points[0].x, room.points[0].y);
-                for (let j = 1; j < room.points.length; j++) {
-                    ctx.lineTo(room.points[j].x, room.points[j].y);
-                }
-                ctx.closePath();
-                ctx.fill();
-                
-                // Draw outline
-                ctx.strokeStyle = "#444";
-                ctx.lineWidth = 2;
-                ctx.stroke();
-            } else {
-                // Draw rectangular rooms
-                ctx.beginPath();
-                ctx.rect(room.x, room.y, room.width, room.height);
-                ctx.fill();
-                
-                // Draw outline
-                ctx.strokeStyle = "#444";
-                ctx.lineWidth = 2;
-                ctx.stroke();
-            }
-            
-            // Draw room features based on type
-            drawRoomFeatures(ctx, room);
-        }
-    }
-    
-    /**
-     * Draw connections between rooms
-     */
-    function drawRoomConnections(ctx) {
-        ctx.strokeStyle = "#333";
-        ctx.lineWidth = 15;
+        ctx.fill();
+        ctx.stroke();
         
-        for (const conn of roomConnections) {
-            ctx.beginPath();
-            
-            // Use the stable bend point instead of creating a new random one each frame
-            // This ensures corridors don't wobble/glitch
-            const bendPoint = conn.bendPoint || {
-                x: (conn.pointA.x + conn.pointB.x) / 2,
-                y: (conn.pointA.y + conn.pointB.y) / 2
-            };
-            
-            // Draw the corridor with a nice curve
-            ctx.moveTo(conn.pointA.x, conn.pointA.y);
-            ctx.quadraticCurveTo(bendPoint.x, bendPoint.y, conn.pointB.x, conn.pointB.y);
-            
-            ctx.stroke();
-        }
-    }
-    
-    /**
-     * Draw specific features for each room type
-     */
-    function drawRoomFeatures(ctx, room) {
-        // Draw room name
-        ctx.font = "12px Consolas";
-        ctx.fillStyle = "#FFF";
-        ctx.textAlign = "center";
-        ctx.fillText(room.name, room.x + room.width/2, room.y + 16);
+        // Draw details
+        this.drawStationDetails(ctx);
         
-        // Draw features based on room type
-        if (room.features.includes("furniture")) {
-            drawFurniture(ctx, room);
-        }
+        // Draw docking area - always facing "down" regardless of rotation
+        ctx.save();
+        // Rotate to the docking point's angle
+        ctx.translate(this.dockingPoint.x, this.dockingPoint.y);
         
-        if (room.features.includes("crates")) {
-            drawCrates(ctx, room);
-        }
+        // Draw a docking bay indicator
+        const dockSize = this.size / 10;
         
-        if (room.features.includes("terminals")) {
-            drawTerminals(ctx, room);
-        }
-        
-        if (room.features.includes("energy")) {
-            drawEnergyField(ctx, room);
-        }
-    }
-    
-    /**
-     * Draw furniture in living quarters
-     */
-    function drawFurniture(ctx, room) {
-        const centerX = room.x + room.width/2;
-        const centerY = room.y + room.height/2;
-        
-        // Draw a simple table
-        ctx.fillStyle = "#554433";
-        ctx.fillRect(centerX - 20, centerY - 20, 40, 40);
-    }
-    
-    /**
-     * Draw crates in storage rooms
-     */
-    function drawCrates(ctx, room) {
-        ctx.fillStyle = "#665544";
-        
-        // Draw several crates
-        for (let i = 0; i < 4; i++) {
-            const x = room.x + Math.random() * room.width * 0.8 + room.width * 0.1;
-            const y = room.y + Math.random() * room.height * 0.8 + room.height * 0.1;
-            const size = 15 + Math.random() * 10;
-            
-            ctx.fillRect(x, y, size, size);
-        }
-    }
-    
-    /**
-     * Draw terminals in command rooms
-     */
-    function drawTerminals(ctx, room) {
-        ctx.fillStyle = "#445566";
-        
-        // Draw terminal strip along a wall
-        ctx.fillRect(room.x + 10, room.y + room.height - 30, room.width - 20, 15);
-        
-        // Draw small screens
-        ctx.fillStyle = "#88CCFF";
-        for (let i = 0; i < 3; i++) {
-            const x = room.x + 20 + i * (room.width - 40) / 3;
-            ctx.fillRect(x, room.y + room.height - 28, 20, 10);
-        }
-    }
-    
-    /**
-     * Draw energy field in engine rooms
-     */
-    function drawEnergyField(ctx, room) {
-        const centerX = room.x + room.width/2;
-        const centerY = room.y + room.height/2;
-        
-        // Draw energy core
-        const gradient = ctx.createRadialGradient(
-            centerX, centerY, 5,
-            centerX, centerY, 30
-        );
-        gradient.addColorStop(0, "rgba(255, 200, 50, 0.8)");
-        gradient.addColorStop(1, "rgba(255, 100, 50, 0)");
+        // Draw outer glow for docking area
+        const gradient = ctx.createRadialGradient(0, 0, dockSize*0.5, 0, 0, dockSize*2);
+        gradient.addColorStop(0, "rgba(0, 150, 255, 0.8)");
+        gradient.addColorStop(1, "rgba(0, 100, 255, 0)");
         
         ctx.fillStyle = gradient;
         ctx.beginPath();
-        ctx.arc(centerX, centerY, 30, 0, Math.PI * 2);
+        ctx.arc(0, 0, dockSize*2, 0, Math.PI*2);
         ctx.fill();
-    }
+        
+        // Add animation effect
+        const pulseSize = 1 + Math.sin(GameState.getFrameCount() / 20) * 0.2;
+        
+        // Draw docking port
+        ctx.fillStyle = "#1166aa";
+        ctx.strokeStyle = "#88ccff";
+        ctx.lineWidth = 2;
+        
+        ctx.beginPath();
+        ctx.arc(0, 0, dockSize * pulseSize, 0, Math.PI*2);
+        ctx.fill();
+        ctx.stroke();
+        
+        // Draw docking symbol
+        ctx.fillStyle = "#ffffff";
+        ctx.font = `${Math.floor(dockSize*1.5)}px Consolas`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(DOCK_SYMBOL, 0, 0);
+        
+        ctx.restore();
+        
+        // Draw station name
+        ctx.fillStyle = "#ffffff";
+        ctx.font = "14px Consolas";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText("STATION " + this.id.substring(8).toUpperCase(), 0, -this.size - 20);
+        
+        ctx.restore();
+    };
     
     /**
-     * Draw all rats
-     * @param {CanvasRenderingContext2D} ctx - Canvas rendering context
+     * Draw station details
+     * @param {CanvasRenderingContext2D} ctx - Canvas context
      */
-    function drawRats(ctx) {
-        ctx.font = "12px Consolas";
-        ctx.fillStyle = "rgb(128,128,0)";
+    SpaceStation.prototype.drawStationDetails = function(ctx) {
+        // Draw windows and other details
+        ctx.fillStyle = "#88ccff";
         
-        for (let i = 0; i < ratList.length; i++) {
-            ctx.fillText("r", ratList[i].x, ratList[i].y);
+        // Draw random windows
+        const numWindows = Math.floor(this.size / 10);
+        
+        for (let i = 0; i < numWindows; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            const distance = Math.random() * this.size * 0.8;
+            
+            const windowX = Math.cos(angle) * distance;
+            const windowY = Math.sin(angle) * distance;
+            const windowSize = 3 + Math.random() * 3;
+            
+            ctx.beginPath();
+            ctx.arc(windowX, windowY, windowSize, 0, Math.PI*2);
+            ctx.fill();
         }
-    }
+        
+        // Draw some structural lines
+        ctx.strokeStyle = "#556677";
+        ctx.lineWidth = 1;
+        
+        const numLines = this.shape === "STAR" ? 5 : this.points.length / 2;
+        
+        for (let i = 0; i < numLines; i++) {
+            const angle = (i / numLines) * Math.PI;
+            
+            ctx.beginPath();
+            ctx.moveTo(Math.cos(angle) * -this.size, Math.sin(angle) * -this.size);
+            ctx.lineTo(Math.cos(angle) * this.size, Math.sin(angle) * this.size);
+            ctx.stroke();
+        }
+    };
     
     /**
-     * Draw docking stations in docking bay rooms
-     * @param {CanvasRenderingContext2D} ctx - Canvas rendering context
+     * Update the space station (rotation, etc)
+     * @param {number} deltaTime - Time since last update
      */
-    function drawDock(ctx) {
-        ctx.font = "48px Consolas";
+    SpaceStation.prototype.update = function(deltaTime) {
+        this.rotation += this.rotationSpeed * deltaTime * 60; // Scale by deltaTime for consistent rotation
+    };
+    
+    /**
+     * Check if a point is inside the station
+     * @param {number} x - X coordinate in world space
+     * @param {number} y - Y coordinate in world space
+     * @returns {boolean} - Whether the point is inside
+     */
+    SpaceStation.prototype.containsPoint = function(x, y) {
+        // Transform point to station's local space
+        const localX = x - this.x;
+        const localY = y - this.y;
         
-        for (let i = 0; i < roomList.length; i++) {
-            if (roomList[i].type === "DOCK") {
-                // Calculate pulse effect based on frame count
-                const pulseSize = 1 + Math.sin(GameState.getFrameCount() / 20) * 0.2;
-                
-                // Draw docking indicator with pulse
-                ctx.save();
-                ctx.translate(
-                    roomList[i].dockingPosition.x, 
-                    roomList[i].dockingPosition.y
-                );
-                ctx.scale(pulseSize, pulseSize);
-                
-                // Outer circle
-                ctx.beginPath();
-                ctx.arc(0, 0, 20, 0, Math.PI * 2);
-                ctx.fillStyle = "rgba(40, 100, 200, 0.3)";
-                ctx.fill();
-                
-                // Inner symbol
-                ctx.fillStyle = ColorUtils.randRGB();
-                ctx.textAlign = "center";
-                ctx.textBaseline = "middle";
-                ctx.fillText(dock, 0, 0);
-                
-                ctx.restore();
+        // Rotate point by negative rotation to account for station rotation
+        const rotatedX = localX * Math.cos(-this.rotation) - localY * Math.sin(-this.rotation);
+        const rotatedY = localX * Math.sin(-this.rotation) + localY * Math.cos(-this.rotation);
+        
+        return isPointInPolygon(rotatedX, rotatedY, this.points);
+    };
+    
+    /**
+     * Check if ship is near the docking point
+     * @param {number} shipX - Ship X position
+     * @param {number} shipY - Ship Y position
+     * @returns {boolean} - Whether ship is in docking range
+     */
+    SpaceStation.prototype.isInDockingRange = function(shipX, shipY) {
+        // Transform to station's local space
+        const localX = shipX - this.x;
+        const localY = shipY - this.y;
+        
+        // Rotate point by negative rotation to account for station rotation
+        const rotatedX = localX * Math.cos(-this.rotation) - localY * Math.sin(-this.rotation);
+        const rotatedY = localX * Math.sin(-this.rotation) + localY * Math.cos(-this.rotation);
+        
+        // Check distance to docking point
+        const dx = rotatedX - this.dockingPoint.x;
+        const dy = rotatedY - this.dockingPoint.y;
+        const distance = Math.sqrt(dx*dx + dy*dy);
+        
+        return distance < this.size / 10;
+    };
+    
+    /**
+     * Generate ASCII map for station interior
+     * This only happens when player docks
+     */
+    SpaceStation.prototype.generateInterior = function() {
+        if (this.interiorGenerated) return;
+        
+        // Initialize empty map
+        asciiMap = [];
+        for (let y = 0; y < MAP_HEIGHT; y++) {
+            asciiMap[y] = [];
+            for (let x = 0; x < MAP_WIDTH; x++) {
+                asciiMap[y][x] = ' ';
             }
         }
-    }
+        
+        // Draw outer walls
+        for (let x = 0; x < MAP_WIDTH; x++) {
+            asciiMap[0][x] = '#';
+            asciiMap[MAP_HEIGHT-1][x] = '#';
+        }
+        
+        for (let y = 0; y < MAP_HEIGHT; y++) {
+            asciiMap[y][0] = '#';
+            asciiMap[y][MAP_WIDTH-1] = '#';
+        }
+        
+        // Generate rooms
+        this.generateRooms();
+        
+        // Place special rooms at random locations
+        this.placeSpecialRooms();
+        
+        // The dock is always at the bottom
+        this.specialRooms.dock = { x: Math.floor(MAP_WIDTH/2), y: MAP_HEIGHT-2 };
+        asciiMap[MAP_HEIGHT-2][Math.floor(MAP_WIDTH/2)] = 'D';
+        
+        // Set player starting position at the dock
+        playerX = this.specialRooms.dock.x;
+        playerY = this.specialRooms.dock.y;
+        
+        this.interiorGenerated = true;
+    };
     
     /**
-     * Check if hero should dock with a station
+     * Generate random rooms for the station interior
      */
-    function checkDocking() {
-        for (let i = 0; i < roomList.length; i++) {
-            if (roomList[i].type === "DOCK") {
-                // Use a larger detection area to make docking easier
-                const shipX = ShipSystem.hero.tipX;
-                const shipY = ShipSystem.hero.tipY;
-                const dockX = roomList[i].dockingPosition.x;
-                const dockY = roomList[i].dockingPosition.y;
-                
-                // Calculate distance to docking station
-                const distance = Math.sqrt(
-                    Math.pow(shipX - dockX, 2) + 
-                    Math.pow(shipY - dockY, 2)
-                );
-                
-                // If close enough to dock (larger radius for easier docking)
-                if (distance < 80) {
-                    // Show docking indicator when player is near docking area
-                    const ctx = GameState.getContext();
-                    ctx.font = "18px Consolas";
-                    ctx.fillStyle = "#FFFFFF";
-                    ctx.textAlign = "center";
-                    ctx.fillText("Press UP to dock", shipX, shipY - 30);
-                    
-                    // Only dock if UP key is pressed (or up touch)
-                    if (InputSystem.isUpPressed() || InputSystem.isUpTouchActive()) {
-                        console.log("Docking initiated with UP key!"); // Debug message
-                        
-                        // Mark room as visited
-                        roomList[i].visited = true;
-                        roomList[i].revealed = true;
-                        
-                        // Mark connected rooms as revealed
-                        for (const conn of roomConnections) {
-                            if (conn.roomA.id === roomList[i].id) {
-                                conn.roomB.revealed = true;
-                            } else if (conn.roomB.id === roomList[i].id) {
-                                conn.roomA.revealed = true;
-                            }
-                        }
-                        
-                        // Initiate docking
-                        DockingSystem.dock(shipX, shipY);
-                        return true; // Indicate successful docking
+    SpaceStation.prototype.generateRooms = function() {
+        // Number of rooms based on station size
+        const numRooms = Math.floor(5 + (this.size / 30));
+        
+        for (let i = 0; i < numRooms; i++) {
+            // Random room size
+            const roomWidth = 5 + Math.floor(Math.random() * 10);
+            const roomHeight = 4 + Math.floor(Math.random() * 6);
+            
+            // Random position (avoiding edges)
+            const roomX = 2 + Math.floor(Math.random() * (MAP_WIDTH - roomWidth - 4));
+            const roomY = 2 + Math.floor(Math.random() * (MAP_HEIGHT - roomHeight - 6));
+            
+            // Draw room
+            for (let y = roomY; y < roomY + roomHeight; y++) {
+                for (let x = roomX; x < roomX + roomWidth; x++) {
+                    if (y === roomY || y === roomY + roomHeight - 1 || 
+                        x === roomX || x === roomX + roomWidth - 1) {
+                        asciiMap[y][x] = '#';  // Walls
+                    } else {
+                        asciiMap[y][x] = '.';  // Floor
                     }
                 }
             }
+            
+            // Add door
+            const doorSide = Math.floor(Math.random() * 4);
+            let doorX, doorY;
+            
+            switch (doorSide) {
+                case 0: // North
+                    doorX = roomX + Math.floor(Math.random() * (roomWidth - 2)) + 1;
+                    doorY = roomY;
+                    break;
+                case 1: // East
+                    doorX = roomX + roomWidth - 1;
+                    doorY = roomY + Math.floor(Math.random() * (roomHeight - 2)) + 1;
+                    break;
+                case 2: // South
+                    doorX = roomX + Math.floor(Math.random() * (roomWidth - 2)) + 1;
+                    doorY = roomY + roomHeight - 1;
+                    break;
+                case 3: // West
+                    doorX = roomX;
+                    doorY = roomY + Math.floor(Math.random() * (roomHeight - 2)) + 1;
+                    break;
+            }
+            
+            asciiMap[doorY][doorX] = '+';  // Door
+            
+            // Connect door to nearest corridor or create corridor
+            this.createCorridor(doorX, doorY);
         }
-        return false; // No docking occurred
-    }
+    };
     
     /**
-     * Check for rat interactions with the character
+     * Create a corridor from a point
+     * @param {number} startX - Starting X
+     * @param {number} startY - Starting Y
      */
-    function checkRatInteractions() {
-        for (let i = 0; i < ratList.length; i++) {
-            if (CollisionSystem.isColliding(
-                DockingSystem.getManX() - 5, DockingSystem.getManY() - 5, 10, 10,
-                ratList[i].x - 5, ratList[i].y - 5, 10, 10
-            )) {
-                GameState.getContext().fillText(
-                    "Rat: 'Oy, ya stapped on meh!'",
-                    ratList[i].x, ratList[i].y - ratList[i].size
-                );
+    SpaceStation.prototype.createCorridor = function(startX, startY) {
+        // Try to connect to existing corridor
+        let targetX = startX, targetY = startY;
+        let dirX = 0, dirY = 0;
+        
+        // Decide direction
+        if (Math.random() < 0.5) {
+            dirX = Math.random() < 0.5 ? -1 : 1;
+        } else {
+            dirY = Math.random() < 0.5 ? -1 : 1;
+        }
+        
+        let pathLength = 3 + Math.floor(Math.random() * 10);
+        
+        // Create corridor
+        for (let i = 0; i < pathLength; i++) {
+            targetX += dirX;
+            targetY += dirY;
+            
+            // Stay in bounds
+            if (targetX < 1 || targetX >= MAP_WIDTH - 1 || targetY < 1 || targetY >= MAP_HEIGHT - 1) {
+                break;
+            }
+            
+            // If we hit a wall, stop
+            if (asciiMap[targetY][targetX] === '#') {
+                break;
+            }
+            
+            // Create corridor tile if empty
+            if (asciiMap[targetY][targetX] === ' ') {
+                asciiMap[targetY][targetX] = '.';
+            }
+            
+            // Change direction randomly
+            if (Math.random() < 0.2) {
+                if (dirX !== 0) {
+                    dirX = 0;
+                    dirY = Math.random() < 0.5 ? -1 : 1;
+                } else {
+                    dirY = 0;
+                    dirX = Math.random() < 0.5 ? -1 : 1;
+                }
             }
         }
-    }
+    };
     
     /**
-     * Regenerate rooms when current ones move off screen
+     * Place special rooms in the station
      */
-    function regenerateRooms() {
-        // Recycle all current rooms and rats
-        for (let i = 0; i < roomList.length; i++) {
-            roomPool.recycle(roomList[i]);
-        }
+    SpaceStation.prototype.placeSpecialRooms = function() {
+        // Find suitable locations for special rooms
+        const specialRooms = [
+            { symbol: 'B', name: 'bridge', placed: false },
+            { symbol: 'E', name: 'engine', placed: false },
+            { symbol: 'S', name: 'storage', placed: false }
+        ];
         
-        for (let i = 0; i < ratList.length; i++) {
-            creaturePool.recycle(ratList[i]);
-        }
-        
-        // Clear lists
-        roomList = [];
-        ratList = [];
-        roomConnections = [];
-        
-        // Generate new rooms
-        generateRooms();
-    }
-    
-    /**
-     * Clear all rooms and rats
-     */
-    function clearRooms() {
-        // Recycle all current rooms
-        for (let i = 0; i < roomList.length; i++) {
-            roomPool.recycle(roomList[i]);
-        }
-        
-        // Recycle all current rats
-        for (let i = 0; i < ratList.length; i++) {
-            creaturePool.recycle(ratList[i]);
-        }
-        
-        // Clear lists
-        roomList = [];
-        ratList = [];
-        roomConnections = [];
-    }
-    
-    /**
-     * Draw room connection with enhanced visuals
-     * @param {CanvasRenderingContext2D} ctx - Canvas rendering context
-     * @param {Object} connection - The room connection to draw
-     */
-    function drawRoomConnection(ctx, connection) {
-        const startX = connection.startPoint.x;
-        const startY = connection.startPoint.y;
-        const endX = connection.endPoint.x;
-        const endY = connection.endPoint.y;
-        const width = connection.width || 20;
-        
-        // Calculate direction vector
-        const dx = endX - startX;
-        const dy = endY - startY;
-        const length = Math.sqrt(dx * dx + dy * dy);
-        
-        if (length === 0) return;
-        
-        const nx = dx / length;
-        const ny = dy / length;
-        
-        // Calculate perpendicular vector
-        const px = -ny;
-        const py = nx;
-        
-        // Define corridor points
-        const p1 = { x: startX + px * width/2, y: startY + py * width/2 };
-        const p2 = { x: startX - px * width/2, y: startY - py * width/2 };
-        const p3 = { x: endX - px * width/2, y: endY - py * width/2 };
-        const p4 = { x: endX + px * width/2, y: endY + py * width/2 };
-        
-        // Draw corridor
-        ctx.fillStyle = "#334455";
-        ctx.beginPath();
-        ctx.moveTo(p1.x, p1.y);
-        ctx.lineTo(p2.x, p2.y);
-        ctx.lineTo(p3.x, p3.y);
-        ctx.lineTo(p4.x, p4.y);
-        ctx.closePath();
-        ctx.fill();
-        
-        // Draw corridor edges
-        ctx.strokeStyle = "#667788";
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(p1.x, p1.y);
-        ctx.lineTo(p4.x, p4.y);
-        ctx.stroke();
-        ctx.beginPath();
-        ctx.moveTo(p2.x, p2.y);
-        ctx.lineTo(p3.x, p3.y);
-        ctx.stroke();
-        
-        // Draw corridor lights
-        const numLights = Math.floor(length / 40);
-        ctx.fillStyle = "#AAFFFF";
-        for (let i = 0; i <= numLights; i++) {
-            const t = i / numLights;
-            const lightX = startX + dx * t;
-            const lightY = startY + dy * t;
-            
-            ctx.beginPath();
-            ctx.arc(lightX, lightY, 3, 0, Math.PI * 2);
-            ctx.fill();
-        }
-    }
-    
-    /**
-     * Draw a room on the canvas
-     * @param {CanvasRenderingContext2D} ctx - Canvas rendering context
-     * @param {Object} room - The room to draw
-     */
-    function drawRoom(ctx, room) {
-        if (!room.revealed) return;
-        
-        // Draw outer room shape
-        ctx.fillStyle = room.visited ? room.color : "#444444";
-        ctx.beginPath();
-        ctx.moveTo(room.shape[0].x, room.shape[0].y);
-        for (let i = 1; i < room.shape.length; i++) {
-            ctx.lineTo(room.shape[i].x, room.shape[i].y);
-        }
-        ctx.closePath();
-        ctx.fill();
-        
-        // Draw room border
-        ctx.strokeStyle = room.visited ? "#99AAFF" : "#666666";
-        ctx.lineWidth = 3;
-        ctx.stroke();
-        
-        // Draw inner shape for visual interest
-        if (room.visited && room.innerShape && room.innerShape.length > 0) {
-            ctx.fillStyle = room.innerColor;
-            ctx.beginPath();
-            ctx.moveTo(room.innerShape[0].x, room.innerShape[0].y);
-            for (let i = 1; i < room.innerShape.length; i++) {
-                ctx.lineTo(room.innerShape[i].x, room.innerShape[i].y);
-            }
-            ctx.closePath();
-            ctx.fill();
-        }
-        
-        // Draw room elements if visited
-        if (room.visited && room.interactiveElements) {
-            for (const element of room.interactiveElements) {
-                drawInteractiveElement(ctx, element);
-            }
-        }
-        
-        // Draw room symbol and name
-        if (room.visited) {
-            const centerX = room.x + room.width / 2;
-            const centerY = room.y + room.height / 2;
-            
-            // Draw room symbol
-            ctx.fillStyle = "#FFFFFF";
-            ctx.font = "16px Consolas";
-            ctx.textAlign = "center";
-            ctx.textBaseline = "middle";
-            ctx.fillText(room.symbol, centerX, centerY - 15);
-            
-            // Draw room name
-            ctx.font = "12px Consolas";
-            ctx.fillText(room.description, centerX, centerY + 15);
-        }
-        
-        // Draw docking positions for dock rooms
-        if (room.visited && room.type === "DOCK" && room.dockingPositions) {
-            ctx.fillStyle = "#88CCFF";
-            for (const pos of room.dockingPositions) {
-                ctx.beginPath();
-                ctx.arc(pos.x, pos.y, 8, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.strokeStyle = "#FFFFFF";
-                ctx.lineWidth = 2;
-                ctx.stroke();
+        for (const room of specialRooms) {
+            let attempts = 0;
+            while (!room.placed && attempts < 100) {
+                attempts++;
                 
-                // Draw docking symbol
+                const x = 1 + Math.floor(Math.random() * (MAP_WIDTH - 2));
+                const y = 1 + Math.floor(Math.random() * (MAP_HEIGHT - 2));
+                
+                // Check if location is valid (floor space)
+                if (asciiMap[y][x] === '.') {
+                    asciiMap[y][x] = room.symbol;
+                    this.specialRooms[room.name] = { x, y };
+                    room.placed = true;
+                }
+            }
+        }
+        
+        // If any room couldn't be placed, force place it
+        for (const room of specialRooms) {
+            if (!room.placed) {
+                for (let y = 1; y < MAP_HEIGHT - 1; y++) {
+                    for (let x = 1; x < MAP_WIDTH - 1; x++) {
+                        if (asciiMap[y][x] === '.') {
+                            asciiMap[y][x] = room.symbol;
+                            this.specialRooms[room.name] = { x, y };
+                            room.placed = true;
+                            break;
+                        }
+                    }
+                    if (room.placed) break;
+                }
+            }
+        }
+    };
+    
+    /**
+     * Initialize the station system
+     */
+    function init() {
+        stationList = [];
+    }
+    
+    /**
+     * Generate a new space station
+     */
+    function generateStation() {
+        const canvas = GameState.getCanvas();
+        
+        // Random position (off-screen)
+        const x = Math.floor(Math.random() * canvas.width);
+        const y = Math.floor(Math.random() * -canvas.height) - 300; // Above the screen
+        
+        // Random size
+        const size = 100 + Math.floor(Math.random() * 150);
+        
+        // Random shape
+        const shape = STATION_SHAPES[Math.floor(Math.random() * STATION_SHAPES.length)];
+        
+        // Create station
+        const station = new SpaceStation(x, y, size, shape);
+        stationList.push(station);
+        
+        return station;
+    }
+    
+    /**
+     * Update all stations
+     * @param {number} deltaTime - Time since last update
+     */
+    function updateStations(deltaTime) {
+        const canvas = GameState.getCanvas();
+        
+        // Update each station
+        for (let i = 0; i < stationList.length; i++) {
+            stationList[i].update(deltaTime);
+            stationList[i].y += 0.5;
+            
+            // Remove stations that are far below the screen
+            if (stationList[i].y - stationList[i].size > canvas.height + 500) {
+                stationList.splice(i, 1);
+                i--;
+            }
+        }
+        
+        // Generate new stations as needed
+        if (stationList.length < 3 && Math.random() < 0.01) {
+            generateStation();
+        }
+    }
+    
+    /**
+     * Draw all stations
+     * @param {CanvasRenderingContext2D} ctx - Canvas context
+     */
+    function drawStations(ctx) {
+        for (let i = 0; i < stationList.length; i++) {
+            stationList[i].draw(ctx);
+        }
+    }
+    
+    /**
+     * Move all stations horizontally (when player moves)
+     * @param {number} dx - Amount to move
+     */
+    function moveStationsX(dx) {
+        for (let i = 0; i < stationList.length; i++) {
+            stationList[i].x += dx;
+        }
+    }
+    
+    /**
+     * Check if player is in docking range of any station
+     */
+    function checkDocking() {
+        if (isInside) return false; // Already docked
+        if (!DockingSystem.canDock()) return false; // Prevent immediate re-dock
+            
+        for (let i = 0; i < stationList.length; i++) {
+            const station = stationList[i];
+            
+            if (station.isInDockingRange(ShipSystem.hero.tipX, ShipSystem.hero.tipY)) {
+                // Show docking prompt
+                const ctx = GameState.getContext();
+                ctx.font = "18px Consolas";
                 ctx.fillStyle = "#FFFFFF";
-                ctx.font = "14px Consolas";
                 ctx.textAlign = "center";
-                ctx.textBaseline = "middle";
-                ctx.fillText(dock, pos.x, pos.y);
+                ctx.fillText("DOCKING...", ShipSystem.hero.tipX, ShipSystem.hero.tipY - 30);
+                
+                // Automatically dock after a brief delay
+                dockAtStation(station);
+                return true;
             }
+        }
+        
+        return false;
+    }
+    
+    /**
+     * Dock at a station and go inside
+     * @param {SpaceStation} station - The station to dock at
+     */
+    function dockAtStation(station) {
+        // Generate station interior if first time
+        if (!station.interiorGenerated) {
+            station.generateInterior();
+        }
+        
+        // Mark station as visited
+        station.visited = true;
+        
+        // Enter station (switching to ASCII mode)
+        isInside = true;
+        
+        // Notify docking system
+        DockingSystem.dock(ShipSystem.hero.tipX, ShipSystem.hero.tipY);
+    }
+    
+    /**
+     * Render ASCII map of station interior
+     * @param {CanvasRenderingContext2D} ctx - Canvas context
+     */
+    function drawStationInterior(ctx) {
+        if (!isInside) return;
+        
+        const tileSize = 20;
+        const startX = (ctx.canvas.width - MAP_WIDTH * tileSize) / 2;
+        const startY = (ctx.canvas.height - MAP_HEIGHT * tileSize) / 2;
+        
+        // Draw ASCII map
+        ctx.font = "20px monospace";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        
+        for (let y = 0; y < MAP_HEIGHT; y++) {
+            for (let x = 0; x < MAP_WIDTH; x++) {
+                const tileX = startX + x * tileSize;
+                const tileY = startY + y * tileSize;
+                
+                // Draw background
+                switch (asciiMap[y][x]) {
+                    case '#': // Wall
+                        ctx.fillStyle = "#555555";
+                        break;
+                    case '.': // Floor
+                        ctx.fillStyle = "#222222";
+                        break;
+                    case '+': // Door
+                        ctx.fillStyle = "#553322";
+                        break;
+                    case 'B': // Bridge
+                        ctx.fillStyle = "#223355";
+                        break;
+                    case 'E': // Engine room
+                        ctx.fillStyle = "#553322";
+                        break;
+                    case 'S': // Storage
+                        ctx.fillStyle = "#554433";
+                        break;
+                    case 'D': // Dock
+                        ctx.fillStyle = "#335577";
+                        break;
+                    default:
+                        ctx.fillStyle = "#000000";
+                }
+                
+                ctx.fillRect(tileX, tileY, tileSize, tileSize);
+                
+                // Draw ASCII character
+                ctx.fillStyle = "#FFFFFF";
+                ctx.fillText(asciiMap[y][x], tileX + tileSize/2, tileY + tileSize/2);
+            }
+        }
+        
+        // Draw player
+        ctx.fillStyle = "#FFAA00";
+        ctx.fillText('@', startX + playerX * tileSize + tileSize/2, startY + playerY * tileSize + tileSize/2);
+        
+        // Draw station info
+        ctx.font = "16px Arial";
+        ctx.fillStyle = "#FFFFFF";
+        ctx.textAlign = "center";
+        ctx.fillText("Use ARROW KEYS to move - Press ESC to exit station", ctx.canvas.width / 2, startY - 20);
+        
+        // Draw help text based on player position
+        const tile = asciiMap[playerY][playerX];
+        let helpText = "";
+        
+        switch (tile) {
+            case 'D':
+                helpText = "DOCKING BAY - Press ESC to return to ship";
+                break;
+            case 'B':
+                helpText = "BRIDGE - Navigation systems and controls";
+                break;
+            case 'E':
+                helpText = "ENGINE ROOM - Power core at critical levels";
+                break;
+            case 'S':
+                helpText = "STORAGE - Supplies and equipment";
+                break;
+        }
+        
+        if (helpText) {
+            ctx.fillText(helpText, ctx.canvas.width / 2, startY + MAP_HEIGHT * tileSize + 20);
         }
     }
     
     /**
-     * Draw an interactive element
-     * @param {CanvasRenderingContext2D} ctx - Canvas rendering context
-     * @param {Object} element - The element to draw
+     * Move player inside station
+     * @param {number} dx - X movement
+     * @param {number} dy - Y movement
      */
-    function drawInteractiveElement(ctx, element) {
-        switch (element.type) {
-            case "panel":
-            case "console":
-            case "station":
-                ctx.fillStyle = element.color;
-                ctx.fillRect(element.x - element.width/2, element.y - element.height/2, 
-                             element.width, element.height);
-                ctx.strokeStyle = "#FFFFFF";
-                ctx.lineWidth = 1;
-                ctx.strokeRect(element.x - element.width/2, element.y - element.height/2, 
-                               element.width, element.height);
-                break;
-                
-            case "crate":
-                ctx.fillStyle = element.color;
-                ctx.fillRect(element.x - element.width/2, element.y - element.height/2, 
-                             element.width, element.height);
-                ctx.strokeStyle = "#553311";
-                ctx.lineWidth = 2;
-                ctx.strokeRect(element.x - element.width/2, element.y - element.height/2, 
-                               element.width, element.height);
-                
-                // Draw cross lines on crate
-                ctx.beginPath();
-                ctx.moveTo(element.x - element.width/2, element.y - element.height/2);
-                ctx.lineTo(element.x + element.width/2, element.y + element.height/2);
-                ctx.moveTo(element.x + element.width/2, element.y - element.height/2);
-                ctx.lineTo(element.x - element.width/2, element.y + element.height/2);
-                ctx.stroke();
-                break;
-                
-            case "core":
-                // Draw pulsating engine core
-                const pulseSize = 1 + 0.2 * Math.sin(Date.now() * 0.001 * element.pulseRate);
-                const gradient = ctx.createRadialGradient(
-                    element.x, element.y, 0,
-                    element.x, element.y, element.radius * pulseSize
-                );
-                gradient.addColorStop(0, "#FFDD99");
-                gradient.addColorStop(0.7, element.color);
-                gradient.addColorStop(1, "#773300");
-                
-                ctx.fillStyle = gradient;
-                ctx.beginPath();
-                ctx.arc(element.x, element.y, element.radius * pulseSize, 0, Math.PI * 2);
-                ctx.fill();
-                break;
-                
-            case "bed":
-                ctx.fillStyle = element.color;
-                ctx.fillRect(element.x - element.width/2, element.y - element.height/2, 
-                             element.width, element.height);
-                
-                // Draw pillow
-                ctx.fillStyle = "#AABBCC";
-                ctx.fillRect(element.x - element.width/2 + 5, element.y - element.height/2 + 5, 
-                             element.width - 10, element.height/4);
-                break;
-                
-            case "table":
-                ctx.fillStyle = element.color;
-                ctx.fillRect(element.x - element.width/2, element.y - element.height/2, 
-                             element.width, element.height);
-                
-                // Draw some items on the table
-                ctx.fillStyle = "#CCDDEE";
-                ctx.beginPath();
-                ctx.arc(element.x, element.y, 5, 0, Math.PI * 2);
-                ctx.fill();
-                
-                ctx.fillStyle = "#EECCDD";
-                ctx.beginPath();
-                ctx.arc(element.x + 10, element.y - 5, 3, 0, Math.PI * 2);
-                ctx.fill();
-                break;
+    function movePlayer(dx, dy) {
+        if (!isInside) return;
+        
+        const newX = playerX + dx;
+        const newY = playerY + dy;
+        
+        // Check bounds
+        if (newX < 0 || newX >= MAP_WIDTH || newY < 0 || newY >= MAP_HEIGHT) {
+            return;
+        }
+        
+        // Check if can move to the new position
+        const tile = asciiMap[newY][newX];
+        if (tile !== '#') { // Not a wall
+            playerX = newX;
+            playerY = newY;
         }
     }
     
     /**
-     * Check if a point is inside any room
-     * @param {number} x - X coordinate to check
-     * @param {number} y - Y coordinate to check
-     * @returns {boolean} - Whether the point is inside a room
+     * Check if player is at dock and can exit
      */
-    function inRoom(x, y) {
-        for (let i = 0; i < roomList.length; i++) {
-            const room = roomList[i];
-            
-            if (room.points) {
-                // Check if point is in a complex shape room
-                if (isPointInPolygon(x, y, room.points)) {
-                    return true;
-                }
-            } else {
-                // Check if point is in a rectangular room
-                if (CollisionSystem.isPointInside(
-                    x, y,
-                    room.x, room.y,
-                    room.width, room.height
-                )) {
-                    return true;
-                }
-            }
-            
-            // Check if point is in a corridor connecting rooms
-            for (const conn of roomConnections) {
-                if (isPointInCorridor(x, y, conn)) {
-                    return true;
-                }
-            }
+    function checkExit() {
+        if (!isInside) return false;
+        
+        // Check if player is at docking position
+        const tile = asciiMap[playerY][playerX];
+        if (tile === 'D') {
+            return true;
         }
         return false;
+    }
+    
+    /**
+     * Exit the station and return to the ship
+     */
+    function exitStation() {
+        isInside = false;
+        DockingSystem.undock();
     }
     
     /**
@@ -1119,171 +790,21 @@ const RoomSystem = (function() {
         return inside;
     }
     
-    /**
-     * Check if point is inside a corridor
-     * @param {number} x - X coordinate to check
-     * @param {number} y - Y coordinate to check
-     * @param {Object} connection - Room connection defining the corridor
-     * @returns {boolean} - Whether the point is inside the corridor
-     */
-    function isPointInCorridor(x, y, connection) {
-        const startX = connection.pointA.x;
-        const startY = connection.pointA.y;
-        const endX = connection.pointB.x;
-        const endY = connection.pointB.y;
-        const width = connection.width || 20;
-        
-        // Calculate direction vector
-        const dx = endX - startX;
-        const dy = endY - startY;
-        const length = Math.sqrt(dx * dx + dy * dy);
-        
-        if (length === 0) return false;
-        
-        // Calculate normalized direction vector
-        const nx = dx / length;
-        const ny = dy / length;
-        
-        // Calculate perpendicular vector
-        const px = -ny;
-        const py = nx;
-        
-        // Project point onto corridor direction
-        const vx = x - startX;
-        const vy = y - startY;
-        
-        // Calculate projection distances
-        const projDir = vx * nx + vy * ny;  // Along corridor
-        const projPerp = vx * px + vy * py; // Perpendicular to corridor
-        
-        // Check if point is within corridor bounds
-        return (projDir >= 0 && projDir <= length && 
-                Math.abs(projPerp) <= width / 2);
-    }
-    
-    /**
-     * Update room positions (move them downward)
-     */
-    function updateRooms() {
-        const deltaTime = GameState.getDeltaTime();
-        const timeScale = 60 * deltaTime; // Scale to 60 fps baseline
-        const moveAmount = 0.5 * timeScale;
-        
-        // Move all rooms downward
-        for (let i = 0; i < roomList.length; i++) {
-            roomList[i].y += moveAmount;
-            
-            // If room has special points for non-rectangular shape
-            if (roomList[i].points) {
-                // Fix: Changed 'i < roomList[i].points.length' to 'j < roomList[i].points.length'
-                for (let j = 0; j < roomList[i].points.length; j++) {
-                    roomList[i].points[j].y += moveAmount;
-                }
-            }
-        }
-        
-        // Update room connections
-        for (const conn of roomConnections) {
-            conn.pointA.y += moveAmount;
-            conn.pointB.y += moveAmount;
-        }
-        
-        // Check if all rooms are off screen and regenerate if needed
-        const canvas = GameState.getCanvas();
-        let allOffscreen = true;
-        for (let i = 0; i < roomList.length; i++) {
-            if (roomList[i].y < canvas.height + canvas.height) {
-                allOffscreen = false;
-                break;
-            }
-        }
-        
-        if (allOffscreen && roomList.length > 0) {
-            regenerateRooms();
-        }
-    }
-    
-    /**
-     * Update rat positions (move them with their rooms)
-     */
-    function updateRats() {
-        for (let i = 0; i < ratList.length; i++) {
-            ratList[i].y += 0.5;
-        }
-    }
-    
-    /**
-     * Move rooms horizontally
-     * @param {number} dx - Amount to move horizontally
-     */
-    function moveRoomsX(dx) {
-        for (let i = 0; i < roomList.length; i++) {
-            roomList[i].x += dx;
-            
-            // If room has docking position, update it
-            if (roomList[i].dockingPosition) {
-                roomList[i].dockingPosition.x += dx;
-            }
-            
-            // If room has special points for non-rectangular shape
-            if (roomList[i].points) {
-                for (let j = 0; j < roomList[i].points.length; j++) {
-                    roomList[i].points[j].x += dx;
-                }
-            }
-        }
-        
-        // Update room connections
-        for (const conn of roomConnections) {
-            conn.pointA.x += dx;
-            conn.pointB.x += dx;
-        }
-    }
-    
-    /**
-     * Move rats horizontally
-     * @param {number} dx - Amount to move horizontally
-     */
-    function moveRatsX(dx) {
-        for (let i = 0; i < ratList.length; i++) {
-            ratList[i].x += dx;
-        }
-    }
-    
-    /**
-     * Initialize the room system
-     */
-    function init() {
-        const canvas = GameState.getCanvas();
-        roomList = [];
-        ratList = [];
-        roomConnections = [];
-        
-        // Initialize object pools
-        roomPool.init();
-        creaturePool.init();
-    }
-    
     // Public API
     return {
-        Room: Room,
-        Creature: Creature,
-        roomList: roomList,
-        ratList: ratList,
-        generateRooms: generateRooms,
-        drawRooms: drawRooms,
-        drawRats: drawRats,
-        drawDock: drawDock,
-        updateRooms: updateRooms,
-        updateRats: updateRats,
-        moveRoomsX: moveRoomsX,
-        moveRatsX: moveRatsX,
-        inRoom: inRoom,
+        init: init,
+        generateStation: generateStation,
+        updateStations: updateStations,
+        drawStations: drawStations,
+        moveStationsX: moveStationsX,
         checkDocking: checkDocking,
-        checkRatInteractions: checkRatInteractions,
-        regenerateRooms: regenerateRooms,
-        clearRooms: clearRooms,
-        getRoomConnections: function() { return roomConnections; },
-        init: init
+        drawStationInterior: drawStationInterior,
+        movePlayer: movePlayer,
+        checkExit: checkExit,
+        exitStation: exitStation,
+        isInside: function() { return isInside; }
     };
 })();
+
+// Replace the old RoomSystem with the new StationSystem
+const RoomSystem = StationSystem;

@@ -210,17 +210,6 @@ const DustSystem = (function() {
                 dust.xList[i] += (Math.floor(Math.random() * -5 + 3)) * timeScale;
             }
 
-            // Check for room collisions - prevent dust from entering rooms
-            if (isInsideAnyRoom(dust.xList[i], dust.yList[i])) {
-                // If dust would enter a room, give it a small nudge to move away
-                dust.xList[i] = prevX;
-                dust.yList[i] = prevY;
-                
-                // Apply a deflection to move dust away from rooms
-                dust.xList[i] += (Math.random() * 6 - 3) * timeScale;
-                dust.yList[i] += (Math.random() * 6) * timeScale; // Bias downward movement
-            }
-
             // Check if dust is being collected by magwave
             if ((InputSystem.isDownPressed() || InputSystem.isLeftTouchActive()) && 
                 dust.xList[i] <= ShipSystem.hero.tipX + magWave.radius + dust.width &&
@@ -245,113 +234,6 @@ const DustSystem = (function() {
                 i--;
             }
         }
-    }
-    
-    /**
-     * Check if a dust particle is inside any room
-     * @param {number} x - X coordinate to check
-     * @param {number} y - Y coordinate to check
-     * @returns {boolean} - Whether the point is inside a room
-     */
-    function isInsideAnyRoom(x, y) {
-        // Skip collision detection if RoomSystem isn't loaded yet
-        if (!RoomSystem || !RoomSystem.roomList) return false;
-        
-        // Check all rooms
-        for (let i = 0; i < RoomSystem.roomList.length; i++) {
-            const room = RoomSystem.roomList[i];
-            
-            // Skip check for very distant rooms (optimization)
-            if (Math.abs(x - (room.x + room.width/2)) > room.width*1.5 || 
-                Math.abs(y - (room.y + room.height/2)) > room.height*1.5) continue;
-            
-            if (room.points) {
-                // Check if point is in a complex shape room
-                if (isPointInPolygon(x, y, room.points)) {
-                    return true;
-                }
-            } else {
-                // Check if point is in a rectangular room
-                if (x >= room.x && x <= room.x + room.width &&
-                    y >= room.y && y <= room.y + room.height) {
-                    return true;
-                }
-            }
-        }
-        
-        // Also check corridors
-        const connections = RoomSystem.getRoomConnections();
-        if (connections) {
-            for (let i = 0; i < connections.length; i++) {
-                if (isPointInCorridor(x, y, connections[i])) {
-                    return true;
-                }
-            }
-        }
-        
-        return false;
-    }
-    
-    /**
-     * Check if a point is inside a polygon
-     * @param {number} x - X coordinate to check
-     * @param {number} y - Y coordinate to check
-     * @param {Array} points - Array of points defining the polygon
-     * @returns {boolean} - Whether the point is inside the polygon
-     */
-    function isPointInPolygon(x, y, points) {
-        let inside = false;
-        for (let i = 0, j = points.length - 1; i < points.length; j = i++) {
-            const xi = points[i].x, yi = points[i].y;
-            const xj = points[j].x, yj = points[j].y;
-            
-            const intersect = ((yi > y) !== (yj > y)) &&
-                (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
-            if (intersect) inside = !inside;
-        }
-        return inside;
-    }
-    
-    /**
-     * Check if point is inside a corridor
-     * @param {number} x - X coordinate to check
-     * @param {number} y - Y coordinate to check
-     * @param {Object} connection - Room connection defining the corridor
-     * @returns {boolean} - Whether the point is inside the corridor
-     */
-    function isPointInCorridor(x, y, connection) {
-        const startX = connection.pointA.x;
-        const startY = connection.pointA.y;
-        const endX = connection.pointB.x;
-        const endY = connection.pointB.y;
-        const width = connection.width || 20;
-        
-        // Calculate direction vector
-        const dx = endX - startX;
-        const dy = endY - startY;
-        const length = Math.sqrt(dx * dx + dy * dy);
-        
-        if (length === 0) return false;
-        
-        // Calculate normalized direction vector
-        const nx = dx / length;
-        const ny = dy / length;
-        
-        // Calculate perpendicular vector
-        const px = -ny;
-        const py = nx;
-        
-        // Project point onto corridor direction
-        const vx = x - startX;
-        const vy = y - startY;
-        
-        // Calculate projection distances
-        const projDir = vx * nx + vy * ny;  // Along corridor
-        const projPerp = vx * px + vy * py; // Perpendicular to corridor
-        
-        // Check if point is within corridor bounds
-        return (projDir >= 0 && projDir <= length && 
-                Math.abs(projPerp) <= width / 2);
     }
     
     /**

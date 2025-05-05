@@ -13,8 +13,7 @@ const MovementSystem = (function() {
      */
     function moveAllX(dx) {
         StarSystem.moveStarsX(dx);
-        RoomSystem.moveRoomsX(dx);
-        RoomSystem.moveRatsX(dx);
+        RoomSystem.moveStationsX(dx);
         BulletSystem.moveBulletsX(dx);
         DustSystem.moveDustX(dx);
         
@@ -46,20 +45,7 @@ const MovementSystem = (function() {
         // Update dust and magwave with the timeStep
         DustSystem.updateDust(timeStep);
         
-        // Move rats randomly within their rooms
-        // Scale movement by timeStep for consistent movement speed
-        const timeScale = timeStep * 60; // Scale to 60fps baseline
-        for (let i = 0; i < RoomSystem.ratList.length; i++) {
-            const randX = (Math.random() * 2 - 1) * timeScale;
-            const randY = (Math.random() * 2 - 1) * timeScale;
-            
-            if (RoomSystem.inRoom(RoomSystem.ratList[i].x + randX, RoomSystem.ratList[i].y)) {
-                RoomSystem.ratList[i].x += randX;
-            }
-            if (RoomSystem.inRoom(RoomSystem.ratList[i].x, RoomSystem.ratList[i].y + randY)) {
-                RoomSystem.ratList[i].y += randY;
-            }
-        }
+        // Removed all rat and old room/corridor logic
     }
     
     // Public API

@@ -19,6 +19,7 @@ const InputSystem = (function() {
         shift: false,
         space: false,
         tab: false,
+        esc: false,
         touch: false,
         rightTouch: false,
         leftTouch: false,
@@ -84,6 +85,10 @@ const InputSystem = (function() {
      */
     function keyDownHandler(e) {
         switch (e.keyCode) {
+            case 27: // ESC key
+                evt.esc = true;
+                GameEvents.publish('input:escape', {});
+                break;
             case 32: // Space
                 evt.space = true;
                 GameEvents.publish('input:fire', {});
@@ -136,6 +141,10 @@ const InputSystem = (function() {
      */
     function keyUpHandler(e) {
         switch (e.keyCode) {
+            case 27: // ESC key
+                evt.esc = false;
+                GameEvents.publish('input:escapeEnd', {});
+                break;
             case 32: // Space
                 evt.space = false;
                 GameEvents.publish('input:fireEnd', {});
@@ -338,6 +347,7 @@ const InputSystem = (function() {
         isSpacePressed: function() { return evt.space; },
         isShiftPressed: function() { return evt.shift; },
         isEnterPressed: function() { return evt.enter; },
+        isEscPressed: function() { return evt.esc; },
         isTiltRight: function() { return evt.tiltRight; },
         isTiltLeft: function() { return evt.tiltLeft; },
         isRightTouchActive: function() { return evt.rightTouch; },

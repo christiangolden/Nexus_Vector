@@ -730,6 +730,11 @@ const ShipSystem = (function() {
         baseSpawnInterval -= amount;
         if (baseSpawnInterval < 50) baseSpawnInterval = 50; // Minimum base interval
     }
+
+    // Utility to get the default Y position for the ship
+    function getDefaultShipY(canvas) {
+        return canvas.height - ShipSystem.hero.height * 2;
+    }
     
     // Public API
     return {
@@ -746,6 +751,7 @@ const ShipSystem = (function() {
         resetEnemy: resetEnemy,
         removeEnemy: removeEnemy, // Export the removeEnemy function
         increaseEnemySpeed: increaseEnemySpeed,
-        decreaseEnemySpawnCooldown: decreaseEnemySpawnCooldown
+        decreaseEnemySpawnCooldown: decreaseEnemySpawnCooldown,
+        getDefaultShipY: getDefaultShipY // Export for use in other modules
     };
 })();
