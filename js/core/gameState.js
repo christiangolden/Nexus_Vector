@@ -650,16 +650,62 @@ const GameState = (function() {
     
     // Draw the score and game stats
     function drawScore() {
+        // Stardust Collected (icon + counter)
+        const iconY = 22;
+        const iconSize = DustSystem.dust.width;
+        const iconX = canvas.width - 12 - 8; // 8px padding from right
         ctx.textAlign = "end";
-        ctx.fillStyle = ColorUtils.randRGB();
         ctx.font = "18px Consolas";
-        ctx.fillText("Stardust Collected:" + player.score, canvas.width - 12, 22);
         ctx.fillStyle = ColorUtils.randRGB();
-        ctx.fillText("Stardust Destroyed:" + player.destroyedDust, canvas.width - 12, 42);
+        ctx.fillText(player.score, iconX - iconSize - 10, iconY + 1);
+        // Draw stardust icon (flashing color)
+        ctx.save();
         ctx.fillStyle = ColorUtils.randRGB();
-        ctx.fillText("Drones Destroyed:" + player.shotDrones, canvas.width - 12, 62);
+        ctx.fillRect(iconX - iconSize, iconY - iconSize + 4, iconSize, iconSize);
+        ctx.restore();
+
+        // Drones Destroyed (enhanced: icon + counter)
+        const droneY = 42; // Shift up to just below stardust
+        const droneIconSize = 16;
+        const droneIconX = canvas.width - 12 - 8; // Align left with stardust/bullet
         ctx.fillStyle = ColorUtils.randRGB();
-        ctx.fillText("Bullets Available:" + BulletSystem.getBulletCount(), canvas.width - 12, 82);
+        ctx.fillText(player.shotDrones, droneIconX - droneIconSize - 10, droneY + 10); // Lowered counter by 4px
+        // Draw a more upright red triangle as a drone icon
+        ctx.save();
+        ctx.beginPath();
+        ctx.moveTo(droneIconX - droneIconSize / 2, droneY - droneIconSize / 2 + 8); // top
+        ctx.lineTo(droneIconX, droneY + droneIconSize / 2 + 8); // bottom right
+        ctx.lineTo(droneIconX - droneIconSize, droneY + droneIconSize / 2 + 8); // bottom left
+        ctx.closePath();
+        ctx.fillStyle = "#FF5555";
+        ctx.fill();
+        // Optional: cockpit dot
+        ctx.beginPath();
+        ctx.arc(droneIconX - droneIconSize / 2, droneY - droneIconSize / 6 + 8, 2, 0, Math.PI * 2);
+        ctx.fillStyle = "#FFF";
+        ctx.fill();
+        ctx.restore();
+
+        // Bullets Available (modern bullet icon + counter)
+        const bulletY = 82;
+        const bulletW = 8, bulletH = 22;
+        const bulletIconX = canvas.width - 12 - 8;
+        ctx.fillStyle = ColorUtils.randRGB();
+        ctx.fillText(BulletSystem.getBulletCount(), bulletIconX - bulletW - 18, bulletY + 1);
+        // Draw modern bullet icon
+        ctx.save();
+        // Bullet body
+        ctx.fillStyle = "#C0C0C0"; // metallic gray
+        ctx.fillRect(bulletIconX - bulletW - 4, bulletY - bulletH + 8 + 6, bulletW, bulletH - 12);
+        // Bullet tip (ellipse)
+        ctx.beginPath();
+        ctx.ellipse(bulletIconX - bulletW/2 - 4, bulletY - bulletH + 8 + 6, bulletW/2, 6, 0, 0, Math.PI * 2);
+        ctx.fillStyle = "#FFD700"; // gold tip
+        ctx.fill();
+        // Bullet base (darker band)
+        ctx.fillStyle = "#888";
+        ctx.fillRect(bulletIconX - bulletW - 4, bulletY - bulletH + 8 + bulletH - 12 + 8, bulletW, 4);
+        ctx.restore();
 
         // --- XP Bar and Level Counter (Upper Right) ---
         const xpBarWidth = 180;
