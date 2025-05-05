@@ -10,6 +10,78 @@ const PowerUpSystem = (function() {
     // Array to hold active power-ups
     let powerUps = [];
     
+    // Power-up object pool for efficient object reuse
+    const powerUpPool = {
+        pool: [],
+        maxSize: 20, // Maximum size of the pool
+        
+        init: function() {
+            // Pre-allocate power-up objects
+            for (let i = 0; i < this.maxSize; i++) {
+                this.pool.push({
+                    x: 0,
+                    y: 0,
+                    width: 20,
+                    height: 20,
+                    type: "",
+                    velocity: 0,
+                    age: 0,
+                    maxAge: 300,
+                    driftX: 0,
+                    oscillate: false,
+                    oscillationSpeed: 0,
+                    oscillationAmount: 0
+                });
+            }
+        },
+        
+        get: function(x, y, type, velocity) {
+            let powerUp;
+            
+            if (this.pool.length > 0) {
+                powerUp = this.pool.pop();
+                
+                // Reset properties
+                powerUp.x = x;
+                powerUp.y = y;
+                powerUp.width = 20;
+                powerUp.height = 20;
+                powerUp.type = type;
+                powerUp.velocity = velocity;
+                powerUp.age = 0;
+                powerUp.maxAge = 300;
+                powerUp.driftX = (Math.random() * 2) - 1;
+                powerUp.oscillate = Math.random() > 0.5;
+                powerUp.oscillationSpeed = Math.random() * 0.05 + 0.02;
+                powerUp.oscillationAmount = Math.random() * 20 + 10;
+            } else {
+                // Create new if pool is empty (shouldn't happen often)
+                powerUp = {
+                    x: x,
+                    y: y,
+                    width: 20,
+                    height: 20,
+                    type: type,
+                    velocity: velocity,
+                    age: 0,
+                    maxAge: 300,
+                    driftX: (Math.random() * 2) - 1,
+                    oscillate: Math.random() > 0.5,
+                    oscillationSpeed: Math.random() * 0.05 + 0.02,
+                    oscillationAmount: Math.random() * 20 + 10
+                };
+            }
+            
+            return powerUp;
+        },
+        
+        recycle: function(powerUp) {
+            if (this.pool.length < this.maxSize) {
+                this.pool.push(powerUp);
+            }
+        }
+    };
+    
     // Power-up types and their properties
     const POWER_UP_TYPES = {
         SHIELD: {
@@ -70,6 +142,7 @@ const PowerUpSystem = (function() {
     function init() {
         powerUps = [];
         resetAllPowerUps();
+        powerUpPool.init();
     }
     
     /**
@@ -101,29 +174,19 @@ const PowerUpSystem = (function() {
         // Add small random velocity variation to make movement more natural
         const velocityVariation = (Math.random() * 1.5) - 0.75; // -0.75 to +0.75
         
-        // Create power-up object with movement properties
-        const powerUp = {
-            x: x,
-            y: y,
-            width: 20,
-            height: 20,
-            type: randomType,
-            velocity: typeProps.velocity + velocityVariation, // Base velocity + variation
-            age: 0,
-            maxAge: 300, // Power-ups disappear after 5 seconds (~300 frames)
-            // Add horizontal drift for more interesting movement
-            driftX: (Math.random() * 2) - 1, // -1 to +1 pixels per frame
-            // Add oscillation for some power-ups
-            oscillate: Math.random() > 0.5, // 50% chance to oscillate
-            oscillationSpeed: Math.random() * 0.05 + 0.02,
-            oscillationAmount: Math.random() * 20 + 10
-        };
+        // Create power-up object with movement properties using the pool
+        const powerUp = powerUpPool.get(
+            x, 
+            y, 
+            randomType, 
+            typeProps.velocity + velocityVariation
+        );
         
         powerUps.push(powerUp);
         
         // Safely call showNotification if it exists
-        if (Game && typeof Game.showNotification === 'function') {
-            Game.showNotification("Power-up dropped!");
+        if (GameState && typeof GameState.showNotification === 'function') {
+            GameState.showNotification("Power-up dropped!");
         }
     }
     
@@ -140,8 +203,8 @@ const PowerUpSystem = (function() {
                 rapidFireActive = false;
                 fireRate = originalFireRate;
                 // Notify player
-                if (Game && typeof Game.showNotification === 'function') {
-                    Game.showNotification("Rapid-fire deactivated - Out of ammo!");
+                if (GameState && typeof GameState.showNotification === 'function') {
+                    GameState.showNotification("Rapid-fire deactivated - Out of ammo!");
                 }
             }
             
@@ -149,8 +212,8 @@ const PowerUpSystem = (function() {
                 multiShotActive = false;
                 multiShotCount = 1;
                 // Notify player
-                if (Game && typeof Game.showNotification === 'function') {
-                    Game.showNotification("Multi-shot deactivated - Out of ammo!");
+                if (GameState && typeof GameState.showNotification === 'function') {
+                    GameState.showNotification("Multi-shot deactivated - Out of ammo!");
                 }
             }
         }
@@ -232,12 +295,13 @@ const PowerUpSystem = (function() {
                     POWER_UP_TYPES[powerUp.type].apply();
                     
                     // Safely flash notification on screen
-                    if (Game && typeof Game.showNotification === 'function') {
-                        Game.showNotification("Power-up: " + powerUp.type + " activated!");
+                    if (GameState && typeof GameState.showNotification === 'function') {
+                        GameState.showNotification("Power-up: " + powerUp.type + " activated!");
                     }
                     
                     // Remove power-up
                     powerUps.splice(i, 1);
+                    powerUpPool.recycle(powerUp);
                     continue;
                 }
             } else {
@@ -253,7 +317,7 @@ const PowerUpSystem = (function() {
             }
             
             // Keep within screen bounds horizontally
-            const canvas = Game.getCanvas();
+            const canvas = GameState.getCanvas();
             if (powerUp.x < 0) {
                 powerUp.x = 0;
                 powerUp.driftX *= -0.8; // Bounce off left edge with damping
@@ -266,8 +330,9 @@ const PowerUpSystem = (function() {
             powerUp.age++;
             
             // Remove if off-screen or too old
-            if (powerUp.y > Game.getCanvas().height || powerUp.age >= powerUp.maxAge) {
+            if (powerUp.y > GameState.getCanvas().height || powerUp.age >= powerUp.maxAge) {
                 powerUps.splice(i, 1);
+                powerUpPool.recycle(powerUp);
                 continue;
             }
             
@@ -280,12 +345,13 @@ const PowerUpSystem = (function() {
                 POWER_UP_TYPES[powerUp.type].apply();
                 
                 // Safely flash notification on screen
-                if (Game && typeof Game.showNotification === 'function') {
-                    Game.showNotification("Power-up: " + powerUp.type + " activated!");
+                if (GameState && typeof GameState.showNotification === 'function') {
+                    GameState.showNotification("Power-up: " + powerUp.type + " activated!");
                 }
                 
                 // Remove power-up
                 powerUps.splice(i, 1);
+                powerUpPool.recycle(powerUp);
             }
         }
     }
@@ -367,7 +433,7 @@ const PowerUpSystem = (function() {
                 0, Math.PI * 2
             );
             // Pulse opacity based on remaining duration
-            const opacity = 0.3 + 0.2 * Math.sin(Game.getFrameCount() / 5);
+            const opacity = 0.3 + 0.2 * Math.sin(GameState.getFrameCount() / 5);
             ctx.fillStyle = `rgba(51, 153, 255, ${opacity})`;
             ctx.fill();
             

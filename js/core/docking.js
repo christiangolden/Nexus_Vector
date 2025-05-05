@@ -32,7 +32,7 @@ const DockingSystem = (function() {
      * End docking and return to normal gameplay
      */
     function undock() {
-        const canvas = Game.getCanvas();
+        const canvas = GameState.getCanvas();
         
         // Set ship position back at bottom of screen
         ShipSystem.hero.tipY = canvas.height - 50;
@@ -58,7 +58,7 @@ const DockingSystem = (function() {
     function reviveHero() {
         // This exposes the method to revive the hero
         // which was previously handled through window.unDeadHero
-        Game.setUnDeadHero(true);
+        GameState.setUnDeadHero(true);
     }
     
     /**
@@ -75,7 +75,7 @@ const DockingSystem = (function() {
      * Center the view on the man when docked
      */
     function centerViewOnMan() {
-        const canvas = Game.getCanvas();
+        const canvas = GameState.getCanvas();
         
         // Calculate distance to center
         const xdist = canvas.width / 2 - man[1];
@@ -221,6 +221,14 @@ const DockingSystem = (function() {
             man[2] < ShipSystem.hero.leftY
         );
     }
+
+    /**
+     * Find zoom level for docking zoom effect
+     */
+    function findZoom() {
+        const canvas = GameState.getCanvas();
+        // Create gradient for line
+    }
     
     // Public API
     return {
@@ -237,6 +245,7 @@ const DockingSystem = (function() {
         handleManMovement: handleManMovement,
         checkManReturnsToShip: checkManReturnsToShip,
         getManX: function() { return man[1]; },
-        getManY: function() { return man[2]; }
+        getManY: function() { return man[2]; },
+        findZoom: findZoom
     };
 })();

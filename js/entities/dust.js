@@ -75,7 +75,7 @@ const DustSystem = (function() {
      * Update the magwave range based on canvas dimensions
      */
     function updateMagWaveRange() {
-        const canvas = Game.getCanvas();
+        const canvas = GameState.getCanvas();
         mwRange = (canvas.width * canvas.height) * 0.0004;
     }
     
@@ -83,7 +83,7 @@ const DustSystem = (function() {
      * Generate a new dust particle
      */
     function genDustXY() {
-        const canvas = Game.getCanvas();
+        const canvas = GameState.getCanvas();
         const maxDustCount = 100;
         
         // Randomly generate dust with a limit
@@ -109,7 +109,7 @@ const DustSystem = (function() {
         ctx.fillStyle = ColorUtils.randRGB();
         
         for (let i = 0; i < dust.yList.length; i++) {
-            if (dust.yList[i] >= Game.getCanvas().height) {
+            if (dust.yList[i] >= GameState.getCanvas().height) {
                 // Recycle dust particles that go off screen
                 const recycledX = dust.xList.splice(i, 1)[0];
                 const recycledY = dust.yList.splice(i, 1)[0];
@@ -145,23 +145,26 @@ const DustSystem = (function() {
      * Update dust movement and magwave interaction
      */
     function updateDust() {
+        const deltaTime = GameState.getDeltaTime();
+        const timeScale = 60 * deltaTime; // Scale to 60 fps baseline
+        
         // Process magwave
         if ((InputSystem.isDownPressed() || InputSystem.isLeftTouchActive()) && 
             mwEnergy > 0 && !DockingSystem.isDocking()) {
             if (magWave.radius < ShipSystem.hero.width) {
-                magWave.radius += 0.5;
-                mwEnergy -= 0.02;
+                magWave.radius += 0.5 * timeScale;
+                mwEnergy -= 0.02 * timeScale;
             } else {
                 magWave.radius = 0;
             }
-            drawMagWave(Game.getContext());
+            drawMagWave(GameState.getContext());
         } else {
             magWave.radius = 0;
         }
         
         // Recharge magwave energy
         if (!(InputSystem.isDownPressed() || InputSystem.isLeftTouchActive()) && mwEnergy < 5) {
-            mwEnergy += 0.05;
+            mwEnergy += 0.05 * timeScale;
         }
         
         // Update dust movement
@@ -173,16 +176,16 @@ const DustSystem = (function() {
                 dust.yList[i] > (ShipSystem.hero.tipY - ShipSystem.hero.height - mwRange) &&
                 mwEnergy > 0) {
                 // Upper right quadrant
-                dust.xList[i] -= 3;
-                dust.yList[i] += 5;
+                dust.xList[i] -= 3 * timeScale;
+                dust.yList[i] += 5 * timeScale;
             } else if ((InputSystem.isDownPressed() || InputSystem.isLeftTouchActive()) && 
                 dust.xList[i] > ShipSystem.hero.tipX &&
                 dust.xList[i] < (ShipSystem.hero.tipX + mwRange) &&
                 dust.yList[i] > ShipSystem.hero.tipY - ShipSystem.hero.height && 
                 mwEnergy > 0) {
                 // Lower right quadrant
-                dust.xList[i] -= 3;
-                dust.yList[i] -= 5;
+                dust.xList[i] -= 3 * timeScale;
+                dust.yList[i] -= 5 * timeScale;
             } else if ((InputSystem.isDownPressed() || InputSystem.isLeftTouchActive()) && 
                 dust.xList[i] < ShipSystem.hero.tipX &&
                 dust.xList[i] > (ShipSystem.hero.tipX - mwRange) &&
@@ -190,34 +193,33 @@ const DustSystem = (function() {
                 dust.yList[i] > (ShipSystem.hero.tipY - ShipSystem.hero.height - mwRange) &&
                 mwEnergy > 0) {
                 // Upper left quadrant
-                dust.xList[i] += 3;
-                dust.yList[i] += 5;
+                dust.xList[i] += 3 * timeScale;
+                dust.yList[i] += 5 * timeScale;
             } else if ((InputSystem.isDownPressed() || InputSystem.isLeftTouchActive()) && 
                 dust.xList[i] < ShipSystem.hero.tipX &&
                 dust.xList[i] > (ShipSystem.hero.tipX - mwRange) &&
                 dust.yList[i] > ShipSystem.hero.tipY - ShipSystem.hero.height && 
                 mwEnergy > 0) {
                 // Lower left quadrant
-                dust.xList[i] += 3;
-                dust.yList[i] -= 5;
+                dust.xList[i] += 3 * timeScale;
+                dust.yList[i] -= 5 * timeScale;
             } else {
                 // Normal dust movement
-                dust.yList[i] += Math.floor(Math.random() * 5 + 3);
-                dust.xList[i] += Math.floor(Math.random() * -5 + 3);
+                dust.yList[i] += (Math.floor(Math.random() * 5 + 3)) * timeScale;
+                dust.xList[i] += (Math.floor(Math.random() * -5 + 3)) * timeScale;
             }
 
             // Check if dust is being collected by magwave
             if ((InputSystem.isDownPressed() || InputSystem.isLeftTouchActive()) && 
-                dust.xList[i] <= ShipSystem.hero.tipX + 3 &&
-                dust.xList[i] >= ShipSystem.hero.tipX - magWave.radius - dust.width &&
                 dust.xList[i] <= ShipSystem.hero.tipX + magWave.radius + dust.width &&
+                dust.xList[i] >= ShipSystem.hero.tipX - magWave.radius - dust.width &&
                 dust.yList[i] >= ShipSystem.hero.tipY - ShipSystem.hero.height - magWave.radius &&
                 dust.yList[i] <= ShipSystem.hero.tipY - ShipSystem.hero.height + magWave.radius &&
                 mwEnergy > 0) {
                 dust.xList.splice(i, 1);
                 dust.yList.splice(i, 1);
-                Game.incrementScore();
-                Game.gainXP(1, true); // Gain 1 XP and increment bullet count by 10
+                GameState.incrementPlayerScore();
+                GameState.gainXp(1, true); // Gain 1 XP and increment bullet count by 10
                 i--;
             }
         }
@@ -245,7 +247,7 @@ const DustSystem = (function() {
                     // Remove the dust particle
                     dust.xList.splice(i, 1);
                     dust.yList.splice(i, 1);
-                    Game.incrementDestDust();
+                    GameState.incrementDestDust();
                     hit = true;
                     break; // Exit the enemy loop since this dust particle is gone
                 }

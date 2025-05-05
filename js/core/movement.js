@@ -19,8 +19,8 @@ const MovementSystem = (function() {
         DustSystem.moveDustX(dx);
         
         // Add parallax background to movement handling
-        if (Game && Game.moveParallaxX) {
-            Game.moveParallaxX(dx);
+        if (GameState && GameState.moveParallaxX) {
+            GameState.moveParallaxX(dx);
         }
         
         // Add PowerUpSystem to movement handling

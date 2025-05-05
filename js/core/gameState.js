@@ -1,68 +1,125 @@
 /**
- * Nexus Vector - Game Core
+ * Nexus Vector - Game State
  * 
- * This module handles the main game loop, initialization, and orchestrates the game systems.
+ * This module centralizes game state management and provides a single source of truth
+ * for the game's current state. It helps decouple components by removing direct references.
  */
 
-const Game = (function() {
+const GameState = (function() {
     'use strict';
     
-    // Private variables
+    // Game state constants
+    const STATE = {
+        START_SCREEN: 'startScreen',
+        PLAYING: 'playing',
+        PAUSED: 'paused',
+        DOCKED: 'docked', 
+        GAME_OVER: 'gameOver'
+    };
+    
+    // Core game state
+    let currentState = STATE.START_SCREEN;
+    let previousState = null;
+    
+    // Player state
+    const player = {
+        score: 0,
+        shotDrones: 0,
+        destroyedDust: 0,
+        xp: 0,
+        level: 1,
+        isDead: false,
+        isUndead: false
+    };
+    
+    // Session state
+    const session = {
+        frameCount: 0,
+        lastTimestamp: 0,
+        deltaTime: 0,
+        speed: 7
+    };
+    
+    // Game settings - configurable options
+    const settings = {
+        targetFps: 60,
+        timeStep: 1000 / 60, // Based on target FPS
+        notificationDuration: 90 // 1.5 seconds at 60fps
+    };
+    
+    // State change listeners
+    const stateChangeListeners = [];
+    
+    // Canvas and context references
     let canvas;
     let ctx;
     
-    // Notification system
-    let notifications = [];
-    
-    /**
-     * Show a notification message on screen
-     * @param {string} message - The message to display
-     */
-    function showNotification(message) {
-        notifications.push({
-            message: message,
-            duration: GameState.getNotificationDuration(),
-            opacity: 1.0
-        });
-        
-        // Also publish an event so other systems can react
-        GameEvents.publish('notification:show', { message });
+    // Register a state change listener
+    function onStateChange(callback) {
+        stateChangeListeners.push(callback);
     }
     
-    /**
-     * Update and draw notifications
-     */
-    function updateNotifications() {
-        for (let i = notifications.length - 1; i >= 0; i--) {
-            const notification = notifications[i];
+    // Update the current state
+    function setState(newState) {
+        if (!STATE[newState]) {
+            console.error(`Invalid state: ${newState}`);
+            return;
+        }
+        
+        previousState = currentState;
+        currentState = STATE[newState];
+        
+        // Notify all listeners
+        stateChangeListeners.forEach(callback => {
+            callback(currentState, previousState);
+        });
+    }
+    
+    // Reset player stats
+    function resetPlayerStats() {
+        player.score = 0;
+        player.shotDrones = 0;
+        player.destroyedDust = 0;
+        player.xp = 0;
+        player.level = 1;
+        player.isDead = false;
+        player.isUndead = false;
+    }
+    
+    // Update frame timing
+    function updateFrameTiming(timestamp) {
+        session.frameCount++;
+        session.deltaTime = (timestamp - session.lastTimestamp) / 1000; // Convert to seconds
+        
+        // Clamp deltaTime to avoid "jumps" if the game pauses or tab switches
+        if (session.deltaTime > 0.1) session.deltaTime = 0.1;
+        
+        session.lastTimestamp = timestamp;
+    }
+    
+    // Add XP to player
+    function gainXp(amount, isStardust = false) {
+        player.xp += amount;
+        
+        // If this is stardust being collected via magwave, increment bullet count
+        if (isStardust) {
+            BulletSystem.incrementBulletCount(10);
+        }
+        
+        // Level up when XP threshold is reached
+        while (player.xp >= player.level * 100) { 
+            player.xp -= player.level * 100;
+            player.level++;
             
-            // Update duration and fade out at the end
-            notification.duration--;
-            if (notification.duration < 30) {
-                notification.opacity = notification.duration / 30;
-            }
-            
-            // Remove expired notifications
-            if (notification.duration <= 0) {
-                notifications.splice(i, 1);
-                continue;
-            }
-            
-            // Draw notification
-            ctx.save();
-            ctx.textAlign = "center";
-            ctx.font = "bold 18px Arial";
-            ctx.fillStyle = `rgba(255, 255, 255, ${notification.opacity})`;
-            ctx.fillText(
-                notification.message,
-                canvas.width / 2,
-                100 + (i * 30)
-            );
-            ctx.restore();
+            // Publish a level up event that systems can subscribe to
+            GameEvents.publish('player:levelUp', { 
+                level: player.level,
+                previousLevel: player.level - 1
+            });
         }
     }
     
-    // Add parallax background system
+    // Add parallax background system (moved from Game)
     const ParallaxSystem = {
         layers: [
             { stars: [], speed: 0.5, color: "#555" },
@@ -71,8 +128,7 @@ const Game = (function() {
         ],
 
         init: function() {
-            const parallaxConfig = GameConfig.getEnvironmentConfig().parallax;
-            
+            // Initialize parallax layers
             this.layers.forEach(layer => {
                 for (let i = 0; i < 100; i++) {
                     layer.stars.push({
@@ -129,7 +185,58 @@ const Game = (function() {
     function moveParallaxX(dx) {
         ParallaxSystem.moveX(dx);
     }
-
+    
+    // Notification system
+    let notifications = [];
+    
+    /**
+     * Show a notification message on screen
+     * @param {string} message - The message to display
+     */
+    function showNotification(message) {
+        notifications.push({
+            message: message,
+            duration: settings.notificationDuration,
+            opacity: 1.0
+        });
+        
+        // Also publish an event so other systems can react
+        GameEvents.publish('notification:show', { message });
+    }
+    
+    /**
+     * Update and draw notifications
+     */
+    function updateNotifications() {
+        for (let i = notifications.length - 1; i >= 0; i--) {
+            const notification = notifications[i];
+            
+            // Update duration and fade out at the end
+            notification.duration--;
+            if (notification.duration < 30) {
+                notification.opacity = notification.duration / 30;
+            }
+            
+            // Remove expired notifications
+            if (notification.duration <= 0) {
+                notifications.splice(i, 1);
+                continue;
+            }
+            
+            // Draw notification
+            ctx.save();
+            ctx.textAlign = "center";
+            ctx.font = "bold 18px Arial";
+            ctx.fillStyle = `rgba(255, 255, 255, ${notification.opacity})`;
+            ctx.fillText(
+                notification.message,
+                canvas.width / 2,
+                100 + (i * 30)
+            );
+            ctx.restore();
+        }
+    }
+    
     // Initialize the game
     function init() {
         canvas = document.getElementById("gameCanvas");
@@ -178,13 +285,13 @@ const Game = (function() {
      */
     function setupEventHandlers() {
         // Subscribe to state changes
-        GameState.onStateChange((newState, oldState) => {
-            if (newState === GameState.STATE.PLAYING && oldState === GameState.STATE.START_SCREEN) {
+        onStateChange((newState, oldState) => {
+            if (newState === STATE.PLAYING && oldState === STATE.START_SCREEN) {
                 // Generate initial rooms when starting game
                 RoomSystem.generateRooms();
             }
             
-            if (newState === GameState.STATE.GAME_OVER) {
+            if (newState === STATE.GAME_OVER) {
                 // Pause systems, play death animation, etc.
             }
         });
@@ -198,10 +305,10 @@ const Game = (function() {
         
         // Handle pause toggle events
         GameEvents.subscribe('game:togglePause', () => {
-            if (GameState.getCurrentState() === GameState.STATE.PLAYING) {
-                GameState.setState('PAUSED');
-            } else if (GameState.getCurrentState() === GameState.STATE.PAUSED) {
-                GameState.setState('PLAYING');
+            if (currentState === STATE.PLAYING) {
+                setState('PAUSED');
+            } else if (currentState === STATE.PAUSED) {
+                setState('PLAYING');
             }
         });
     }
@@ -209,30 +316,30 @@ const Game = (function() {
     // Main game loop
     function gameLoop(timestamp) {
         // Update timing information
-        GameState.updateFrameTiming(timestamp);
+        updateFrameTiming(timestamp);
         
         // Update FPS counter
         PerformanceMonitor.update(timestamp);
         
         // Process based on current game state
-        switch (GameState.getCurrentState()) {
-            case GameState.STATE.START_SCREEN:
+        switch (currentState) {
+            case STATE.START_SCREEN:
                 updateStartScreen();
                 break;
                 
-            case GameState.STATE.PLAYING:
+            case STATE.PLAYING:
                 updatePlayingState();
                 break;
                 
-            case GameState.STATE.PAUSED:
+            case STATE.PAUSED:
                 updatePausedState();
                 break;
                 
-            case GameState.STATE.DOCKED:
+            case STATE.DOCKED:
                 updateDockedState();
                 break;
                 
-            case GameState.STATE.GAME_OVER:
+            case STATE.GAME_OVER:
                 updateGameOverState();
                 break;
         }
@@ -252,7 +359,7 @@ const Game = (function() {
         if (InputSystem.isEnterPressed() || 
             InputSystem.isLeftTouchActive() || 
             InputSystem.isRightTouchActive()) {
-            GameState.setState('PLAYING');
+            setState('PLAYING');
         }
     }
     
@@ -319,8 +426,8 @@ const Game = (function() {
         PerformanceMonitor.draw(ctx);
         
         // Check if player is dead
-        if (GameState.isPlayerDead()) {
-            GameState.setState('GAME_OVER');
+        if (player.isDead) {
+            setState('GAME_OVER');
         }
     }
     
@@ -380,7 +487,7 @@ const Game = (function() {
         // Check if man returns to ship
         if (DockingSystem.checkManReturnsToShip()) {
             DockingSystem.undock();
-            GameState.setState('PLAYING');
+            setState('PLAYING');
         }
         
         // Check for rat interactions
@@ -389,9 +496,9 @@ const Game = (function() {
     
     // Update game over state
     function updateGameOverState() {
-        if (InputSystem.isEnterPressed() || GameState.isPlayerUndead()) {
+        if (InputSystem.isEnterPressed() || player.isUndead) {
             resetGame();
-            GameState.setState('PLAYING');
+            setState('PLAYING');
         }
         
         // Draw game over screen
@@ -404,7 +511,7 @@ const Game = (function() {
     // Reset the game state
     function resetGame() {
         // Reset game state
-        GameState.resetPlayerStats();
+        resetPlayerStats();
         
         // Reset game entities
         ShipSystem.resetEnemy();
@@ -445,17 +552,17 @@ const Game = (function() {
         ctx.textAlign = "end";
         ctx.fillStyle = ColorUtils.randRGB();
         ctx.font = "18px Consolas";
-        ctx.fillText("Stardust Collected:" + GameState.getPlayerScore(), canvas.width - 12, 22);
+        ctx.fillText("Stardust Collected:" + player.score, canvas.width - 12, 22);
         ctx.fillStyle = ColorUtils.randRGB();
-        ctx.fillText("Stardust Destroyed:" + GameState.getDestroyedDust(), canvas.width - 12, 42);
+        ctx.fillText("Stardust Destroyed:" + player.destroyedDust, canvas.width - 12, 42);
         ctx.fillStyle = ColorUtils.randRGB();
-        ctx.fillText("Drones Destroyed:" + GameState.getShotDrones(), canvas.width - 12, 62);
+        ctx.fillText("Drones Destroyed:" + player.shotDrones, canvas.width - 12, 62);
         ctx.fillStyle = ColorUtils.randRGB();
         ctx.fillText("Bullets Available:" + BulletSystem.getBulletCount(), canvas.width - 12, 82);
         ctx.fillStyle = ColorUtils.randRGB();
-        ctx.fillText("XP:" + GameState.getXp(), canvas.width - 12, 102);
+        ctx.fillText("XP:" + player.xp, canvas.width - 12, 102);
         ctx.fillStyle = ColorUtils.randRGB();
-        ctx.fillText("Level:" + GameState.getLevel(), canvas.width - 12, 122);
+        ctx.fillText("Level:" + player.level, canvas.width - 12, 122);
     }
     
     // Draw help text in pause screen
@@ -488,10 +595,51 @@ const Game = (function() {
     
     // Public API
     return {
-        init: init,
+        STATE: STATE,
+        getCurrentState: function() { return currentState; },
+        getPreviousState: function() { return previousState; },
+        setState: setState,
+        onStateChange: onStateChange,
+        
+        // Player state accessors
+        getPlayerScore: function() { return player.score; },
+        incrementPlayerScore: function() { player.score += 1; },
+        getShotDrones: function() { return player.shotDrones; },
+        incrementShotDrones: function() { player.shotDrones += 1; },
+        getDestroyedDust: function() { return player.destroyedDust; },
+        incrementDestDust: function() { player.destroyedDust += 1; }, 
+        getXp: function() { return player.xp; },
+        getLevel: function() { return player.level; },
+        gainXp: gainXp,
+        isPlayerDead: function() { return player.isDead; },
+        setHeroDead: function(isDead) { player.isDead = isDead; },
+        isPlayerUndead: function() { return player.isUndead; },
+        setPlayerUndead: function(isUndead) { player.isUndead = isUndead; },
+        resetPlayerStats: resetPlayerStats,
+        
+        // Session state accessors
+        getFrameCount: function() { return session.frameCount; },
+        getDeltaTime: function() { return session.deltaTime; },
+        updateFrameTiming: updateFrameTiming,
+        getSpeed: function() { return session.speed; },
+        setSpeed: function(speed) { session.speed = speed; },
+        
+        // Settings accessors
+        getTargetFps: function() { return settings.targetFps; },
+        getTimeStep: function() { return settings.timeStep; },
+        getNotificationDuration: function() { return settings.notificationDuration; },
+        
+        // Canvas and rendering
         getCanvas: function() { return canvas; },
         getContext: function() { return ctx; },
+        
+        // Parallax
         moveParallaxX: moveParallaxX,
+        
+        // Add init to public API
+        init: init,
+        
+        // Notifications
         showNotification: showNotification
     };
 })();

@@ -24,7 +24,12 @@
     <script src="js/utils/collision.js"></script>
     <script src="js/utils/performance.js"></script>
     
-    <!-- Core modules (Input, Docking, Movement - less likely to depend on entities) -->
+    <!-- Core foundation modules - load first as other modules depend on these -->
+    <script src="js/core/gameEvents.js"></script>
+    <script src="js/core/gameConfig.js"></script>
+    <script src="js/core/gameState.js"></script>
+    
+    <!-- Core system modules -->
     <script src="js/core/input.js"></script>
     <script src="js/core/docking.js"></script>
     <script src="js/core/movement.js"></script>
@@ -35,7 +40,7 @@
     <script src="js/entities/bullet.js"></script>
     <script src="js/entities/room.js"></script>
     <script src="js/entities/dust.js"></script>
-    <script src="js/entities/powerup.js"></script>  <!-- Add the new PowerUpSystem module -->
+    <script src="js/entities/powerup.js"></script>
 
     <!-- Game Core (Depends on Utils and Entities) -->
     <script src="js/core/game.js"></script>

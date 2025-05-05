@@ -48,7 +48,7 @@ const ShipSystem = (function() {
                 enemy.leftX, enemy.leftY, // Use enemy's bounding box
                 enemy.width, enemy.tipY - enemy.leftY // Height of the enemy ship
             )) {
-                Game.setHeroDead(true);
+                GameState.setHeroDead(true);
                 // Optional: Destroy the enemy ship on collision?
                 // activeEnemies.splice(i, 1); 
                 break; // No need to check further if hero is dead
@@ -67,6 +67,50 @@ const ShipSystem = (function() {
     let baseSpawnInterval = 150; // Base interval between spawns
     let enemySpeed = 5; // Base speed for enemies
     let zigzagDirection = 1; // Shared zigzag direction for simplicity
+
+    /**
+     * Ship object pool for efficient object reuse
+     */
+    const shipPool = {
+        pool: [],
+        maxSize: 30,
+        
+        init: function() {
+            for (let i = 0; i < this.maxSize; i++) {
+                this.pool.push(new Ship("down", 20, 40, 0, 0));
+            }
+        },
+        
+        get: function(orientation, width, height, tipX, tipY) {
+            if (this.pool.length > 0) {
+                const ship = this.pool.pop();
+                // Reset ship properties
+                ship.orientation = orientation;
+                ship.width = width;
+                ship.height = height;
+                ship.tipX = tipX;
+                ship.tipY = tipY;
+                ship.rightX = ship.tipX + ship.width / 2;
+                ship.leftX = ship.tipX - ship.width / 2;
+                
+                if (orientation === "up") {
+                    ship.rightY = ship.tipY + ship.height;
+                    ship.leftY = ship.tipY + ship.height;
+                } else {
+                    ship.rightY = ship.tipY - ship.height;
+                    ship.leftY = ship.tipY - ship.height;
+                }
+                return ship;
+            }
+            return new Ship(orientation, width, height, tipX, tipY);
+        },
+        
+        recycle: function(ship) {
+            if (this.pool.length < this.maxSize) {
+                this.pool.push(ship);
+            }
+        }
+    };
 
     // Define enemy types with movement and shooting patterns
     const enemyTypes = [
@@ -143,11 +187,12 @@ const ShipSystem = (function() {
      * Initialize ship objects
      */
     function init() {
-        const canvas = Game.getCanvas();
+        const canvas = GameState.getCanvas();
         hero = new Ship("up", 20, 40, canvas.width / 2, canvas.height - 50);
         // Initialize enemy array and cooldown
         activeEnemies = [];
         enemySpawnCooldown = baseSpawnInterval; 
+        shipPool.init(); // Initialize the ship pool
     }
     
     /**
@@ -164,8 +209,8 @@ const ShipSystem = (function() {
             ) {
                 DustSystem.dust.xList.splice(i, 1);
                 DustSystem.dust.yList.splice(i, 1);
-                Game.incrementDestDust();
-                Game.setHeroDead(true);
+                GameState.incrementDestDust();
+                GameState.setHeroDead(true);
                 // Important: adjust the counter when removing an element
                 i--;
             }
@@ -192,14 +237,14 @@ const ShipSystem = (function() {
      * Spawns a new enemy of a random type.
      */
     function spawnEnemy() {
-        const canvas = Game.getCanvas();
+        const canvas = GameState.getCanvas();
         // Select a random enemy type
         const enemyType = enemyTypes[Math.floor(Math.random() * enemyTypes.length)];
         
-        // Create the new enemy object
+        // Create the new enemy object using pool
         const newEnemy = {
             ...enemyType, // Copy properties from the type definition
-            ship: new Ship("down", 20, 40, Math.random() * canvas.width, -40), // Spawn above screen
+            ship: shipPool.get("down", 20, 40, Math.random() * canvas.width, -40), // Use pool to get ship
             shootTimer: Math.random() * enemyType.shootCooldownMax // Random initial cooldown
         };
         activeEnemies.push(newEnemy);
@@ -212,7 +257,7 @@ const ShipSystem = (function() {
         if (enemySpawnCooldown <= 0) {
             // Chance to spawn a formation instead of single enemy
             // Formation chance increases with level
-            const formationChance = Math.min(0.1 + (Game.level * 0.05), 0.5); // Cap at 50%
+            const formationChance = Math.min(0.1 + (GameState.getLevel() * 0.05), 0.5); // Cap at 50%
             
             if (Math.random() < formationChance) {
                 spawnFormation();
@@ -221,7 +266,7 @@ const ShipSystem = (function() {
             }
             
             // Reset cooldown with some randomness, adjusted by difficulty
-            enemySpawnCooldown = baseSpawnInterval + (Math.random() * 50 - 25) - (Game.level * 5); 
+            enemySpawnCooldown = baseSpawnInterval + (Math.random() * 50 - 25) - (GameState.getLevel() * 5); 
             if (enemySpawnCooldown < 30) enemySpawnCooldown = 30; // Minimum spawn time
         } else {
             enemySpawnCooldown--;
@@ -232,7 +277,7 @@ const ShipSystem = (function() {
      * Spawns a formation of enemies based on predefined patterns.
      */
     function spawnFormation() {
-        const canvas = Game.getCanvas();
+        const canvas = GameState.getCanvas();
         
         // Pick a random formation based on probability weights
         let total = 0;
@@ -255,9 +300,10 @@ const ShipSystem = (function() {
         // Base enemy type for the formation
         // Choose more advanced enemy types for higher levels
         let possibleTypes = ["basic"];
-        if (Game.level >= 3) possibleTypes.push("tracker");
-        if (Game.level >= 5) possibleTypes.push("zigzag");
-        if (Game.level >= 7) possibleTypes.push("sniper");
+        const currentLevel = GameState.getLevel();
+        if (currentLevel >= 3) possibleTypes.push("tracker");
+        if (currentLevel >= 5) possibleTypes.push("zigzag");
+        if (currentLevel >= 7) possibleTypes.push("sniper");
         
         const baseType = enemyTypes.find(t => 
             t.type === possibleTypes[Math.floor(Math.random() * possibleTypes.length)]
@@ -275,7 +321,7 @@ const ShipSystem = (function() {
             // For visual variations, could slightly modify color, size, etc.
             const newEnemy = {
                 ...enemyType,
-                ship: new Ship("down", 20, 40, baseX + pos.x, baseY + pos.y),
+                ship: shipPool.get("down", 20, 40, baseX + pos.x, baseY + pos.y),
                 shootTimer: Math.random() * enemyType.shootCooldownMax,
                 formation: selectedPattern.name // Mark as part of formation
             };
@@ -288,8 +334,11 @@ const ShipSystem = (function() {
      * Updates the position and state of all active enemies.
      */
     function updateEnemies() {
-        const canvas = Game.getCanvas();
+        const canvas = GameState.getCanvas();
         const playerX = hero.tipX; // Get player X for tracking enemies
+        const deltaTime = GameState.getDeltaTime();
+        // Scale for frame rate independence - use 60fps as baseline
+        const timeScale = 60 * deltaTime;
 
         // Update spawning
         updateEnemySpawning();
@@ -300,7 +349,7 @@ const ShipSystem = (function() {
             const { ship, movement, formation } = enemy;
 
             // --- Update Movement ---
-            let targetSpeed = enemySpeed + (Game.level * 0.5); // Increase speed with level
+            let targetSpeed = (enemySpeed + (GameState.getLevel() * 0.5)) * timeScale; // Scale by deltaTime for frame rate independence
             
             // Special formation movement behaviors
             if (formation) {
@@ -308,12 +357,12 @@ const ShipSystem = (function() {
                 switch(formation) {
                     case "arrow":
                         // Arrow formation sways side to side as it descends
-                        ship.tipX += Math.sin(ship.tipY / 80) * 2;
+                        ship.tipX += Math.sin(ship.tipY / 80) * 2 * timeScale;
                         ship.tipY += targetSpeed * 0.9; // Slightly slower
                         break;
                     case "line":
                         // Line formation moves in a wave pattern
-                        ship.tipX += Math.sin(ship.tipY / 60) * 3;
+                        ship.tipX += Math.sin(ship.tipY / 60) * 3 * timeScale;
                         ship.tipY += targetSpeed * 0.85;
                         break;
                     case "box":
@@ -322,7 +371,7 @@ const ShipSystem = (function() {
                         break;
                     case "diamond":
                         // Diamond formation moves in a tighter wave pattern
-                        ship.tipX += Math.sin(ship.tipY / 40) * 2;
+                        ship.tipX += Math.sin(ship.tipY / 40) * 2 * timeScale;
                         ship.tipY += targetSpeed * 0.75;
                         break;
                     default:
@@ -333,7 +382,7 @@ const ShipSystem = (function() {
                 switch (movement) {
                     case "wave":
                         // Moves down in a sine wave pattern
-                        ship.tipX += Math.sin(ship.tipY / 50) * 3; 
+                        ship.tipX += Math.sin(ship.tipY / 50) * 3 * timeScale; 
                         ship.tipY += targetSpeed * 0.8; // Slightly slower
                         break;
                     case "track":
@@ -360,8 +409,8 @@ const ShipSystem = (function() {
             }
 
             // Keep enemy within horizontal bounds (mostly for wave/zigzag)
-             if (ship.tipX < 0) ship.tipX = 0;
-             if (ship.tipX > canvas.width) ship.tipX = canvas.width;
+            if (ship.tipX < 0) ship.tipX = 0;
+            if (ship.tipX > canvas.width) ship.tipX = canvas.width;
 
             // Update ship coordinates
             ship.leftY = ship.tipY - ship.height;
@@ -372,7 +421,8 @@ const ShipSystem = (function() {
 
 
             // --- Update Shooting ---
-            enemy.shootTimer--;
+            // Scale shooting timer by delta time to maintain consistent fire rate
+            enemy.shootTimer -= timeScale;
             if (enemy.shootTimer <= 0 && ship.tipY > 0) { // Only shoot if on screen
                 const { bulletPattern } = enemy;
                 switch (bulletPattern) {
@@ -397,6 +447,7 @@ const ShipSystem = (function() {
 
             // --- Remove enemies that go off-screen ---
             if (ship.tipY > canvas.height + ship.height) {
+                shipPool.recycle(ship); // Recycle the ship object
                 activeEnemies.splice(i, 1);
             }
         }
@@ -439,8 +490,11 @@ const ShipSystem = (function() {
             }
             
             // Award XP for destroying the enemy
-            Game.gainXP(10);
+            GameState.gainXp(10);
         }
+        
+        // Recycle the ship object
+        shipPool.recycle(enemy.ship);
         
         // Remove the enemy from the array
         activeEnemies.splice(index, 1);
@@ -475,7 +529,7 @@ const ShipSystem = (function() {
             
             // Add slight pulsing effect for formation ships
             if (formation) {
-                const pulse = 1 + Math.sin(Game.getFrameCount() / 10) * 0.1;
+                const pulse = 1 + Math.sin(GameState.getFrameCount() / 10) * 0.1;
                 ctx.save();
                 ctx.translate(ship.tipX, ship.tipY);
                 ctx.scale(pulse, pulse);
@@ -610,19 +664,22 @@ const ShipSystem = (function() {
      * Move hero ship right
      */
     function moveHeroRight() {
-        const canvas = Game.getCanvas();
-        const speed = Game.getSpeed();
+        const canvas = GameState.getCanvas();
+        const speed = GameState.getSpeed();
+        const deltaTime = GameState.getDeltaTime();
+        // Use delta time to make movement frame rate independent
+        const frameIndependentSpeed = speed * 60 * deltaTime; // Scale to 60 fps baseline
         
         if (InputSystem.isShiftPressed()) {
             // Move background instead of hero (handled in MovementSystem)
-            MovementSystem.moveAllX(-speed);
+            MovementSystem.moveAllX(-frameIndependentSpeed);
         } else {
             // Move hero right
             if (hero.leftX >= canvas.width) {
                 // Wrap around screen edge
                 hero.tipX -= canvas.width + hero.width;
             } else {
-                hero.tipX += speed;
+                hero.tipX += frameIndependentSpeed;
             }
         }
     }
@@ -631,19 +688,22 @@ const ShipSystem = (function() {
      * Move hero ship left
      */
     function moveHeroLeft() {
-        const canvas = Game.getCanvas();
-        const speed = Game.getSpeed();
+        const canvas = GameState.getCanvas();
+        const speed = GameState.getSpeed();
+        const deltaTime = GameState.getDeltaTime();
+        // Use delta time to make movement frame rate independent
+        const frameIndependentSpeed = speed * 60 * deltaTime; // Scale to 60 fps baseline
         
         if (InputSystem.isShiftPressed()) {
             // Move background instead of hero (handled in MovementSystem)
-            MovementSystem.moveAllX(speed);
+            MovementSystem.moveAllX(frameIndependentSpeed);
         } else {
             // Move hero left
             if (hero.rightX <= 0) {
                 // Wrap around screen edge
                 hero.tipX += canvas.width + hero.width;
             } else {
-                hero.tipX -= speed;
+                hero.tipX -= frameIndependentSpeed;
             }
         }
     }
@@ -664,7 +724,7 @@ const ShipSystem = (function() {
     }
 
     function decreaseEnemySpawnCooldown(amount) {
-        // This function is effectively handled within updateEnemySpawning using Game.level
+        // This function is effectively handled within updateEnemySpawning using GameState.level
         // We can keep it for potential direct adjustments or remove it.
         // Let's adjust baseSpawnInterval slightly instead.
         baseSpawnInterval -= amount;

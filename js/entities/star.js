@@ -36,7 +36,7 @@ const StarSystem = (function() {
      * Generate a new star at a random position
      */
     function genStarXY() {
-        const canvas = Game.getCanvas();
+        const canvas = GameState.getCanvas();
         
         // Only generate stars if we're below the limit and randomly
         if (star.xList.length < starMaxCount && Math.floor(Math.random() * 3) === 1) {
@@ -77,7 +77,7 @@ const StarSystem = (function() {
      * Update stars position (for normal gameplay)
      */
     function updateStars() {
-        const canvas = Game.getCanvas();
+        const canvas = GameState.getCanvas();
         
         // Move stars down and remove if off screen
         for (let i = 0; i < star.xList.length; i++) {
@@ -95,7 +95,7 @@ const StarSystem = (function() {
      * Update stars position in docked mode
      */
     function updateStarsInDockedMode() {
-        const canvas = Game.getCanvas();
+        const canvas = GameState.getCanvas();
         
         // Move stars down slower in docked mode
         for (let i = 0; i < star.xList.length; i++) {

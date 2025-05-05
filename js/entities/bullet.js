@@ -31,7 +31,7 @@ const BulletSystem = (function() {
     let maxBullets = 0;
 
     function updateMaxBullets() {
-        maxBullets = Game.getScore() * 10; // 10 bullets per stardust
+        maxBullets = GameState.getScore() * 10; // 10 bullets per stardust
     }
 
     // Initialize bullet count to 0
@@ -120,18 +120,19 @@ const BulletSystem = (function() {
      * @param {CanvasRenderingContext2D} ctx - Canvas rendering context
      */
     function updateBullets(ctx) {
-        // No longer randomly fires bullets here; ShipSystem handles enemy firing.
+        const deltaTime = GameState.getDeltaTime();
+        const timeScale = 60 * deltaTime; // Scale to 60 fps baseline
         
         // Update and draw enemy bullets
         for (let i = bulletList.length - 1; i >= 0; i--) {
             const bullet = bulletList[i];
             
-            // Move bullet based on its velocity
-            bullet.x += bullet.dx;
-            bullet.y += bullet.dy;
+            // Move bullet based on its velocity, scaled by delta time
+            bullet.x += bullet.dx * timeScale;
+            bullet.y += bullet.dy * timeScale;
 
             // Check if bullet is off-screen (top, bottom, left, right)
-            if (bullet.y < 0 || bullet.y > Game.getCanvas().height || bullet.x < 0 || bullet.x > Game.getCanvas().width) {
+            if (bullet.y < 0 || bullet.y > GameState.getCanvas().height || bullet.x < 0 || bullet.x > GameState.getCanvas().width) {
                 // Recycle bullets that are off-screen
                 bulletList.splice(i, 1);
                 bulletPool.recycle(bullet);
@@ -139,7 +140,7 @@ const BulletSystem = (function() {
                 // Draw the bullet
                 ctx.beginPath();
                 ctx.rect(bullet.x, bullet.y, bullet.width, bullet.height);
-                ctx.fillStyle = ColorUtils.randRGB(); // Keep flashy colors for now
+                ctx.fillStyle = ColorUtils.randRGB();
                 ctx.fill();
             }
         }
@@ -151,9 +152,13 @@ const BulletSystem = (function() {
      * @param {Object} dust - Dust system object for collision checking
      */
     function drawHeroBullets(ctx, dust) {
+        const deltaTime = GameState.getDeltaTime();
+        const timeScale = 60 * deltaTime; // Scale to 60 fps baseline
+        
         // Manage bullet firing rate - use PowerUpSystem's fire rate if available
         if (wait) {
-            timer++;
+            // Scale timer increment by delta time for consistent fire rate
+            timer += timeScale;
             // Check if using rapid fire rate from power-up
             const effectiveFireRate = PowerUpSystem ? PowerUpSystem.getFireRate() : 7;
             if (timer >= effectiveFireRate) {
@@ -181,8 +186,6 @@ const BulletSystem = (function() {
             }
         }
         
-        // Rest of the function remains the same...
-        
         // Update and draw hero bullets
         for (let i = 0; i < heroBulletList.length; i++) {
             // Remove bullets that go off screen
@@ -193,9 +196,9 @@ const BulletSystem = (function() {
                 continue;
             }
             
-            // Move and draw bullets
+            // Move and draw bullets - scale movement by delta time
             if (heroBulletList[i].y > 0) {
-                heroBulletList[i].y -= 20;
+                heroBulletList[i].y -= 20 * timeScale;
                 ctx.beginPath();
                 ctx.rect(
                     heroBulletList[i].x, 
@@ -214,7 +217,7 @@ const BulletSystem = (function() {
                     heroBulletList[i].width, heroBulletList[i].height,
                     dust.xList[j], dust.yList[j], dust.width, dust.height
                 )) {
-                    Game.incrementDestDust();
+                    GameState.incrementDestDust();
                     dust.yList.splice(j, 1);
                     dust.xList.splice(j, 1);
                     
@@ -248,7 +251,7 @@ const BulletSystem = (function() {
                     enemy.leftX, enemy.leftY, 
                     enemy.width, enemy.tipY - enemy.leftY 
                 )) {
-                    Game.incrementShotDrones();
+                    GameState.incrementShotDrones();
                     
                     // Use the new removeEnemy function, indicating it was destroyed
                     ShipSystem.removeEnemy(j, true);
@@ -299,7 +302,7 @@ const BulletSystem = (function() {
                 const recycledBullet = bulletList.splice(i, 1)[0];
                 bulletPool.recycle(recycledBullet);
                 i--;
-                Game.setHeroDead(true);
+                GameState.setHeroDead(true);
             }
         }
     }
@@ -321,7 +324,7 @@ const BulletSystem = (function() {
                     
                     DustSystem.dust.xList.splice(j, 1);
                     DustSystem.dust.yList.splice(j, 1);
-                    Game.incrementDestDust();
+                    GameState.incrementDestDust();
                     i--;
                     break;
                 }
@@ -334,7 +337,7 @@ const BulletSystem = (function() {
      */
     function cleanupBullets() {
         for (let i = 0; i < bulletList.length; i++) {
-            if (bulletList[i].y > Game.getCanvas().height) {
+            if (bulletList[i].y > GameState.getCanvas().height) {
                 const recycledBullet = bulletList.splice(i, 1)[0];
                 bulletPool.recycle(recycledBullet);
                 i--;

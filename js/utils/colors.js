@@ -11,6 +11,9 @@ const ColorUtils = (function() {
     let cachedColors = [];
     const colorUpdateInterval = 10;
     
+    // Frame offset for color animation
+    let frameOffset = 0;
+    
     /**
      * Generate a random color value (0-255)
      * @returns {number} Random color value
@@ -38,16 +41,18 @@ const ColorUtils = (function() {
     }
     
     /**
-     * Generate an RGB color string, using color cache for better performance
-     * @returns {string} RGB color string
+     * Generate a random RGB color string
+     * @returns {string} - Random RGB color string
      */
     function randRGB() {
-        // Update one color in the cache periodically
-        if (Game.getFrameCount() % colorUpdateInterval === 0) {
-            const index = Math.floor(Math.random() * cachedColors.length);
-            cachedColors[index] = "rgb(" + randColor() + "," + randColor() + "," + randColor() + ")";
-        }
-        return getRandomCachedColor();
+        const frameCount = (typeof GameState !== 'undefined' && GameState.getFrameCount) ? GameState.getFrameCount() : 0;
+        
+        // Generate different values for each RGB component
+        const r = Math.floor(Math.random() * 200 + 55);
+        const g = Math.floor(Math.random() * 200 + 55);
+        const b = Math.floor(Math.random() * 200 + 55);
+        
+        return `rgb(${r}, ${g}, ${b})`;
     }
     
     // Public API

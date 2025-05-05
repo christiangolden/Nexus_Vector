@@ -10,5 +10,5 @@ document.addEventListener('DOMContentLoaded', function() {
     'use strict';
     
     // Initialize the game
-    Game.init();
+    GameState.init();
 });
