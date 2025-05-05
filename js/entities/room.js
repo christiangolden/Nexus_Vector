@@ -333,14 +333,19 @@ const StationSystem = (function() {
         // Place special rooms at random locations
         this.placeSpecialRooms();
         
-        // The dock is always at the bottom
-        this.specialRooms.dock = { x: Math.floor(MAP_WIDTH/2), y: MAP_HEIGHT-2 };
-        asciiMap[MAP_HEIGHT-2][Math.floor(MAP_WIDTH/2)] = 'D';
+        // Instead, set player position to the actual 'D' tile
+        for (let y = 0; y < asciiMap.length; y++) {
+            for (let x = 0; x < asciiMap[y].length; x++) {
+                if (asciiMap[y][x] === 'D') {
+                    playerX = x;
+                    playerY = y;
+                    this.specialRooms.dock = { x, y };
+                }
+            }
+        }
         
-        // Set player starting position at the dock
-        playerX = this.specialRooms.dock.x;
-        playerY = this.specialRooms.dock.y;
-        
+        // Attach asciiMap to this instance for test harness
+        this.asciiMap = asciiMap;
         this.interiorGenerated = true;
     };
     
@@ -348,124 +353,99 @@ const StationSystem = (function() {
      * Generate random rooms for the station interior
      */
     SpaceStation.prototype.generateRooms = function() {
-        // Parameters
-        const MIN_ROOMS = 7;
-        const MAX_ROOMS = 12;
-        const MAX_ATTEMPTS = 100;
-        const MIN_ROOM_W = 5, MAX_ROOM_W = 12;
-        const MIN_ROOM_H = 4, MAX_ROOM_H = 8;
-        // Clear map
-        for (let y = 0; y < MAP_HEIGHT; y++) {
-            for (let x = 0; x < MAP_WIDTH; x++) {
-                asciiMap[y][x] = ' ';
-            }
-        }
-        // Draw outer walls
-        for (let x = 0; x < MAP_WIDTH; x++) {
-            asciiMap[0][x] = '#';
-            asciiMap[MAP_HEIGHT-1][x] = '#';
-        }
-        for (let y = 0; y < MAP_HEIGHT; y++) {
-            asciiMap[y][0] = '#';
-            asciiMap[y][MAP_WIDTH-1] = '#';
-        }
-        // Step 1: Place non-overlapping rooms
-        let rooms = [];
-        let attempts = 0;
-        while (rooms.length < MAX_ROOMS && attempts < MAX_ATTEMPTS) {
-            attempts++;
-            let w = MIN_ROOM_W + Math.floor(Math.random() * (MAX_ROOM_W - MIN_ROOM_W + 1));
-            let h = MIN_ROOM_H + Math.floor(Math.random() * (MAX_ROOM_H - MIN_ROOM_H + 1));
-            let x = 2 + Math.floor(Math.random() * (MAP_WIDTH - w - 4));
-            let y = 2 + Math.floor(Math.random() * (MAP_HEIGHT - h - 6));
-            // Check overlap
-            let overlap = false;
-            for (const r of rooms) {
-                if (x + w < r.x - 1 || x > r.x + r.w + 1 || y + h < r.y - 1 || y > r.y + r.h + 1) continue;
-                overlap = true;
-                break;
-            }
-            if (overlap) continue;
-            // Place room
-            rooms.push({x, y, w, h, cx: Math.floor(x + w/2), cy: Math.floor(y + h/2)});
-            for (let ry = y; ry < y + h; ry++) {
-                for (let rx = x; rx < x + w; rx++) {
-                    if (ry === y || ry === y + h - 1 || rx === x || rx === x + w - 1) {
-                        asciiMap[ry][rx] = '#';
-                    } else {
-                        asciiMap[ry][rx] = '.';
-                    }
+        // Retry limit to prevent infinite loops
+        let maxAttempts = 10;
+        let attempt = 0;
+        let success = false;
+        while (attempt < maxAttempts && !success) {
+            attempt++;
+            // ...existing code for rot.js Digger generation...
+            const digger = new ROT.Map.Digger(MAP_WIDTH, MAP_HEIGHT, {
+                roomWidth: [5, 12],
+                roomHeight: [4, 8],
+                corridorLength: [2, 8],
+                dugPercentage: 0.25
+            });
+            for (let y = 0; y < MAP_HEIGHT; y++) {
+                for (let x = 0; x < MAP_WIDTH; x++) {
+                    asciiMap[y][x] = ' ';
                 }
             }
-        }
-        if (rooms.length < MIN_ROOMS) {
-            // Not enough rooms, try again
-            return this.generateRooms();
-        }
-        // Step 2: Connect rooms with MST (Prim's algorithm)
-        let connected = [rooms[0]];
-        let unconnected = rooms.slice(1);
-        let connections = [];
-        while (unconnected.length > 0) {
-            let bestDist = Infinity, bestA = null, bestB = null, bestIdx = -1;
-            for (const a of connected) {
-                for (let i = 0; i < unconnected.length; i++) {
-                    const b = unconnected[i];
-                    const dist = Math.abs(a.cx - b.cx) + Math.abs(a.cy - b.cy);
-                    if (dist < bestDist) {
-                        bestDist = dist; bestA = a; bestB = b; bestIdx = i;
-                    }
-                }
+            digger.create((x, y, value) => {
+                asciiMap[y][x] = value === 0 ? '.' : '#';
+            });
+            const rooms = digger.getRooms();
+            if (rooms.length < 4) continue; // Not enough rooms, try again
+            // ...existing code for dock and special room placement...
+            let dockRoom = rooms.reduce((a, b) => (a.getCenter()[1] > b.getCenter()[1] ? a : b));
+            let [dockX, dockY] = dockRoom.getCenter();
+            asciiMap[dockY][dockX] = 'D';
+            playerX = dockX;
+            playerY = dockY;
+            let otherRooms = rooms.filter(r => r !== dockRoom);
+            if (otherRooms.length >= 3) {
+                let shuffled = otherRooms.slice().sort(() => Math.random() - 0.5);
+                let [bx, by] = shuffled[0].getCenter();
+                let [ex, ey] = shuffled[1].getCenter();
+                let [sx, sy] = shuffled[2].getCenter();
+                asciiMap[by][bx] = 'B';
+                asciiMap[ey][ex] = 'E';
+                asciiMap[sy][sx] = 'S';
+                this.specialRooms.bridge = {x: bx, y: by};
+                this.specialRooms.engine = {x: ex, y: ey};
+                this.specialRooms.storage = {x: sx, y: sy};
             }
-            connections.push([bestA, bestB]);
-            connected.push(bestB);
-            unconnected.splice(bestIdx, 1);
-        }
-        // Step 3: Carve corridors (L-shaped)
-        for (const [a, b] of connections) {
-            let x = a.cx, y = a.cy;
-            while (x !== b.cx) {
-                asciiMap[y][x] = '.';
-                x += (b.cx > x) ? 1 : -1;
-            }
-            while (y !== b.cy) {
-                asciiMap[y][x] = '.';
-                y += (b.cy > y) ? 1 : -1;
-            }
-            asciiMap[y][x] = '.';
-        }
-        // Step 4: Place doors at room/corridor boundaries
-        for (const room of rooms) {
-            // For each wall, if adjacent to corridor, place a door
-            for (let rx = room.x; rx < room.x + room.w; rx++) {
-                for (let ry = room.y; ry < room.y + room.h; ry++) {
-                    if (asciiMap[ry][rx] !== '#') continue;
+            // Place doors
+            for (let y = 1; y < MAP_HEIGHT-1; y++) {
+                for (let x = 1; x < MAP_WIDTH-1; x++) {
+                    if (asciiMap[y][x] !== '#') continue;
+                    let isRoom = false, isCorridor = false;
                     for (const [dx, dy] of [[0,1],[1,0],[0,-1],[-1,0]]) {
-                        const nx = rx + dx, ny = ry + dy;
-                        if (asciiMap[ny] && asciiMap[ny][nx] === '.') {
-                            asciiMap[ry][rx] = '+';
-                            break;
-                        }
+                        const nx = x + dx, ny = y + dy;
+                        if ([ '.', 'B', 'E', 'S', 'D' ].includes(asciiMap[ny][nx])) isRoom = true;
+                        if (asciiMap[ny][nx] === '.') isCorridor = true;
+                    }
+                    if (isRoom && isCorridor) asciiMap[y][x] = '+';
+                }
+            }
+            // Ensure at least one adjacent tile to 'D' is walkable
+            let walkable = false;
+            for (const [dx, dy] of [[0,1],[1,0],[0,-1],[-1,0]]) {
+                const nx = dockX + dx, ny = dockY + dy;
+                if ([ '.', '+', 'B', 'E', 'S' ].includes(asciiMap[ny][nx])) walkable = true;
+            }
+            if (!walkable) {
+                // Carve a door or floor to the right if possible, else left, else down, else up
+                const directions = [[1,0],[-1,0],[0,1],[0,-1]];
+                for (const [dx, dy] of directions) {
+                    const nx = dockX + dx, ny = dockY + dy;
+                    if (asciiMap[ny][nx] === '#') {
+                        asciiMap[ny][nx] = '+';
+                        break;
+                    } else if (asciiMap[ny][nx] === ' ') {
+                        asciiMap[ny][nx] = '.';
+                        break;
                     }
                 }
             }
+            // Check that the dock is accessible (has at least one adjacent floor or door)
+            let accessible = false;
+            for (const [dx, dy] of [[0,1],[1,0],[0,-1],[-1,0]]) {
+                const nx = dockX + dx, ny = dockY + dy;
+                if ([ '.', '+', 'B', 'E', 'S' ].includes(asciiMap[ny][nx])) accessible = true;
+            }
+            if (accessible) success = true;
         }
-        // Step 5: Place dock at bottom-most room
-        let dockRoom = rooms.reduce((a, b) => (a.cy > b.cy ? a : b));
-        asciiMap[dockRoom.cy][dockRoom.cx] = 'D';
-        this.specialRooms.dock = {x: dockRoom.cx, y: dockRoom.cy};
-        playerX = dockRoom.cx;
-        playerY = dockRoom.cy;
-        // Step 6: Place special rooms in random rooms (not dock)
-        let otherRooms = rooms.filter(r => r !== dockRoom);
-        if (otherRooms.length >= 3) {
-            let shuffled = otherRooms.slice().sort(() => Math.random() - 0.5);
-            asciiMap[shuffled[0].cy][shuffled[0].cx] = 'B';
-            asciiMap[shuffled[1].cy][shuffled[1].cx] = 'E';
-            asciiMap[shuffled[2].cy][shuffled[2].cx] = 'S';
-            this.specialRooms.bridge = {x: shuffled[0].cx, y: shuffled[0].cy};
-            this.specialRooms.engine = {x: shuffled[1].cx, y: shuffled[1].cy};
-            this.specialRooms.storage = {x: shuffled[2].cx, y: shuffled[2].cy};
+        if (!success) {
+            // Fallback: open room
+            for (let y = 1; y < MAP_HEIGHT-1; y++) {
+                for (let x = 1; x < MAP_WIDTH-1; x++) {
+                    asciiMap[y][x] = '.';
+                }
+            }
+            asciiMap[Math.floor(MAP_HEIGHT/2)][Math.floor(MAP_WIDTH/2)] = 'D';
+            playerX = Math.floor(MAP_WIDTH/2);
+            playerY = Math.floor(MAP_HEIGHT/2);
         }
     };
     

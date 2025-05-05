@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>Dungeon Generator Test</title>
+    <style>
+        body { background: #181818; color: #eee; font-family: monospace; }
+        #dungeon { font-size: 14px; line-height: 14px; letter-spacing: 1px; }
+        button { margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <h2>Dungeon Generator Test</h2>
+    <button onclick="generateAndShowDungeon()">Generate New Dungeon</button>
+    <pre id="dungeon"></pre>
+    <script>
+    // Minimal GameState stub for dungeon testing
+    window.GameState = {
+        getCanvas: function() {
+            // Return a dummy canvas with width/height
+            return { width: 80, height: 40 };
+        },
+        getContext: function() {
+            return null;
+        },
+        getFrameCount: function() {
+            return 0;
+        }
+    };
+    </script>
+    <script src="js/lib/rot.js"></script>
+    <script src="js/entities/room.js"></script>
+    <script>
+    function generateAndShowDungeon() {
+        // Create a dummy station and generate a dungeon
+        let s = StationSystem.generateStation();
+        s.generateInterior();
+        // Use the asciiMap from the SpaceStation instance
+        let map = s.asciiMap;
+        if (!map) return;
+        let ascii = '';
+        for (let y = 0; y < map.length; y++) {
+            for (let x = 0; x < map[y].length; x++) {
+                ascii += map[y][x];
+            }
+            ascii += '\n';
+        }
+        document.getElementById('dungeon').textContent = ascii;
+    }
+    // Generate one on load
+    generateAndShowDungeon();
+    </script>
+</body>
+</html>

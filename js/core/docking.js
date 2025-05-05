@@ -182,7 +182,10 @@ const DockingSystem = (function() {
      */
     function handlePlayerMovement() {
         if (!docking) return;
-        
+        // Debug: notify when movement input is processed
+        if (InputSystem.wasPressed('left') || InputSystem.wasPressed('right') || InputSystem.wasPressed('up') || InputSystem.wasPressed('down')) {
+            GameState.showNotification('ASCII movement input detected');
+        }
         // Handle arrow key movement
         if (InputSystem.wasPressed('left')) {
             StationSystem.movePlayer(-1, 0);
