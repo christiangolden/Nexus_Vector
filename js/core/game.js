@@ -2,6 +2,7 @@
  * Nexus Vector - Game Core
  * 
  * This module handles the main game loop, initialization, and orchestrates the game systems.
+ * Note: This has been slimmed down to remove duplicated functionality that's now in GameState.
  */
 
 const Game = (function() {
@@ -11,125 +12,6 @@ const Game = (function() {
     let canvas;
     let ctx;
     
-    // Notification system
-    let notifications = [];
-    
-    /**
-     * Show a notification message on screen
-     * @param {string} message - The message to display
-     */
-    function showNotification(message) {
-        notifications.push({
-            message: message,
-            duration: GameState.getNotificationDuration(),
-            opacity: 1.0
-        });
-        
-        // Also publish an event so other systems can react
-        GameEvents.publish('notification:show', { message });
-    }
-    
-    /**
-     * Update and draw notifications
-     */
-    function updateNotifications() {
-        for (let i = notifications.length - 1; i >= 0; i--) {
-            const notification = notifications[i];
-            
-            // Update duration and fade out at the end
-            notification.duration--;
-            if (notification.duration < 30) {
-                notification.opacity = notification.duration / 30;
-            }
-            
-            // Remove expired notifications
-            if (notification.duration <= 0) {
-                notifications.splice(i, 1);
-                continue;
-            }
-            
-            // Draw notification
-            ctx.save();
-            ctx.textAlign = "center";
-            ctx.font = "bold 18px Arial";
-            ctx.fillStyle = `rgba(255, 255, 255, ${notification.opacity})`;
-            ctx.fillText(
-                notification.message,
-                canvas.width / 2,
-                100 + (i * 30)
-            );
-            ctx.restore();
-        }
-    }
-    
-    // Add parallax background system
-    const ParallaxSystem = {
-        layers: [
-            { stars: [], speed: 0.5, color: "#555" },
-            { stars: [], speed: 1, color: "#888" },
-            { stars: [], speed: 1.5, color: "#FFF" }
-        ],
-
-        init: function() {
-            const parallaxConfig = GameConfig.getEnvironmentConfig().parallax;
-            
-            this.layers.forEach(layer => {
-                for (let i = 0; i < 100; i++) {
-                    layer.stars.push({
-                        x: Math.random() * canvas.width,
-                        y: Math.random() * canvas.height,
-                        size: Math.random() * 2 + 1
-                    });
-                }
-            });
-        },
-
-        draw: function(ctx) {
-            this.layers.forEach(layer => {
-                ctx.fillStyle = layer.color;
-                layer.stars.forEach(star => {
-                    ctx.beginPath();
-                    ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
-                    ctx.fill();
-
-                    // Move stars downward
-                    star.y += layer.speed;
-
-                    // Reset stars that move off-screen
-                    if (star.y > canvas.height) {
-                        star.y = 0;
-                        star.x = Math.random() * canvas.width;
-                    }
-                });
-            });
-        },
-        
-        // Add horizontal movement function for parallax layers
-        moveX: function(dx) {
-            this.layers.forEach(layer => {
-                // Move each star horizontally at its proportional parallax speed
-                layer.stars.forEach(star => {
-                    star.x += dx * (layer.speed / 1.5); // Scale by layer speed for parallax effect
-                    
-                    // Wrap stars horizontally if they move off-screen
-                    if (star.x < 0) {
-                        star.x += canvas.width;
-                    } else if (star.x > canvas.width) {
-                        star.x -= canvas.width;
-                    }
-                });
-            });
-        }
-    };
-    
-    /**
-     * Move parallax background horizontally
-     * @param {number} dx - Distance to move
-     */
-    function moveParallaxX(dx) {
-        ParallaxSystem.moveX(dx);
-    }
-
     // Initialize the game
     function init() {
         canvas = document.getElementById("gameCanvas");
@@ -137,18 +19,14 @@ const Game = (function() {
         canvas.height = document.body.clientHeight;
         ctx = canvas.getContext("2d");
         
-        // Set up event listeners
-        window.addEventListener('resize', resizeCanvas, false);
-        window.addEventListener('orientationchange', resizeCanvas, false);
-        
         // Initialize systems in the correct order
         initSystems();
         
         // Subscribe to events
         setupEventHandlers();
         
-        // Start the game loop
-        window.requestAnimationFrame(gameLoop);
+        // Start the game loop via GameState
+        GameState.init();
     }
     
     /**
@@ -168,32 +46,17 @@ const Game = (function() {
         DustSystem.init();
         PowerUpSystem.init();
         RoomSystem.init();
-        
-        // Initialize visuals
-        ParallaxSystem.init();
     }
     
     /**
      * Set up event subscriptions to handle game events
      */
     function setupEventHandlers() {
-        // Subscribe to state changes
-        GameState.onStateChange((newState, oldState) => {
-            if (newState === GameState.STATE.PLAYING && oldState === GameState.STATE.START_SCREEN) {
-                // Generate initial rooms when starting game
-                RoomSystem.generateRooms();
-            }
-            
-            if (newState === GameState.STATE.GAME_OVER) {
-                // Pause systems, play death animation, etc.
-            }
-        });
-        
         // Subscribe to level up events to increase difficulty
         GameEvents.subscribe('player:levelUp', (data) => {
             ShipSystem.increaseEnemySpeed(0.5);
             ShipSystem.decreaseEnemySpawnCooldown(10);
-            showNotification(`Level Up! Now level ${data.level}`);
+            GameState.showNotification(`Level Up! Now level ${data.level}`);
         });
         
         // Handle pause toggle events
@@ -206,292 +69,12 @@ const Game = (function() {
         });
     }
     
-    // Main game loop
-    function gameLoop(timestamp) {
-        // Update timing information
-        GameState.updateFrameTiming(timestamp);
-        
-        // Update FPS counter
-        PerformanceMonitor.update(timestamp);
-        
-        // Process based on current game state
-        switch (GameState.getCurrentState()) {
-            case GameState.STATE.START_SCREEN:
-                updateStartScreen();
-                break;
-                
-            case GameState.STATE.PLAYING:
-                updatePlayingState();
-                break;
-                
-            case GameState.STATE.PAUSED:
-                updatePausedState();
-                break;
-                
-            case GameState.STATE.DOCKED:
-                updateDockedState();
-                break;
-                
-            case GameState.STATE.GAME_OVER:
-                updateGameOverState();
-                break;
-        }
-        
-        // Request next frame
-        window.requestAnimationFrame(gameLoop);
-    }
-    
-    // Update start screen state
-    function updateStartScreen() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ParallaxSystem.draw(ctx);
-        StarSystem.drawStars(ctx);
-        drawStartScreen();
-        
-        // Check for input to start game
-        if (InputSystem.isEnterPressed() || 
-            InputSystem.isLeftTouchActive() || 
-            InputSystem.isRightTouchActive()) {
-            GameState.setState('PLAYING');
-        }
-    }
-    
-    // Update active gameplay state
-    function updatePlayingState() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        
-        // Draw background elements
-        ParallaxSystem.draw(ctx);
-        StarSystem.drawStars(ctx);
-        RoomSystem.drawRooms(ctx);
-        
-        // Check if rooms need to be regenerated
-        if (RoomSystem.roomList.length > 0 && RoomSystem.roomList[0].y >= canvas.height) {
-            RoomSystem.regenerateRooms();
-        }
-        
-        // Update and draw rooms and creatures
-        RoomSystem.drawRats(ctx);
-        RoomSystem.updateRooms();
-        RoomSystem.updateRats();
-        
-        // Draw other environment elements
-        RoomSystem.drawDock(ctx);
-        DustSystem.drawDust(ctx);
-        
-        // Draw player and bullets
-        ShipSystem.drawHero(ctx);
-        BulletSystem.drawHeroBullets(ctx, DustSystem.dust);
-        
-        // Draw UI
-        drawScore();
-        
-        // Process movement
-        MovementSystem.moveAll();
-        
-        // Check docking
-        RoomSystem.checkDocking();
-
-        // Update and draw enemies
-        ShipSystem.updateEnemies();
-        ShipSystem.drawEnemies(ctx);
-        
-        // Update and draw bullets
-        BulletSystem.updateBullets(ctx);
-        
-        // Check collisions
-        checkAllCollisions();
-        
-        // Update stars
-        StarSystem.updateStars();
-        
-        // Clean up bullets that are off screen
-        BulletSystem.cleanupBullets();
-        
-        // Update and draw power-ups
-        PowerUpSystem.update(); 
-        PowerUpSystem.draw(ctx);
-        
-        // Update and draw notifications
-        updateNotifications();
-        
-        // Draw FPS counter
-        PerformanceMonitor.draw(ctx);
-        
-        // Check if player is dead
-        if (GameState.isPlayerDead()) {
-            GameState.setState('GAME_OVER');
-        }
-    }
-    
-    // Process all collision checks
-    function checkAllCollisions() {
-        // Check hero bullets hitting enemies
-        BulletSystem.checkHeroHits();
-        
-        // Check enemy bullets hitting hero
-        BulletSystem.checkEnemyHits();
-        
-        // Check enemy bullets hitting dust
-        BulletSystem.checkDustHits();
-        
-        // Check enemy-dust collisions
-        DustSystem.checkEnemyCollisions();
-        
-        // Check enemy-hero collision
-        ShipSystem.checkHeroCollisions();
-    }
-    
-    // Update paused state
-    function updatePausedState() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ParallaxSystem.draw(ctx);
-        StarSystem.drawStars(ctx);
-        RoomSystem.drawRooms(ctx);
-        drawHelpText();
-    }
-    
-    // Update docked state
-    function updateDockedState() {
-        // Reset enemies and projectiles when docked
-        ShipSystem.resetEnemy();
-        BulletSystem.clearAllBullets();
-        DustSystem.clearAllDust();
-        
-        // Center the view on the man
-        DockingSystem.centerViewOnMan();
-        
-        // Draw the scene
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        StarSystem.drawStars(ctx);
-        RoomSystem.drawRooms(ctx);
-        RoomSystem.drawRats(ctx);
-        RoomSystem.drawDock(ctx);
-        ShipSystem.drawHero(ctx);
-        DockingSystem.drawMan(ctx);
-        MovementSystem.moveAll();
-        
-        // Handle man movement
-        DockingSystem.handleManMovement();
-        
-        // Update stars in docked mode
-        StarSystem.updateStarsInDockedMode();
-        
-        // Check if man returns to ship
-        if (DockingSystem.checkManReturnsToShip()) {
-            DockingSystem.undock();
-            GameState.setState('PLAYING');
-        }
-        
-        // Check for rat interactions
-        RoomSystem.checkRatInteractions();
-    }
-    
-    // Update game over state
-    function updateGameOverState() {
-        if (InputSystem.isEnterPressed() || GameState.isPlayerUndead()) {
-            resetGame();
-            GameState.setState('PLAYING');
-        }
-        
-        // Draw game over screen
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ParallaxSystem.draw(ctx);
-        StarSystem.drawStars(ctx);
-        drawGameOver();
-    }
-    
-    // Reset the game state
-    function resetGame() {
-        // Reset game state
-        GameState.resetPlayerStats();
-        
-        // Reset game entities
-        ShipSystem.resetEnemy();
-        BulletSystem.clearAllBullets();
-        DustSystem.clearAllDust();
-        PowerUpSystem.resetAllPowerUps();
-        
-        // Generate new environment
-        RoomSystem.clearRooms();
-        RoomSystem.generateRooms();
-    }
-    
-    // Canvas resize handler
-    function resizeCanvas() {
-        canvas.width = document.body.clientWidth;
-        canvas.height = document.body.clientHeight;
-        ctx = canvas.getContext("2d");
-        
-        // Update dependent values
-        DustSystem.updateMagWaveRange();
-        
-        // Publish resize event
-        GameEvents.publish('canvas:resized', { width: canvas.width, height: canvas.height });
-    }
-    
-    // Draw the start screen
-    function drawStartScreen() {
-        ctx.font = "40px Consolas";
-        ctx.fillStyle = ColorUtils.randRGB();
-        ctx.textAlign = "center";
-        ctx.fillText("NEXUS \u2A58\u2A57 VECTOR", canvas.width / 2, canvas.height / 2);
-        ctx.font = "20px Courier New";
-        ctx.fillText("PRESS ENTER OR TAP TO START", canvas.width / 2, canvas.height / 2 + 40);
-    }
-    
-    // Draw the score and game stats
-    function drawScore() {
-        ctx.textAlign = "end";
-        ctx.fillStyle = ColorUtils.randRGB();
-        ctx.font = "18px Consolas";
-        ctx.fillText("Stardust Collected:" + GameState.getPlayerScore(), canvas.width - 12, 22);
-        ctx.fillStyle = ColorUtils.randRGB();
-        ctx.fillText("Stardust Destroyed:" + GameState.getDestroyedDust(), canvas.width - 12, 42);
-        ctx.fillStyle = ColorUtils.randRGB();
-        ctx.fillText("Drones Destroyed:" + GameState.getShotDrones(), canvas.width - 12, 62);
-        ctx.fillStyle = ColorUtils.randRGB();
-        ctx.fillText("Bullets Available:" + BulletSystem.getBulletCount(), canvas.width - 12, 82);
-        ctx.fillStyle = ColorUtils.randRGB();
-        ctx.fillText("XP:" + GameState.getXp(), canvas.width - 12, 102);
-        ctx.fillStyle = ColorUtils.randRGB();
-        ctx.fillText("Level:" + GameState.getLevel(), canvas.width - 12, 122);
-    }
-    
-    // Draw help text in pause screen
-    function drawHelpText() {
-        drawScore();
-        ctx.font = "18px Consolas";
-        ctx.fillStyle = ColorUtils.randRGB();
-        ctx.textAlign = "start";
-        ctx.fillText("Move:             <-/-> or Tilt", 5, canvas.height - 60);
-        ctx.fillStyle = ColorUtils.randRGB();
-        ctx.fillText("Shoot:            Space/Touch Right", 5, canvas.height - 42);
-        ctx.fillStyle = ColorUtils.randRGB();
-        ctx.fillText("MagWave:     Down/Touch Left", 5, canvas.height - 24);
-        ctx.fillStyle = ColorUtils.randRGB();
-        ctx.fillText("Resume:         p/Multi-Touch", 5, canvas.height - 6);
-        ctx.textAlign = "center";
-        ctx.fillStyle = ColorUtils.randRGB();
-        ctx.font = "48px Consolas";
-        ctx.fillText("| |", canvas.width / 2, canvas.height / 2);
-    }
-    
-    // Draw game over screen
-    function drawGameOver() {
-        RoomSystem.drawRooms(ctx);
-        ctx.font = "48px Consolas";
-        ctx.fillStyle = ColorUtils.randRGB();
-        ctx.textAlign = "center";
-        ctx.fillText("\u2620", canvas.width / 2, canvas.height / 2);
-    }
-    
-    // Public API
+    // Public API - much slimmer now that functionality has been moved to GameState
     return {
         init: init,
-        getCanvas: function() { return canvas; },
-        getContext: function() { return ctx; },
-        moveParallaxX: moveParallaxX,
-        showNotification: showNotification
+        getCanvas: function() { return GameState.getCanvas(); },
+        getContext: function() { return GameState.getContext(); },
+        moveParallaxX: function(dx) { GameState.moveParallaxX(dx); },
+        showNotification: function(message) { GameState.showNotification(message); }
     };
 })();

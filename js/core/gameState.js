@@ -37,14 +37,16 @@ const GameState = (function() {
         frameCount: 0,
         lastTimestamp: 0,
         deltaTime: 0,
-        speed: 7
+        speed: 7,
+        accumulator: 0 // For fixed timestep
     };
     
     // Game settings - configurable options
     const settings = {
         targetFps: 60,
-        timeStep: 1000 / 60, // Based on target FPS
-        notificationDuration: 90 // 1.5 seconds at 60fps
+        timeStep: 1000 / 60, // Fixed timestep in ms (16.67ms @ 60fps)
+        notificationDuration: 90, // 1.5 seconds at 60fps
+        maxDeltaTime: 100 // Max delta time in ms to prevent spiral of death
     };
     
     // State change listeners
@@ -86,15 +88,27 @@ const GameState = (function() {
         player.isUndead = false;
     }
     
-    // Update frame timing
+    // Update frame timing with fixed timestep accumulation
     function updateFrameTiming(timestamp) {
-        session.frameCount++;
-        session.deltaTime = (timestamp - session.lastTimestamp) / 1000; // Convert to seconds
+        // Calculate real delta time in milliseconds
+        let frameDelta = timestamp - session.lastTimestamp;
         
-        // Clamp deltaTime to avoid "jumps" if the game pauses or tab switches
-        if (session.deltaTime > 0.1) session.deltaTime = 0.1;
+        // Clamp deltaTime to avoid "spiral of death" after pauses/tab switches
+        if (frameDelta > settings.maxDeltaTime) {
+            frameDelta = settings.maxDeltaTime;
+        }
         
+        // Update last timestamp
         session.lastTimestamp = timestamp;
+        
+        // Store delta in seconds for systems that need real elapsed time
+        session.deltaTime = frameDelta / 1000; 
+        
+        // Add to the accumulator
+        session.accumulator += frameDelta;
+        
+        // Increment frame counter
+        session.frameCount++;
     }
     
     // Add XP to player
@@ -313,47 +327,98 @@ const GameState = (function() {
         });
     }
     
-    // Main game loop
+    // Main game loop with fixed timestep implementation
     function gameLoop(timestamp) {
-        // Update timing information
+        // Update timing information with accumulator
         updateFrameTiming(timestamp);
         
         // Update FPS counter
         PerformanceMonitor.update(timestamp);
         
-        // Process based on current game state
-        switch (currentState) {
-            case STATE.START_SCREEN:
-                updateStartScreen();
-                break;
-                
-            case STATE.PLAYING:
-                updatePlayingState();
-                break;
-                
-            case STATE.PAUSED:
-                updatePausedState();
-                break;
-                
-            case STATE.DOCKED:
-                updateDockedState();
-                break;
-                
-            case STATE.GAME_OVER:
-                updateGameOverState();
-                break;
+        // Process fixed timestep updates
+        // Process as many fixed steps as needed to catch up
+        while (session.accumulator >= settings.timeStep) {
+            // Update game logic at fixed intervals
+            updateLogic(settings.timeStep / 1000); // timeStep in seconds
+            
+            // Subtract the fixed timestep from the accumulator
+            session.accumulator -= settings.timeStep;
         }
+        
+        // Calculate interpolation factor for smooth rendering between physics steps
+        const alpha = session.accumulator / settings.timeStep;
+        
+        // Render the game with interpolation factor
+        renderGame(alpha);
         
         // Request next frame
         window.requestAnimationFrame(gameLoop);
     }
     
-    // Update start screen state
-    function updateStartScreen() {
+    // Update game logic at fixed timestep intervals
+    function updateLogic(timeStep) {
+        // Process based on current game state
+        switch (currentState) {
+            case STATE.START_SCREEN:
+                updateStartScreenLogic(timeStep);
+                break;
+                
+            case STATE.PLAYING:
+                updatePlayingStateLogic(timeStep);
+                break;
+                
+            case STATE.PAUSED:
+                // No updates during pause
+                break;
+                
+            case STATE.DOCKED:
+                updateDockedStateLogic(timeStep);
+                break;
+                
+            case STATE.GAME_OVER:
+                updateGameOverLogic(timeStep);
+                break;
+        }
+    }
+    
+    // Render the game (can run at variable frame rate)
+    function renderGame(interpolation) {
+        // Clear the canvas
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ParallaxSystem.draw(ctx);
-        StarSystem.drawStars(ctx);
-        drawStartScreen();
+        
+        // Render based on current game state
+        switch (currentState) {
+            case STATE.START_SCREEN:
+                renderStartScreen(interpolation);
+                break;
+                
+            case STATE.PLAYING:
+                renderPlayingState(interpolation);
+                break;
+                
+            case STATE.PAUSED:
+                renderPausedState(interpolation);
+                break;
+                
+            case STATE.DOCKED:
+                renderDockedState(interpolation);
+                break;
+                
+            case STATE.GAME_OVER:
+                renderGameOverState(interpolation);
+                break;
+        }
+        
+        // Update and draw notifications
+        updateNotifications();
+        
+        // Draw FPS counter
+        PerformanceMonitor.draw(ctx);
+    }
+    
+    // Start screen logic - fixed timestep update
+    function updateStartScreenLogic(timeStep) {
+        StarSystem.updateStars();
         
         // Check for input to start game
         if (InputSystem.isEnterPressed() || 
@@ -363,50 +428,37 @@ const GameState = (function() {
         }
     }
     
-    // Update active gameplay state
-    function updatePlayingState() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        
-        // Draw background elements
+    // Start screen rendering
+    function renderStartScreen(interpolation) {
         ParallaxSystem.draw(ctx);
         StarSystem.drawStars(ctx);
-        RoomSystem.drawRooms(ctx);
-        
+        drawStartScreen();
+    }
+    
+    // Game play logic at fixed timestep
+    function updatePlayingStateLogic(timeStep) {
         // Check if rooms need to be regenerated
         if (RoomSystem.roomList.length > 0 && RoomSystem.roomList[0].y >= canvas.height) {
             RoomSystem.regenerateRooms();
         }
         
-        // Update and draw rooms and creatures
-        RoomSystem.drawRats(ctx);
+        // Update rooms and creatures
         RoomSystem.updateRooms();
         RoomSystem.updateRats();
         
-        // Draw other environment elements
-        RoomSystem.drawDock(ctx);
-        DustSystem.drawDust(ctx);
-        
-        // Draw player and bullets
-        ShipSystem.drawHero(ctx);
-        BulletSystem.drawHeroBullets(ctx, DustSystem.dust);
-        
-        // Draw UI
-        drawScore();
-        
-        // Process movement
-        MovementSystem.moveAll();
+        // Process movement with consistent physics - pass timeStep
+        MovementSystem.moveAll(timeStep);
         
         // Check docking
         RoomSystem.checkDocking();
-
-        // Update and draw enemies
+        
+        // Update enemies
         ShipSystem.updateEnemies();
-        ShipSystem.drawEnemies(ctx);
         
-        // Update and draw bullets
-        BulletSystem.updateBullets(ctx);
+        // Update bullets with timeStep
+        BulletSystem.updateBullets(timeStep);
         
-        // Check collisions
+        // Check all collisions
         checkAllCollisions();
         
         // Update stars
@@ -415,20 +467,50 @@ const GameState = (function() {
         // Clean up bullets that are off screen
         BulletSystem.cleanupBullets();
         
-        // Update and draw power-ups
-        PowerUpSystem.update(); 
-        PowerUpSystem.draw(ctx);
-        
-        // Update and draw notifications
-        updateNotifications();
-        
-        // Draw FPS counter
-        PerformanceMonitor.draw(ctx);
+        // Update power-ups
+        PowerUpSystem.update();
         
         // Check if player is dead
         if (player.isDead) {
             setState('GAME_OVER');
         }
+    }
+    
+    // Game play rendering
+    function renderPlayingState(interpolation) {
+        // Draw background elements
+        ParallaxSystem.draw(ctx);
+        StarSystem.drawStars(ctx);
+        RoomSystem.drawRooms(ctx);
+        
+        // Draw rooms and creatures
+        RoomSystem.drawRats(ctx);
+        
+        // Draw other environment elements
+        RoomSystem.drawDock(ctx);
+        DustSystem.drawDust(ctx);
+        
+        // Draw magwave effect if active
+        if ((InputSystem.isDownPressed() || InputSystem.isLeftTouchActive()) && 
+            DustSystem.getMwEnergy() > 0 && 
+            !DockingSystem.isDocking() &&
+            DustSystem.magWave.radius > 0) {
+            DustSystem.drawMagWave(ctx);
+        }
+        
+        // Draw player and bullets - pass timeStep for frame-independent animation
+        ShipSystem.drawHero(ctx);
+        BulletSystem.drawHeroBullets(ctx, DustSystem.dust, session.deltaTime);
+        BulletSystem.drawEnemyBullets(ctx); // Draw enemy bullets
+        
+        // Draw enemies
+        ShipSystem.drawEnemies(ctx);
+        
+        // Draw power-ups
+        PowerUpSystem.draw(ctx);
+        
+        // Draw UI
+        drawScore();
     }
     
     // Process all collision checks
@@ -449,35 +531,16 @@ const GameState = (function() {
         ShipSystem.checkHeroCollisions();
     }
     
-    // Update paused state
-    function updatePausedState() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
+    // Paused state rendering
+    function renderPausedState(interpolation) {
         ParallaxSystem.draw(ctx);
         StarSystem.drawStars(ctx);
         RoomSystem.drawRooms(ctx);
         drawHelpText();
     }
     
-    // Update docked state
-    function updateDockedState() {
-        // Reset enemies and projectiles when docked
-        ShipSystem.resetEnemy();
-        BulletSystem.clearAllBullets();
-        DustSystem.clearAllDust();
-        
-        // Center the view on the man
-        DockingSystem.centerViewOnMan();
-        
-        // Draw the scene
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        StarSystem.drawStars(ctx);
-        RoomSystem.drawRooms(ctx);
-        RoomSystem.drawRats(ctx);
-        RoomSystem.drawDock(ctx);
-        ShipSystem.drawHero(ctx);
-        DockingSystem.drawMan(ctx);
-        MovementSystem.moveAll();
-        
+    // Docked state logic
+    function updateDockedStateLogic(timeStep) {
         // Handle man movement
         DockingSystem.handleManMovement();
         
@@ -492,19 +555,47 @@ const GameState = (function() {
         
         // Check for rat interactions
         RoomSystem.checkRatInteractions();
+        
+        // Movement with fixed timestep
+        MovementSystem.moveAll(timeStep);
     }
     
-    // Update game over state
-    function updateGameOverState() {
+    // Docked state rendering
+    function renderDockedState(interpolation) {
+        // Reset enemies and projectiles when rendering docked state first time
+        if (previousState !== STATE.DOCKED) {
+            ShipSystem.resetEnemy();
+            BulletSystem.clearAllBullets();
+            DustSystem.clearAllDust();
+            
+            // Center the view on the man
+            DockingSystem.centerViewOnMan();
+        }
+        
+        // Draw the scene
+        StarSystem.drawStars(ctx);
+        RoomSystem.drawRooms(ctx);
+        RoomSystem.drawRats(ctx);
+        RoomSystem.drawDock(ctx);
+        ShipSystem.drawHero(ctx);
+        DockingSystem.drawMan(ctx);
+    }
+    
+    // Game over state logic
+    function updateGameOverLogic(timeStep) {
+        StarSystem.updateStars();
+        
         if (InputSystem.isEnterPressed() || player.isUndead) {
             resetGame();
             setState('PLAYING');
         }
-        
-        // Draw game over screen
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+    
+    // Game over state rendering
+    function renderGameOverState(interpolation) {
         ParallaxSystem.draw(ctx);
         StarSystem.drawStars(ctx);
+        RoomSystem.drawRooms(ctx);
         drawGameOver();
     }
     

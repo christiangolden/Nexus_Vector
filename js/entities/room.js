@@ -185,7 +185,7 @@ const RoomSystem = (function() {
     }
     
     /**
-     * Generate procedural rooms with enhanced variety
+     * Generate procedural rooms with enhanced variety to form a cohesive space station
      */
     function generateRooms() {
         const canvas = GameState.getCanvas();
@@ -195,31 +195,139 @@ const RoomSystem = (function() {
         ratList = [];
         roomConnections = [];
         
-        // Generate a random number of rooms
-        const numFloor = Math.floor(Math.random() * 8 + 5);
+        // Space station layout parameters
+        const stationRadius = Math.min(canvas.width, canvas.height) * 0.6; // Size of the station
+        const numFloors = Math.floor(Math.random() * 3) + 2; // 2-4 floors/rings
+        const roomsPerFloor = Math.floor(Math.random() * 4) + 3; // 3-6 rooms per floor
         
-        // Always include at least one docking bay
-        const dockingBay = generateRoomWithType(null, "DOCK", canvas);
-        roomList.push(dockingBay);
+        // Generate the central hub first
+        const hubSize = stationRadius * 0.3;
+        const hubX = Math.floor(Math.random() * canvas.width / 2) - canvas.width / 4;
+        const hubY = Math.floor(Math.random() * -canvas.height) - hubSize * 2;
         
-        // Generate the remaining rooms
-        for (let i = 1; i < numFloor; i++) {
-            // Select a room type - avoid too many docking bays
-            const typeKeys = Object.keys(ROOM_TYPES).filter(t => t !== "DOCK" || Math.random() < 0.1);
-            const roomType = typeKeys[Math.floor(Math.random() * typeKeys.length)];
+        const hub = roomPool.get(
+            hubX, 
+            hubY,
+            hubSize * 2,
+            hubSize * 2,
+            "COMMAND"
+        );
+        hub.isHub = true;
+        roomList.push(hub);
+        
+        // Generate concentric rings of rooms around the hub
+        for (let floor = 0; floor < numFloors; floor++) {
+            const floorRadius = hubSize + ((floor + 1) * stationRadius * 0.2);
             
-            // Generate a room with this type
-            const room = generateRoomWithType(roomList[i-1], roomType, canvas);
-            roomList.push(room);
+            // Calculate rooms for this floor
+            const actualRoomsPerFloor = floor === 0 ? roomsPerFloor - 1 : roomsPerFloor;
             
-            // Create a connection between this room and a previous room
-            connectRooms(roomList[i-1], room);
-            
-            // Add some random connections between rooms for a more interesting layout
-            if (i > 1 && Math.random() < 0.3) {
-                // Pick a random previous room that's not the immediately preceding one
-                const randomPrevIndex = Math.floor(Math.random() * (i-1));
-                connectRooms(roomList[randomPrevIndex], room);
+            for (let i = 0; i < actualRoomsPerFloor; i++) {
+                // Calculate room angle and position
+                const angle = (i / actualRoomsPerFloor) * Math.PI * 2;
+                const distance = floorRadius;
+                
+                // Calculate room position
+                const roomX = hubX + hubSize + Math.cos(angle) * distance;
+                const roomY = hubY + hubSize + Math.sin(angle) * distance;
+                
+                // Calculate room size
+                const roomWidth = Math.floor(Math.random() * 50 + 150);
+                const roomHeight = Math.floor(Math.random() * 50 + 150);
+                
+                // Choose room type based on floor and position
+                let roomType;
+                if (floor === 0 && i === 0) {
+                    roomType = "DOCK"; // First floor always has a docking bay
+                } else if (floor === numFloors - 1) {
+                    roomType = Math.random() < 0.7 ? "ENGINE" : "STORAGE"; // Outer ring has engines and storage
+                } else if (floor === 0) {
+                    roomType = Math.random() < 0.6 ? "COMMAND" : "STORAGE"; // Inner ring has command rooms
+                } else {
+                    const types = ["LIVING", "STORAGE", "ENGINE", "COMMAND"];
+                    const weights = [0.4, 0.3, 0.2, 0.1]; // Weights for random selection
+                    
+                    // Weighted random selection of room type
+                    const randomValue = Math.random();
+                    let cumulativeWeight = 0;
+                    for (let t = 0; t < types.length; t++) {
+                        cumulativeWeight += weights[t];
+                        if (randomValue < cumulativeWeight) {
+                            roomType = types[t];
+                            break;
+                        }
+                    }
+                }
+                
+                // Generate points for a more complex room shape
+                const points = generateRoomShape(roomX, roomY, roomWidth, roomHeight, roomType);
+                
+                const room = roomPool.get(
+                    roomX, 
+                    roomY, 
+                    roomWidth,
+                    roomHeight,
+                    roomType,
+                    points
+                );
+                
+                room.floor = floor; // Track what floor this room is on
+                roomList.push(room);
+                
+                // Connect to hub if it's the first floor
+                if (floor === 0) {
+                    connectRooms(hub, room);
+                }
+                
+                // Connect to previous room on the same floor
+                if (i > 0) {
+                    connectRooms(roomList[roomList.length - 2], room);
+                }
+                
+                // Connect first and last rooms to complete the ring
+                if (i === actualRoomsPerFloor - 1 && actualRoomsPerFloor > 1) {
+                    // Find the first room on this floor
+                    const firstRoomOnFloor = roomList.find(r => 
+                        r.floor === floor && r !== room && r !== hub);
+                        
+                    if (firstRoomOnFloor) {
+                        connectRooms(room, firstRoomOnFloor);
+                    }
+                }
+                
+                // Connect to the room above (on the previous floor)
+                if (floor > 0) {
+                    // Find a room on the previous floor at a similar angle
+                    const prevFloorRooms = roomList.filter(r => r.floor === floor - 1 && !r.isHub);
+                    
+                    if (prevFloorRooms.length > 0) {
+                        // Find closest room by angle from hub center
+                        let closestRoom = null;
+                        let smallestAngleDiff = Infinity;
+                        
+                        for (const prevRoom of prevFloorRooms) {
+                            const prevAngle = Math.atan2(
+                                prevRoom.y + prevRoom.height/2 - (hubY + hubSize),
+                                prevRoom.x + prevRoom.width/2 - (hubX + hubSize)
+                            );
+                            
+                            // Calculate angle difference, accounting for wrap-around
+                            let angleDiff = Math.abs(angle - prevAngle);
+                            if (angleDiff > Math.PI) {
+                                angleDiff = 2 * Math.PI - angleDiff;
+                            }
+                            
+                            if (angleDiff < smallestAngleDiff) {
+                                smallestAngleDiff = angleDiff;
+                                closestRoom = prevRoom;
+                            }
+                        }
+                        
+                        if (closestRoom && smallestAngleDiff < Math.PI/4) {
+                            connectRooms(room, closestRoom);
+                        }
+                    }
+                }
             }
         }
         
@@ -309,7 +417,7 @@ const RoomSystem = (function() {
     }
     
     /**
-     * Connect two rooms with a corridor
+     * Connect two rooms with a corridor, with a stable connection point
      */
     function connectRooms(roomA, roomB) {
         // Check if connection already exists
@@ -331,13 +439,25 @@ const RoomSystem = (function() {
             y: roomB.y + roomB.height/2
         };
         
-        // Create connection
+        // Create a stable bend point using the room IDs as seeds
+        // This ensures it produces the same value every time for the same two rooms
+        const bendSeed = (roomA.id.charCodeAt(5) + roomB.id.charCodeAt(5)) % 100;
+        const bendOffset = {
+            x: Math.cos(bendSeed) * 25,
+            y: Math.sin(bendSeed) * 25
+        };
+        
+        // Create connection with stable bend points
         roomConnections.push({
             roomA: roomA,
             roomB: roomB,
             pointA: centerA,
             pointB: centerB,
-            width: 20 + Math.random() * 10
+            width: 20 + (bendSeed % 10),
+            bendPoint: {
+                x: (centerA.x + centerB.x) / 2 + bendOffset.x,
+                y: (centerA.y + centerB.y) / 2 + bendOffset.y
+            }
         });
     }
     
@@ -439,16 +559,16 @@ const RoomSystem = (function() {
         for (const conn of roomConnections) {
             ctx.beginPath();
             
-            // Create a smooth curved path between rooms
-            const midX = (conn.pointA.x + conn.pointB.x) / 2;
-            const midY = (conn.pointA.y + conn.pointB.y) / 2;
+            // Use the stable bend point instead of creating a new random one each frame
+            // This ensures corridors don't wobble/glitch
+            const bendPoint = conn.bendPoint || {
+                x: (conn.pointA.x + conn.pointB.x) / 2,
+                y: (conn.pointA.y + conn.pointB.y) / 2
+            };
             
-            // Add some random bend to make it look more natural
-            const bendX = midX + (Math.random() * 50 - 25);
-            const bendY = midY + (Math.random() * 50 - 25);
-            
+            // Draw the corridor with a nice curve
             ctx.moveTo(conn.pointA.x, conn.pointA.y);
-            ctx.quadraticCurveTo(bendX, bendY, conn.pointB.x, conn.pointB.y);
+            ctx.quadraticCurveTo(bendPoint.x, bendPoint.y, conn.pointB.x, conn.pointB.y);
             
             ctx.stroke();
         }
@@ -604,32 +724,52 @@ const RoomSystem = (function() {
     function checkDocking() {
         for (let i = 0; i < roomList.length; i++) {
             if (roomList[i].type === "DOCK") {
-                if (CollisionSystem.isColliding(
-                    ShipSystem.hero.tipX - 5, ShipSystem.hero.tipY - 5, 10, 10,
-                    roomList[i].dockingPosition.x - 15, roomList[i].dockingPosition.y - 15,
-                    30, 30
-                )) {
-                    GameState.getContext().fillText("Docking...", ShipSystem.hero.tipX, ShipSystem.hero.tipY);
+                // Use a larger detection area to make docking easier
+                const shipX = ShipSystem.hero.tipX;
+                const shipY = ShipSystem.hero.tipY;
+                const dockX = roomList[i].dockingPosition.x;
+                const dockY = roomList[i].dockingPosition.y;
+                
+                // Calculate distance to docking station
+                const distance = Math.sqrt(
+                    Math.pow(shipX - dockX, 2) + 
+                    Math.pow(shipY - dockY, 2)
+                );
+                
+                // If close enough to dock (larger radius for easier docking)
+                if (distance < 80) {
+                    // Show docking indicator when player is near docking area
+                    const ctx = GameState.getContext();
+                    ctx.font = "18px Consolas";
+                    ctx.fillStyle = "#FFFFFF";
+                    ctx.textAlign = "center";
+                    ctx.fillText("Press UP to dock", shipX, shipY - 30);
                     
-                    // Mark room as visited
-                    roomList[i].visited = true;
-                    roomList[i].revealed = true;
-                    
-                    // Mark connected rooms as revealed
-                    for (const conn of roomConnections) {
-                        if (conn.roomA.id === roomList[i].id) {
-                            conn.roomB.revealed = true;
-                        } else if (conn.roomB.id === roomList[i].id) {
-                            conn.roomA.revealed = true;
+                    // Only dock if UP key is pressed (or up touch)
+                    if (InputSystem.isUpPressed() || InputSystem.isUpTouchActive()) {
+                        console.log("Docking initiated with UP key!"); // Debug message
+                        
+                        // Mark room as visited
+                        roomList[i].visited = true;
+                        roomList[i].revealed = true;
+                        
+                        // Mark connected rooms as revealed
+                        for (const conn of roomConnections) {
+                            if (conn.roomA.id === roomList[i].id) {
+                                conn.roomB.revealed = true;
+                            } else if (conn.roomB.id === roomList[i].id) {
+                                conn.roomA.revealed = true;
+                            }
                         }
+                        
+                        // Initiate docking
+                        DockingSystem.dock(shipX, shipY);
+                        return true; // Indicate successful docking
                     }
-                    
-                    // Initiate docking
-                    DockingSystem.dock(ShipSystem.hero.tipX, ShipSystem.hero.tipY);
-                    break;
                 }
             }
         }
+        return false; // No docking occurred
     }
     
     /**

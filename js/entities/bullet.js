@@ -35,7 +35,7 @@ const BulletSystem = (function() {
     }
 
     // Initialize bullet count to 0
-    let bulletCount = 0;
+    let bulletCount = 100; // Start with some bullets
 
     function getBulletCount() {
         return bulletCount;
@@ -113,21 +113,21 @@ const BulletSystem = (function() {
         heroBulletList = [];
         timer = 0;
         wait = false;
+        bulletCount = 100; // Start with some bullets
     }
     
     /**
-     * Updates and draws enemy bullets. Renamed from drawBullets.
-     * @param {CanvasRenderingContext2D} ctx - Canvas rendering context
+     * Updates enemy bullets position and collision detection
+     * @param {number} timeStep - Fixed timestep in seconds (optional)
      */
-    function updateBullets(ctx) {
-        const deltaTime = GameState.getDeltaTime();
-        const timeScale = 60 * deltaTime; // Scale to 60 fps baseline
+    function updateBullets(timeStep = 1/60) {
+        const timeScale = timeStep * 60; // Scale to 60 fps baseline
         
-        // Update and draw enemy bullets
+        // Update enemy bullets
         for (let i = bulletList.length - 1; i >= 0; i--) {
             const bullet = bulletList[i];
             
-            // Move bullet based on its velocity, scaled by delta time
+            // Move bullet based on its velocity, scaled by timeScale
             bullet.x += bullet.dx * timeScale;
             bullet.y += bullet.dy * timeScale;
 
@@ -136,13 +136,22 @@ const BulletSystem = (function() {
                 // Recycle bullets that are off-screen
                 bulletList.splice(i, 1);
                 bulletPool.recycle(bullet);
-            } else {
-                // Draw the bullet
-                ctx.beginPath();
-                ctx.rect(bullet.x, bullet.y, bullet.width, bullet.height);
-                ctx.fillStyle = ColorUtils.randRGB();
-                ctx.fill();
             }
+        }
+    }
+
+    /**
+     * Renders enemy bullets
+     * @param {CanvasRenderingContext2D} ctx - Canvas rendering context
+     */
+    function drawEnemyBullets(ctx) {
+        // Draw enemy bullets
+        for (let i = 0; i < bulletList.length; i++) {
+            const bullet = bulletList[i];
+            ctx.beginPath();
+            ctx.rect(bullet.x, bullet.y, bullet.width, bullet.height);
+            ctx.fillStyle = ColorUtils.randRGB();
+            ctx.fill();
         }
     }
     
@@ -150,14 +159,14 @@ const BulletSystem = (function() {
      * Draw hero bullets
      * @param {CanvasRenderingContext2D} ctx - Canvas rendering context
      * @param {Object} dust - Dust system object for collision checking
+     * @param {number} timeStep - Fixed timestep in seconds (optional)
      */
-    function drawHeroBullets(ctx, dust) {
-        const deltaTime = GameState.getDeltaTime();
-        const timeScale = 60 * deltaTime; // Scale to 60 fps baseline
+    function drawHeroBullets(ctx, dust, timeStep = 1/60) {
+        const timeScale = timeStep * 60; // Scale to 60 fps baseline
         
         // Manage bullet firing rate - use PowerUpSystem's fire rate if available
         if (wait) {
-            // Scale timer increment by delta time for consistent fire rate
+            // Scale timer increment by timeScale for consistent fire rate
             timer += timeScale;
             // Check if using rapid fire rate from power-up
             const effectiveFireRate = PowerUpSystem ? PowerUpSystem.getFireRate() : 7;
@@ -196,7 +205,7 @@ const BulletSystem = (function() {
                 continue;
             }
             
-            // Move and draw bullets - scale movement by delta time
+            // Move and draw bullets - scale movement by timeScale
             if (heroBulletList[i].y > 0) {
                 heroBulletList[i].y -= 20 * timeScale;
                 ctx.beginPath();
@@ -374,6 +383,7 @@ const BulletSystem = (function() {
     return {
         init: init,
         updateBullets: updateBullets, // Use this now for enemy bullets
+        drawEnemyBullets: drawEnemyBullets, // New function to draw enemy bullets
         drawHeroBullets: drawHeroBullets,
         checkHeroHits: checkHeroHits,
         checkEnemyHits: checkEnemyHits,
