@@ -32,6 +32,29 @@ const ParticleSystem = (function() {
         }
     }
 
+    function spawnJetParticle(x, y, angle, speed, color) {
+        // Use the same color shade logic as spawnExplosion
+        let baseR = 255, baseG = 170, baseB = 0;
+        if (color.startsWith('#') && color.length === 7) {
+            baseR = parseInt(color.slice(1, 3), 16);
+            baseG = parseInt(color.slice(3, 5), 16);
+            baseB = parseInt(color.slice(5, 7), 16);
+        }
+        const dr = Math.floor((Math.random() - 0.5) * 40);
+        const dg = Math.floor((Math.random() - 0.5) * 40);
+        const db = Math.floor((Math.random() - 0.5) * 40);
+        const shade = `rgb(${Math.min(255, Math.max(0, baseR + dr))},${Math.min(255, Math.max(0, baseG + dg))},${Math.min(255, Math.max(0, baseB + db))})`;
+        particles.push({
+            x: x,
+            y: y,
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed,
+            life: 30 + Math.random() * 10,
+            color: shade,
+            size: 0.7 + Math.random() * 1.0
+        });
+    }
+
     function update() {
         for (let i = particles.length - 1; i >= 0; i--) {
             const p = particles[i];
@@ -58,6 +81,7 @@ const ParticleSystem = (function() {
 
     return {
         spawnExplosion,
+        spawnJetParticle,
         update,
         draw
     };

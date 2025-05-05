@@ -487,16 +487,24 @@ const GameState = (function() {
     
     // Game play rendering
     function renderPlayingState(interpolation) {
+        // Screen shake effect during warp
+        let shaking = false;
+        let shakeX = 0, shakeY = 0;
+        if (GameState.getWarpActive()) {
+            shaking = true;
+            // Increase shake intensity: random offset between -4 and 4 pixels
+            shakeX = (Math.random() - 0.5) * 8;
+            shakeY = (Math.random() - 0.5) * 8;
+            ctx.save();
+            ctx.translate(shakeX, shakeY);
+        }
         // Draw background elements
         ParallaxSystem.draw(ctx);
         StarSystem.drawStars(ctx);
-        
         // Draw monolithic space stations
         StationSystem.drawStations(ctx);
-        
         // Draw other environment elements
         DustSystem.drawDust(ctx);
-        
         // Draw magwave effect if active
         if ((InputSystem.isDownPressed() || InputSystem.isLeftTouchActive()) && 
             DustSystem.getMwEnergy() > 0 && 
@@ -504,22 +512,22 @@ const GameState = (function() {
             DustSystem.magWave.radius > 0) {
             DustSystem.drawMagWave(ctx);
         }
-        
         // Draw player and bullets - pass timeStep for frame-independent animation
         ShipSystem.drawHero(ctx);
         BulletSystem.drawHeroBullets(ctx, DustSystem.dust, session.deltaTime);
         BulletSystem.drawEnemyBullets(ctx); // Draw enemy bullets
-        
         // Draw enemies
         ShipSystem.drawEnemies(ctx);
-        
         // Draw power-ups
         PowerUpSystem.draw(ctx);
         // Draw particles for enemy explosions
         if (typeof ParticleSystem !== 'undefined') {
             ParticleSystem.draw(ctx);
         }
-        
+        // Restore context after shake
+        if (shaking) {
+            ctx.restore();
+        }
         // Draw UI
         drawScore();
     }

@@ -188,7 +188,8 @@ const ShipSystem = (function() {
      */
     function init() {
         const canvas = GameState.getCanvas();
-        hero = new Ship("up", 20, 40, canvas.width / 2, canvas.height - 50);
+        // Raise the default Y position (was canvas.height - 50)
+        hero = new Ship("up", 20, 40, canvas.width / 2, canvas.height - 120);
         // Initialize enemy array and cooldown
         activeEnemies = [];
         enemySpawnCooldown = baseSpawnInterval; 
@@ -219,6 +220,29 @@ const ShipSystem = (function() {
         // Update hero coordinates
         hero.leftX = hero.tipX - hero.width / 2;
         hero.rightX = hero.tipX + hero.width / 2;
+        
+        // Engine particle effect during warp
+        if (GameState.getWarpActive() && typeof ParticleSystem !== 'undefined') {
+            // Spawn a few particles behind the ship each frame
+            const count = 4 + Math.floor(Math.random() * 4); // 4-7 particles
+            const baseX = hero.tipX;
+            const baseY = hero.tipY + hero.height + 2;
+            for (let i = 0; i < count; i++) {
+                // Only allow angles: down (PI/2), down-left (2*PI/3), down-right (PI/3)
+                const allowedAngles = [Math.PI / 2, 2 * Math.PI / 3, Math.PI / 3];
+                const angle = allowedAngles[Math.floor(Math.random() * allowedAngles.length)] + (Math.random() - 0.5) * 0.08; // small randomization
+                const speed = 2 + Math.random() * 2;
+                const color = Math.random() < 0.5 ? '#FFA500' : '#FFEC8B';
+                const offsetX = (Math.random() - 0.5) * 6;
+                ParticleSystem.spawnJetParticle(
+                    baseX + offsetX,
+                    baseY,
+                    angle,
+                    speed,
+                    color
+                );
+            }
+        }
         
         // Draw hero ship
         ctx.beginPath();
