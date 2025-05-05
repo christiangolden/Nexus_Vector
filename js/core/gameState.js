@@ -57,6 +57,9 @@ const GameState = (function() {
     let canvas;
     let ctx;
     
+    // Warp energy for warp drive (separate from magwave)
+    let warpEnergy = 100;
+    
     // Register a state change listener
     function onStateChange(callback) {
         stateChangeListeners.push(callback);
@@ -422,9 +425,6 @@ const GameState = (function() {
         
         // Update and draw notifications
         updateNotifications();
-        
-        // Draw FPS counter
-        PerformanceMonitor.draw(ctx);
     }
     
     // Start screen logic - fixed timestep update
@@ -656,6 +656,26 @@ const GameState = (function() {
         ctx.fillText("XP:" + player.xp, canvas.width - 12, 102);
         ctx.fillStyle = ColorUtils.randRGB();
         ctx.fillText("Level:" + player.level, canvas.width - 12, 122);
+
+        // Draw warp energy bar at upper left
+        const barX = 12;
+        const barY = 12;
+        const barWidth = 120;
+        const barHeight = 16;
+        const warpEnergy = GameState.getWarpEnergy();
+        ctx.save();
+        ctx.textAlign = "start";
+        ctx.font = "bold 14px Consolas";
+        ctx.fillStyle = "#222";
+        ctx.fillRect(barX - 2, barY - 2, barWidth + 4, barHeight + 4);
+        ctx.fillStyle = "#3399FF";
+        ctx.fillRect(barX, barY, barWidth * (warpEnergy / 100), barHeight);
+        ctx.strokeStyle = "#FFF";
+        ctx.lineWidth = 2;
+        ctx.strokeRect(barX, barY, barWidth, barHeight);
+        ctx.fillStyle = "#FFF";
+        ctx.fillText("WARP", barX, barY + barHeight + 14);
+        ctx.restore();
     }
     
     // Draw help text in pause screen
@@ -718,6 +738,10 @@ const GameState = (function() {
         // Warp mode accessors
         getWarpActive: function() { return session.warpActive; },
         setWarpActive: function(active) { session.warpActive = active; },
+        getWarpLevel: function() { return session.warpLevel || 0; },
+        setWarpLevel: function(level) { session.warpLevel = level; },
+        getWarpEnergy: function() { return warpEnergy; },
+        setWarpEnergy: function(val) { warpEnergy = Math.max(0, Math.min(100, val)); },
         
         // Settings accessors
         getTargetFps: function() { return settings.targetFps; },

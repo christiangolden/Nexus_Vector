@@ -340,7 +340,9 @@ const ShipSystem = (function() {
         // Scale for frame rate independence - use 60fps as baseline
         const timeScale = 60 * deltaTime;
         const warp = GameState.getWarpActive();
-        const warpFactor = warp ? 8 : 1;
+        const warpLevel = GameState.getWarpLevel();
+        const warpFactor = 3;
+        const yMult = 1 + (warpFactor - 1) * warpLevel;
 
         // Update spawning
         updateEnemySpawning();
@@ -351,7 +353,7 @@ const ShipSystem = (function() {
             const { ship, movement, formation } = enemy;
 
             // --- Update Movement ---
-            let targetSpeed = (enemySpeed + (GameState.getLevel() * 0.5)) * timeScale * warpFactor;
+            let targetSpeed = (enemySpeed + (GameState.getLevel() * 0.5)) * timeScale;
             
             // Special formation movement behaviors
             if (formation) {
@@ -360,24 +362,24 @@ const ShipSystem = (function() {
                     case "arrow":
                         // Arrow formation sways side to side as it descends
                         ship.tipX += Math.sin(ship.tipY / 80) * 2 * timeScale;
-                        ship.tipY += targetSpeed * 0.9; // Slightly slower
+                        ship.tipY += targetSpeed * 0.9 * yMult; // Apply yMult only to y
                         break;
                     case "line":
                         // Line formation moves in a wave pattern
                         ship.tipX += Math.sin(ship.tipY / 60) * 3 * timeScale;
-                        ship.tipY += targetSpeed * 0.85;
+                        ship.tipY += targetSpeed * 0.85 * yMult; // Apply yMult only to y
                         break;
                     case "box":
                         // Box formation moves straight down but slower
-                        ship.tipY += targetSpeed * 0.7;
+                        ship.tipY += targetSpeed * 0.7 * yMult; // Apply yMult only to y
                         break;
                     case "diamond":
                         // Diamond formation moves in a tighter wave pattern
                         ship.tipX += Math.sin(ship.tipY / 40) * 2 * timeScale;
-                        ship.tipY += targetSpeed * 0.75;
+                        ship.tipY += targetSpeed * 0.75 * yMult; // Apply yMult only to y
                         break;
                     default:
-                        ship.tipY += targetSpeed;
+                        ship.tipY += targetSpeed * yMult; // Apply yMult only to y
                 }
             } else {
                 // Regular individual enemy movement
@@ -385,18 +387,18 @@ const ShipSystem = (function() {
                     case "wave":
                         // Moves down in a sine wave pattern
                         ship.tipX += Math.sin(ship.tipY / 50) * 3 * timeScale; 
-                        ship.tipY += targetSpeed * 0.8; // Slightly slower
+                        ship.tipY += targetSpeed * 0.8 * yMult; // Apply yMult only to y
                         break;
                     case "track":
                         // Tries to move towards player's X position
                         if (ship.tipX < playerX - 10) ship.tipX += targetSpeed * 0.5;
                         else if (ship.tipX > playerX + 10) ship.tipX -= targetSpeed * 0.5;
-                        ship.tipY += targetSpeed;
+                        ship.tipY += targetSpeed * yMult; // Apply yMult only to y
                         break;
                     case "zigzag":
                         // Moves down in a zigzag pattern
                         ship.tipX += zigzagDirection * targetSpeed * 0.7;
-                        ship.tipY += targetSpeed;
+                        ship.tipY += targetSpeed * yMult; // Apply yMult only to y
                         // Reverse direction at edges
                         if (ship.tipX <= 0 || ship.tipX >= canvas.width) {
                             zigzagDirection *= -1; 
@@ -405,7 +407,7 @@ const ShipSystem = (function() {
                     case "linear":
                     default:
                         // Moves straight down
-                        ship.tipY += targetSpeed;
+                        ship.tipY += targetSpeed * yMult; // Apply yMult only to y
                         break;
                 }
             }

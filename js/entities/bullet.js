@@ -122,16 +122,17 @@ const BulletSystem = (function() {
      */
     function updateBullets(timeStep = 1/60) {
         const timeScale = timeStep * 60; // Scale to 60 fps baseline
-        const warp = GameState.getWarpActive();
-        const warpFactor = warp ? 8 : 1;
+        const warpLevel = GameState.getWarpLevel();
+        const warpFactor = 3;
+        const yMult = 1 + (warpFactor - 1) * warpLevel;
         
         // Update enemy bullets
         for (let i = bulletList.length - 1; i >= 0; i--) {
             const bullet = bulletList[i];
             
-            // Move bullet based on its velocity, scaled by timeScale and warp
-            bullet.x += bullet.dx * timeScale * warpFactor;
-            bullet.y += bullet.dy * timeScale * warpFactor;
+            // Only y is affected by warp
+            bullet.x += bullet.dx * timeScale;
+            bullet.y += bullet.dy * timeScale * yMult;
 
             // Check if bullet is off-screen (top, bottom, left, right)
             if (bullet.y < 0 || bullet.y > GameState.getCanvas().height || bullet.x < 0 || bullet.x > GameState.getCanvas().width) {
@@ -165,8 +166,9 @@ const BulletSystem = (function() {
      */
     function drawHeroBullets(ctx, dust, timeStep = 1/60) {
         const timeScale = timeStep * 60;
-        const warp = GameState.getWarpActive();
-        const warpFactor = warp ? 8 : 1;
+        const warpLevel = GameState.getWarpLevel();
+        const warpFactor = 3;
+        const yMult = 1 + (warpFactor - 1) * warpLevel;
         
         // Manage bullet firing rate - use PowerUpSystem's fire rate if available
         if (wait) {
@@ -211,7 +213,7 @@ const BulletSystem = (function() {
             
             // Move and draw bullets - scale movement by timeScale and warp
             if (heroBulletList[i].y > 0) {
-                heroBulletList[i].y -= 20 * timeScale * warpFactor;
+                heroBulletList[i].y -= 20 * timeScale * yMult;
                 ctx.beginPath();
                 ctx.rect(
                     heroBulletList[i].x, 

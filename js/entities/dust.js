@@ -25,7 +25,7 @@ const DustSystem = (function() {
     };
     
     // Magwave energy and range
-    let mwEnergy = 5;
+    let mwEnergy = 5; // Only for magwave
     let mwRange;
     
     /**
@@ -140,8 +140,11 @@ const DustSystem = (function() {
      */
     function updateDust(timeStep = 1/60) {
         const timeScale = timeStep * 60;
+        const warpLevel = GameState.getWarpLevel();
+        const warpFactor = 3;
+        const yMult = 1 + (warpFactor - 1) * warpLevel;
+        
         const warp = GameState.getWarpActive();
-        const warpFactor = warp ? 8 : 1;
         
         // Process magwave
         if ((InputSystem.isDownPressed() || InputSystem.isLeftTouchActive()) && 
@@ -177,33 +180,33 @@ const DustSystem = (function() {
                 dust.yList[i] < ShipSystem.hero.tipY - ShipSystem.hero.height &&
                 dust.yList[i] > (ShipSystem.hero.tipY - ShipSystem.hero.height - mwRange) &&
                 mwEnergy > 0) {
-                dust.xList[i] -= 3 * timeScale * warpFactor;
-                dust.yList[i] += 5 * timeScale * warpFactor;
+                dust.xList[i] -= 3 * timeScale;
+                dust.yList[i] += 5 * timeScale * yMult;
             } else if ((InputSystem.isDownPressed() || InputSystem.isLeftTouchActive()) && 
                 dust.xList[i] > ShipSystem.hero.tipX &&
                 dust.xList[i] < (ShipSystem.hero.tipX + mwRange) &&
                 dust.yList[i] > ShipSystem.hero.tipY - ShipSystem.hero.height && 
                 mwEnergy > 0) {
-                dust.xList[i] -= 3 * timeScale * warpFactor;
-                dust.yList[i] -= 5 * timeScale * warpFactor;
+                dust.xList[i] -= 3 * timeScale;
+                dust.yList[i] -= 5 * timeScale * yMult;
             } else if ((InputSystem.isDownPressed() || InputSystem.isLeftTouchActive()) && 
                 dust.xList[i] < ShipSystem.hero.tipX &&
                 dust.xList[i] > (ShipSystem.hero.tipX - mwRange) &&
                 dust.yList[i] < ShipSystem.hero.tipY - ShipSystem.hero.height &&
                 dust.yList[i] > (ShipSystem.hero.tipY - ShipSystem.hero.height - mwRange) &&
                 mwEnergy > 0) {
-                dust.xList[i] += 3 * timeScale * warpFactor;
-                dust.yList[i] += 5 * timeScale * warpFactor;
+                dust.xList[i] += 3 * timeScale;
+                dust.yList[i] += 5 * timeScale * yMult;
             } else if ((InputSystem.isDownPressed() || InputSystem.isLeftTouchActive()) && 
                 dust.xList[i] < ShipSystem.hero.tipX &&
                 dust.xList[i] > (ShipSystem.hero.tipX - mwRange) &&
                 dust.yList[i] > ShipSystem.hero.tipY - ShipSystem.hero.height && 
                 mwEnergy > 0) {
-                dust.xList[i] += 3 * timeScale * warpFactor;
-                dust.yList[i] -= 5 * timeScale * warpFactor;
+                dust.xList[i] += 3 * timeScale;
+                dust.yList[i] -= 5 * timeScale * yMult;
             } else {
-                dust.yList[i] += (Math.floor(Math.random() * 5 + 3)) * timeScale * warpFactor;
-                dust.xList[i] += (Math.floor(Math.random() * -5 + 3)) * timeScale * warpFactor;
+                dust.yList[i] += (Math.floor(Math.random() * 5 + 3)) * timeScale * yMult;
+                dust.xList[i] += (Math.floor(Math.random() * -5 + 3)) * timeScale;
             }
 
             // Check if dust is being collected by magwave
@@ -295,6 +298,7 @@ const DustSystem = (function() {
         moveDustX: moveDustX,
         clearAllDust: clearAllDust,
         getMwEnergy: function() { return mwEnergy; },
+        setMwEnergy: function(val) { mwEnergy = Math.max(0, Math.min(5, val)); }, // Cap at 5 for magwave
         getMwRange: function() { return mwRange; }
     };
 })();

@@ -64,7 +64,7 @@ const StationSystem = (function() {
             angle: 0
         };
         this.visited = false;
-        this.rotationSpeed = 0.01 * (Math.random() * 0.5 + 0.5) * (Math.random() < 0.5 ? 1 : -1);
+        this.rotationSpeed = 0.003 * (Math.random() * 0.5 + 0.5) * (Math.random() < 0.5 ? 1 : -1); // Slower rotation
         this.rotation = 0;
         this.interiorGenerated = false;
         this.specialRooms = {
@@ -583,12 +583,14 @@ const StationSystem = (function() {
      */
     function updateStations(deltaTime) {
         const canvas = GameState.getCanvas();
-        const warp = GameState.getWarpActive();
-        const warpFactor = warp ? 8 : 1;
-        // Update each station
+        const warpLevel = GameState.getWarpLevel();
+        const warpFactor = 7;
+        const yMult = 1 + (warpFactor - 1) * warpLevel;
+        const timeScale = 60 * deltaTime;
+        console.log('[StationSystem] warpLevel:', warpLevel, 'yMult:', yMult, 'deltaTime:', deltaTime);
         for (let i = 0; i < stationList.length; i++) {
             stationList[i].update(deltaTime);
-            stationList[i].y += 0.5 * warpFactor;
+            stationList[i].y += 2.0 * yMult * timeScale;
             
             // Remove stations that are far below the screen
             if (stationList[i].y - stationList[i].size > canvas.height + 500) {

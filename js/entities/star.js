@@ -58,17 +58,17 @@ const StarSystem = (function() {
             genStarXY();
         }
         ctx.textAlign = "center";
-        const warp = GameState.getWarpActive();
+        const warpLevel = GameState.getWarpLevel();
         for (let i = 0; i < star.yList.length; i++) {
             const sizeIndex = Math.floor(Math.random() * starSizes.length);
             let size = starSizes[sizeIndex];
             // Stretch stars vertically in warp mode
-            if (warp) size = size * 2.5;
+            if (warpLevel > 0) size = size * (1 + 1.5 * warpLevel);
             ctx.font = starSizeCache[sizeIndex in starSizeCache ? starSizes[sizeIndex] : size];
             ctx.fillStyle = ColorUtils.randRGB();
-            if (warp) {
+            if (warpLevel > 0) {
                 ctx.save();
-                ctx.transform(1, 0, 0, 2.5, 0, -star.yList[i]); // Stretch vertically
+                ctx.transform(1, 0, 0, 1 + 1.5 * warpLevel, 0, -star.yList[i]);
                 ctx.globalAlpha = 0.7;
                 ctx.fillText("*", star.xList[i], star.yList[i] + size / 2);
                 ctx.globalAlpha = 1.0;
@@ -84,9 +84,9 @@ const StarSystem = (function() {
      */
     function updateStars() {
         const canvas = GameState.getCanvas();
-        // Warp effect: increase speed if warp is active
-        const warp = GameState.getWarpActive();
-        const speed = warp ? 8 : 1; // Normal: 1, Warp: 8
+        const warpLevel = GameState.getWarpLevel();
+        const warpFactor = 3;
+        const speed = 1 + (warpFactor - 1) * warpLevel;
         for (let i = 0; i < star.xList.length; i++) {
             if (star.yList[i] < canvas.height * 2) {
                 star.yList[i] += speed;
