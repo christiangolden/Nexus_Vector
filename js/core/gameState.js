@@ -660,10 +660,41 @@ const GameState = (function() {
         ctx.fillText("Drones Destroyed:" + player.shotDrones, canvas.width - 12, 62);
         ctx.fillStyle = ColorUtils.randRGB();
         ctx.fillText("Bullets Available:" + BulletSystem.getBulletCount(), canvas.width - 12, 82);
-        ctx.fillStyle = ColorUtils.randRGB();
-        ctx.fillText("XP:" + player.xp, canvas.width - 12, 102);
-        ctx.fillStyle = ColorUtils.randRGB();
-        ctx.fillText("Level:" + player.level, canvas.width - 12, 122);
+
+        // --- XP Bar and Level Counter (Upper Right) ---
+        const xpBarWidth = 180;
+        const xpBarHeight = 22;
+        const xpBarY = 110;
+        const xpBarX = canvas.width - xpBarWidth - 24;
+        const currentXp = player.xp;
+        const nextLevelXp = player.level * 100;
+        // Level counter to the left of the bar
+        const levelText = `Lv ${player.level}`;
+        ctx.save();
+        ctx.font = "bold 18px Consolas";
+        const levelTextWidth = ctx.measureText(levelText).width;
+        const levelX = xpBarX - levelTextWidth - 18;
+        const levelY = xpBarY + xpBarHeight / 2 + 6;
+        ctx.textAlign = "left";
+        ctx.fillStyle = "#FFD700";
+        ctx.fillText(levelText, levelX, levelY);
+        // Draw bar background
+        ctx.font = "bold 15px Consolas";
+        ctx.fillStyle = "#222";
+        ctx.fillRect(xpBarX - 2, xpBarY - 2, xpBarWidth + 4, xpBarHeight + 4);
+        // Draw XP fill
+        ctx.fillStyle = "#44FF88";
+        ctx.fillRect(xpBarX, xpBarY, xpBarWidth * (currentXp / nextLevelXp), xpBarHeight);
+        // Draw bar border
+        ctx.strokeStyle = "#FFF";
+        ctx.lineWidth = 2;
+        ctx.strokeRect(xpBarX, xpBarY, xpBarWidth, xpBarHeight);
+        // Draw XP counter inside bar
+        ctx.fillStyle = "#222";
+        ctx.textAlign = "center";
+        ctx.font = "bold 15px Consolas";
+        ctx.fillText(`${currentXp} / ${nextLevelXp} XP`, xpBarX + xpBarWidth / 2, xpBarY + xpBarHeight / 2 + 5);
+        ctx.restore();
 
         // Draw warp energy bar at upper left
         const barX = 12;
