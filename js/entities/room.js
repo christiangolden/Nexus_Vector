@@ -228,38 +228,26 @@ const StationSystem = (function() {
      * @param {CanvasRenderingContext2D} ctx - Canvas context
      */
     SpaceStation.prototype.drawStationDetails = function(ctx) {
-        // Draw windows and other details
-        ctx.fillStyle = "#88ccff";
-        
-        // Draw random windows
-        const numWindows = Math.floor(this.size / 10);
-        
-        for (let i = 0; i < numWindows; i++) {
-            const angle = Math.random() * Math.PI * 2;
-            const distance = Math.random() * this.size * 0.8;
-            
-            const windowX = Math.cos(angle) * distance;
-            const windowY = Math.sin(angle) * distance;
-            const windowSize = 3 + Math.random() * 3;
-            
-            ctx.beginPath();
-            ctx.arc(windowX, windowY, windowSize, 0, Math.PI*2);
-            ctx.fill();
-        }
-        
-        // Draw some structural lines
         ctx.strokeStyle = "#556677";
         ctx.lineWidth = 1;
-        
-        const numLines = this.shape === "STAR" ? 5 : this.points.length / 2;
-        
-        for (let i = 0; i < numLines; i++) {
-            const angle = (i / numLines) * Math.PI;
-            
+        // Draw lines only between opposite polygon points
+        const n = this.points.length;
+        const isEven = n % 2 === 0;
+        for (let i = 0; i < n / 2; i++) {
+            const a = this.points[i];
+            const b = this.points[(i + Math.floor(n / 2)) % n];
             ctx.beginPath();
-            ctx.moveTo(Math.cos(angle) * -this.size, Math.sin(angle) * -this.size);
-            ctx.lineTo(Math.cos(angle) * this.size, Math.sin(angle) * this.size);
+            ctx.moveTo(a.x, a.y);
+            ctx.lineTo(b.x, b.y);
             ctx.stroke();
+            // For odd-sided polygons, draw the extra line
+            if (!isEven && i === 0) {
+                const c = this.points[Math.floor(n / 2)];
+                ctx.beginPath();
+                ctx.moveTo(this.points[0].x, this.points[0].y);
+                ctx.lineTo(c.x, c.y);
+                ctx.stroke();
+            }
         }
     };
     
@@ -360,57 +348,124 @@ const StationSystem = (function() {
      * Generate random rooms for the station interior
      */
     SpaceStation.prototype.generateRooms = function() {
-        // Number of rooms based on station size
-        const numRooms = Math.floor(5 + (this.size / 30));
-        
-        for (let i = 0; i < numRooms; i++) {
-            // Random room size
-            const roomWidth = 5 + Math.floor(Math.random() * 10);
-            const roomHeight = 4 + Math.floor(Math.random() * 6);
-            
-            // Random position (avoiding edges)
-            const roomX = 2 + Math.floor(Math.random() * (MAP_WIDTH - roomWidth - 4));
-            const roomY = 2 + Math.floor(Math.random() * (MAP_HEIGHT - roomHeight - 6));
-            
-            // Draw room
-            for (let y = roomY; y < roomY + roomHeight; y++) {
-                for (let x = roomX; x < roomX + roomWidth; x++) {
-                    if (y === roomY || y === roomY + roomHeight - 1 || 
-                        x === roomX || x === roomX + roomWidth - 1) {
-                        asciiMap[y][x] = '#';  // Walls
+        // Parameters
+        const MIN_ROOMS = 7;
+        const MAX_ROOMS = 12;
+        const MAX_ATTEMPTS = 100;
+        const MIN_ROOM_W = 5, MAX_ROOM_W = 12;
+        const MIN_ROOM_H = 4, MAX_ROOM_H = 8;
+        // Clear map
+        for (let y = 0; y < MAP_HEIGHT; y++) {
+            for (let x = 0; x < MAP_WIDTH; x++) {
+                asciiMap[y][x] = ' ';
+            }
+        }
+        // Draw outer walls
+        for (let x = 0; x < MAP_WIDTH; x++) {
+            asciiMap[0][x] = '#';
+            asciiMap[MAP_HEIGHT-1][x] = '#';
+        }
+        for (let y = 0; y < MAP_HEIGHT; y++) {
+            asciiMap[y][0] = '#';
+            asciiMap[y][MAP_WIDTH-1] = '#';
+        }
+        // Step 1: Place non-overlapping rooms
+        let rooms = [];
+        let attempts = 0;
+        while (rooms.length < MAX_ROOMS && attempts < MAX_ATTEMPTS) {
+            attempts++;
+            let w = MIN_ROOM_W + Math.floor(Math.random() * (MAX_ROOM_W - MIN_ROOM_W + 1));
+            let h = MIN_ROOM_H + Math.floor(Math.random() * (MAX_ROOM_H - MIN_ROOM_H + 1));
+            let x = 2 + Math.floor(Math.random() * (MAP_WIDTH - w - 4));
+            let y = 2 + Math.floor(Math.random() * (MAP_HEIGHT - h - 6));
+            // Check overlap
+            let overlap = false;
+            for (const r of rooms) {
+                if (x + w < r.x - 1 || x > r.x + r.w + 1 || y + h < r.y - 1 || y > r.y + r.h + 1) continue;
+                overlap = true;
+                break;
+            }
+            if (overlap) continue;
+            // Place room
+            rooms.push({x, y, w, h, cx: Math.floor(x + w/2), cy: Math.floor(y + h/2)});
+            for (let ry = y; ry < y + h; ry++) {
+                for (let rx = x; rx < x + w; rx++) {
+                    if (ry === y || ry === y + h - 1 || rx === x || rx === x + w - 1) {
+                        asciiMap[ry][rx] = '#';
                     } else {
-                        asciiMap[y][x] = '.';  // Floor
+                        asciiMap[ry][rx] = '.';
                     }
                 }
             }
-            
-            // Add door
-            const doorSide = Math.floor(Math.random() * 4);
-            let doorX, doorY;
-            
-            switch (doorSide) {
-                case 0: // North
-                    doorX = roomX + Math.floor(Math.random() * (roomWidth - 2)) + 1;
-                    doorY = roomY;
-                    break;
-                case 1: // East
-                    doorX = roomX + roomWidth - 1;
-                    doorY = roomY + Math.floor(Math.random() * (roomHeight - 2)) + 1;
-                    break;
-                case 2: // South
-                    doorX = roomX + Math.floor(Math.random() * (roomWidth - 2)) + 1;
-                    doorY = roomY + roomHeight - 1;
-                    break;
-                case 3: // West
-                    doorX = roomX;
-                    doorY = roomY + Math.floor(Math.random() * (roomHeight - 2)) + 1;
-                    break;
+        }
+        if (rooms.length < MIN_ROOMS) {
+            // Not enough rooms, try again
+            return this.generateRooms();
+        }
+        // Step 2: Connect rooms with MST (Prim's algorithm)
+        let connected = [rooms[0]];
+        let unconnected = rooms.slice(1);
+        let connections = [];
+        while (unconnected.length > 0) {
+            let bestDist = Infinity, bestA = null, bestB = null, bestIdx = -1;
+            for (const a of connected) {
+                for (let i = 0; i < unconnected.length; i++) {
+                    const b = unconnected[i];
+                    const dist = Math.abs(a.cx - b.cx) + Math.abs(a.cy - b.cy);
+                    if (dist < bestDist) {
+                        bestDist = dist; bestA = a; bestB = b; bestIdx = i;
+                    }
+                }
             }
-            
-            asciiMap[doorY][doorX] = '+';  // Door
-            
-            // Connect door to nearest corridor or create corridor
-            this.createCorridor(doorX, doorY);
+            connections.push([bestA, bestB]);
+            connected.push(bestB);
+            unconnected.splice(bestIdx, 1);
+        }
+        // Step 3: Carve corridors (L-shaped)
+        for (const [a, b] of connections) {
+            let x = a.cx, y = a.cy;
+            while (x !== b.cx) {
+                asciiMap[y][x] = '.';
+                x += (b.cx > x) ? 1 : -1;
+            }
+            while (y !== b.cy) {
+                asciiMap[y][x] = '.';
+                y += (b.cy > y) ? 1 : -1;
+            }
+            asciiMap[y][x] = '.';
+        }
+        // Step 4: Place doors at room/corridor boundaries
+        for (const room of rooms) {
+            // For each wall, if adjacent to corridor, place a door
+            for (let rx = room.x; rx < room.x + room.w; rx++) {
+                for (let ry = room.y; ry < room.y + room.h; ry++) {
+                    if (asciiMap[ry][rx] !== '#') continue;
+                    for (const [dx, dy] of [[0,1],[1,0],[0,-1],[-1,0]]) {
+                        const nx = rx + dx, ny = ry + dy;
+                        if (asciiMap[ny] && asciiMap[ny][nx] === '.') {
+                            asciiMap[ry][rx] = '+';
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+        // Step 5: Place dock at bottom-most room
+        let dockRoom = rooms.reduce((a, b) => (a.cy > b.cy ? a : b));
+        asciiMap[dockRoom.cy][dockRoom.cx] = 'D';
+        this.specialRooms.dock = {x: dockRoom.cx, y: dockRoom.cy};
+        playerX = dockRoom.cx;
+        playerY = dockRoom.cy;
+        // Step 6: Place special rooms in random rooms (not dock)
+        let otherRooms = rooms.filter(r => r !== dockRoom);
+        if (otherRooms.length >= 3) {
+            let shuffled = otherRooms.slice().sort(() => Math.random() - 0.5);
+            asciiMap[shuffled[0].cy][shuffled[0].cx] = 'B';
+            asciiMap[shuffled[1].cy][shuffled[1].cx] = 'E';
+            asciiMap[shuffled[2].cy][shuffled[2].cx] = 'S';
+            this.specialRooms.bridge = {x: shuffled[0].cx, y: shuffled[0].cy};
+            this.specialRooms.engine = {x: shuffled[1].cx, y: shuffled[1].cy};
+            this.specialRooms.storage = {x: shuffled[2].cx, y: shuffled[2].cy};
         }
     };
     
