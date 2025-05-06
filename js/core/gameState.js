@@ -29,7 +29,8 @@ const GameState = (function() {
         xp: 0,
         level: 1,
         isDead: false,
-        isUndead: false
+        isUndead: false,
+        starEnergy: 0 // Add star energy to player state
     };
     
     // Session state
@@ -90,6 +91,7 @@ const GameState = (function() {
         player.level = 1;
         player.isDead = false;
         player.isUndead = false;
+        player.starEnergy = 1000; // Start star energy maxed out
         if (typeof BulletSystem !== 'undefined' && BulletSystem.resetBulletCount) {
             BulletSystem.resetBulletCount();
         }
@@ -668,67 +670,36 @@ const GameState = (function() {
     
     // Draw the score and game stats
     function drawScore() {
-        // Stardust Collected (icon + counter)
-        const iconY = 22;
-        const iconSize = DustSystem.dust.width;
-        const iconX = canvas.width - 12 - 8; // 8px padding from right
-        ctx.textAlign = "end";
-        ctx.font = "18px Consolas";
-        ctx.fillStyle = ColorUtils.randRGB();
-        ctx.fillText(player.score, iconX - iconSize - 10, iconY + 1);
-        // Draw stardust icon (flashing color)
+        // --- Star Energy Meter (Upper Right) ---
+        const meterWidth = 180;
+        const meterHeight = 22;
+        const meterY = 22;
+        const meterX = canvas.width - meterWidth - 24;
+        const starEnergy = player.starEnergy;
+        const maxStarEnergy = 1000; // Arbitrary cap for meter display
+        // Draw meter background
         ctx.save();
-        ctx.fillStyle = ColorUtils.randRGB();
-        ctx.fillRect(iconX - iconSize, iconY - iconSize + 4, iconSize, iconSize);
+        ctx.font = "bold 15px Consolas";
+        ctx.fillStyle = "#222";
+        ctx.fillRect(meterX - 2, meterY - 2, meterWidth + 4, meterHeight + 4);
+        // Draw star energy fill
+        ctx.fillStyle = "#44C3FF";
+        ctx.fillRect(meterX, meterY, meterWidth * Math.min(starEnergy / maxStarEnergy, 1), meterHeight);
+        // Draw meter border
+        ctx.strokeStyle = "#FFF";
+        ctx.lineWidth = 2;
+        ctx.strokeRect(meterX, meterY, meterWidth, meterHeight);
+        // Draw star icon only (no number)
+        ctx.font = "bold 20px Consolas";
+        ctx.fillStyle = "#FFD700";
+        ctx.textAlign = "right";
+        ctx.fillText("★", meterX - 10, meterY + meterHeight - 3);
         ctx.restore();
 
-        // Drones Destroyed (enhanced: icon + counter)
-        const droneY = 42; // Shift up to just below stardust
-        const droneIconSize = 16;
-        const droneIconX = canvas.width - 12 - 8; // Align left with stardust/bullet
-        ctx.fillStyle = ColorUtils.randRGB();
-        ctx.fillText(player.shotDrones, droneIconX - droneIconSize - 10, droneY + 10); // Lowered counter by 4px
-        // Draw a more upright red triangle as a drone icon
-        ctx.save();
-        ctx.beginPath();
-        ctx.moveTo(droneIconX - droneIconSize / 2, droneY - droneIconSize / 2 + 8); // top
-        ctx.lineTo(droneIconX, droneY + droneIconSize / 2 + 8); // bottom right
-        ctx.lineTo(droneIconX - droneIconSize, droneY + droneIconSize / 2 + 8); // bottom left
-        ctx.closePath();
-        ctx.fillStyle = "#FF5555";
-        ctx.fill();
-        // Optional: cockpit dot
-        ctx.beginPath();
-        ctx.arc(droneIconX - droneIconSize / 2, droneY - droneIconSize / 6 + 8, 2, 0, Math.PI * 2);
-        ctx.fillStyle = "#FFF";
-        ctx.fill();
-        ctx.restore();
-
-        // Bullets Available (modern bullet icon + counter)
-        const bulletY = 82;
-        const bulletW = 8, bulletH = 22;
-        const bulletIconX = canvas.width - 12 - 8;
-        ctx.fillStyle = ColorUtils.randRGB();
-        ctx.fillText(BulletSystem.getBulletCount(), bulletIconX - bulletW - 18, bulletY + 1);
-        // Draw modern bullet icon
-        ctx.save();
-        // Bullet body
-        ctx.fillStyle = "#C0C0C0"; // metallic gray
-        ctx.fillRect(bulletIconX - bulletW - 4, bulletY - bulletH + 8 + 6, bulletW, bulletH - 12);
-        // Bullet tip (ellipse)
-        ctx.beginPath();
-        ctx.ellipse(bulletIconX - bulletW/2 - 4, bulletY - bulletH + 8 + 6, bulletW/2, 6, 0, 0, Math.PI * 2);
-        ctx.fillStyle = "#FFD700"; // gold tip
-        ctx.fill();
-        // Bullet base (darker band)
-        ctx.fillStyle = "#888";
-        ctx.fillRect(bulletIconX - bulletW - 4, bulletY - bulletH + 8 + bulletH - 12 + 8, bulletW, 4);
-        ctx.restore();
-
-        // --- XP Bar and Level Counter (Upper Right) ---
+        // --- XP Bar and Level Counter (Upper Right, below star energy) ---
         const xpBarWidth = 180;
         const xpBarHeight = 22;
-        const xpBarY = 110;
+        const xpBarY = meterY + meterHeight + 18;
         const xpBarX = canvas.width - xpBarWidth - 24;
         const currentXp = player.xp;
         const nextLevelXp = player.level * 100;
@@ -788,6 +759,17 @@ const GameState = (function() {
         ctx.fillText("\u2620", canvas.width / 2, canvas.height / 2);
     }
     
+    // Star Energy API
+    function getStarEnergy() {
+        return player.starEnergy;
+    }
+    function setStarEnergy(val) {
+        player.starEnergy = Math.max(0, Math.min(1000, val));
+    }
+    function addStarEnergy(val) {
+        player.starEnergy = Math.max(0, Math.min(1000, player.starEnergy + val));
+    }
+
     // Public API
     return {
         STATE: STATE,
@@ -811,6 +793,9 @@ const GameState = (function() {
         isPlayerUndead: function() { return player.isUndead; },
         setPlayerUndead: function(isUndead) { player.isUndead = isUndead; },
         resetPlayerStats: resetPlayerStats,
+        getStarEnergy: getStarEnergy,
+        setStarEnergy: setStarEnergy,
+        addStarEnergy: addStarEnergy,
         
         // Session state accessors
         getFrameCount: function() { return session.frameCount; },

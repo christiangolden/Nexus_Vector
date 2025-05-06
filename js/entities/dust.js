@@ -220,6 +220,7 @@ const DustSystem = (function() {
                 dust.yList.splice(i, 1);
                 GameState.incrementPlayerScore();
                 GameState.gainXp(1, true); // Gain 1 XP and increment bullet count by 10
+                GameState.addStarEnergy(100); // Add 100 star energy for each stardust collected
                 i--;
             }
             
