@@ -11,6 +11,7 @@ const DockingSystem = (function() {
     // Docking status
     let docking = false;
     let dockingTransition = 0; // For transition animation
+    let dockingPhase = 'in'; // 'in' for swipe-in, 'out' for swipe-out
     
     // Cooldown after undocking to prevent immediate re-dock
     let undockCooldown = 0;
@@ -30,6 +31,7 @@ const DockingSystem = (function() {
     function dock(x, y) {
         docking = true;
         dockingTransition = 0;
+        dockingPhase = 'in';
         lastDockX = x;
         lastDockY = y;
         
@@ -42,54 +44,92 @@ const DockingSystem = (function() {
      */
     function animateDocking() {
         if (!docking) return;
-        
-        // Animate transition from 0 to 100
-        dockingTransition += 5;
-        
-        if (dockingTransition >= 100) {
-            // Docking complete
-            GameState.showNotification("Docking complete. Press ESC to exit station.");
-            
-            // Hide ship during docking
-            ShipSystem.hero.visible = false;
-            
-            // Switch game state to DOCKED
-            GameState.setState('DOCKED');
-            return;
-        }
-        
-        // Simple loading animation during transition
+
         const ctx = GameState.getContext();
         const canvas = GameState.getCanvas();
-        
-        ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        
-        ctx.fillStyle = "#FFFFFF";
-        ctx.font = "24px Consolas";
-        ctx.textAlign = "center";
-        ctx.fillText("DOCKING SEQUENCE IN PROGRESS", canvas.width / 2, canvas.height / 2 - 40);
-        
-        // Progress bar
-        ctx.fillStyle = "#333333";
-        ctx.fillRect(canvas.width / 2 - 100, canvas.height / 2, 200, 20);
-        
-        ctx.fillStyle = "#33AAFF";
-        ctx.fillRect(canvas.width / 2 - 100, canvas.height / 2, 200 * (dockingTransition / 100), 20);
-        
-        ctx.fillStyle = "#FFFFFF";
-        ctx.fillText(`${Math.floor(dockingTransition)}%`, canvas.width / 2, canvas.height / 2 + 40);
-        
-        // Continue animation
-        requestAnimationFrame(animateDocking);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        if (dockingPhase === 'in') {
+            dockingTransition += 5;
+
+            // Overlay and UI (drawn first)
+            ctx.save();
+            ctx.globalAlpha = 0.5;
+            ctx.fillStyle = "#000";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.globalAlpha = 1.0;
+            ctx.restore();
+
+            ctx.fillStyle = "#FFFFFF";
+            ctx.font = "24px Consolas";
+            ctx.textAlign = "center";
+            ctx.fillText("DOCKING SEQUENCE IN PROGRESS", canvas.width / 2, canvas.height / 2 - 40);
+
+            // Progress bar
+            ctx.fillStyle = "#333333";
+            ctx.fillRect(canvas.width / 2 - 100, canvas.height / 2, 200, 20);
+            ctx.fillStyle = "#33AAFF";
+            ctx.fillRect(canvas.width / 2 - 100, canvas.height / 2, 200 * (dockingTransition / 100), 20);
+            ctx.fillStyle = "#FFFFFF";
+            ctx.fillText(`${Math.floor(dockingTransition)}%`, canvas.width / 2, canvas.height / 2 + 40);
+
+            // --- Swipe-in effect (drawn last, on top) ---
+            const swipeWidth = canvas.width * (dockingTransition / 100);
+            ctx.save();
+            ctx.fillStyle = "#000";
+            ctx.globalAlpha = 1.0;
+            ctx.fillRect(0, 0, swipeWidth, canvas.height);
+            ctx.restore();
+            // --- End swipe-in effect ---
+
+            if (dockingTransition >= 100) {
+                dockingPhase = 'out';
+                dockingTransition = 100;
+                ShipSystem.hero.visible = false;
+                GameState.setState('DOCKED');
+                docking = false; // Allow normal DOCKED state logic and movement
+            } else {
+                requestAnimationFrame(animateDocking);
+                return;
+            }
+        }
+
+        if (dockingPhase === 'out') {
+            // Draw the station interior behind the swipe
+            if (typeof StationSystem !== 'undefined' && StationSystem.drawStationInterior) {
+                StationSystem.drawStationInterior(ctx);
+            }
+
+            // --- Swipe-out effect (drawn last, on top) ---
+            dockingTransition -= 5;
+            const swipeWidth = canvas.width * (dockingTransition / 100);
+            ctx.save();
+            ctx.fillStyle = "#000";
+            ctx.globalAlpha = 1.0;
+            ctx.fillRect(0, 0, swipeWidth, canvas.height);
+            ctx.restore();
+            // --- End swipe-out effect ---
+
+            if (dockingTransition <= 0) {
+                GameState.showNotification("Docking complete. Press ESC to exit station.");
+                ShipSystem.hero.visible = false;
+                GameState.setState('DOCKED');
+                return;
+            } else {
+                requestAnimationFrame(animateDocking);
+                return;
+            }
+        }
     }
     
     /**
      * End docking and return to normal gameplay
      */
     function undock() {
-        // Start undocking animation
-        docking = false;
+        // Start undocking swipe animation
+        docking = true;
+        dockingTransition = 0;
+        dockingPhase = 'undock-swipe';
         animateUndocking();
     }
     
@@ -97,59 +137,43 @@ const DockingSystem = (function() {
      * Animate the undocking process
      */
     function animateUndocking() {
-        if (docking) return;
-        
-        // Animate transition from 100 to 0
-        dockingTransition -= 5;
-        
-        if (dockingTransition <= 0) {
+        if (!docking) return;
+        const ctx = GameState.getContext();
+        const canvas = GameState.getCanvas();
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Draw the station interior as background
+        if (typeof StationSystem !== 'undefined' && StationSystem.drawStationInterior) {
+            StationSystem.drawStationInterior(ctx);
+        }
+
+        // Swipe-out effect: black rectangle slides in from left to right
+        dockingTransition += 5;
+        const swipeWidth = canvas.width * (dockingTransition / 100);
+        ctx.save();
+        ctx.fillStyle = "#000";
+        ctx.globalAlpha = 1.0;
+        ctx.fillRect(0, 0, swipeWidth, canvas.height);
+        ctx.restore();
+
+        if (dockingTransition >= 100) {
             // Undocking complete
+            docking = false;
             GameState.showNotification("Undocking complete.");
-            
-            // Show ship again
             ShipSystem.hero.visible = true;
-            
             // Place ship at last docked X position and default starting Y position
-            const canvas = GameState.getCanvas();
             ShipSystem.hero.tipX = lastDockX;
             ShipSystem.hero.tipY = ShipSystem.getDefaultShipY(canvas);
             ShipSystem.hero.leftX = ShipSystem.hero.tipX - ShipSystem.hero.width/2;
             ShipSystem.hero.rightX = ShipSystem.hero.tipX + ShipSystem.hero.width/2;
             ShipSystem.hero.leftY = ShipSystem.hero.tipY + ShipSystem.hero.height;
             ShipSystem.hero.rightY = ShipSystem.hero.tipY + ShipSystem.hero.height;
-            
-            // Set undock cooldown (e.g., 60 frames = 1 second at 60fps)
             undockCooldown = 60;
-            
-            // Switch game state back to PLAYING
             GameState.setState('PLAYING');
             return;
+        } else {
+            requestAnimationFrame(animateUndocking);
         }
-        
-        // Simple animation during transition
-        const ctx = GameState.getContext();
-        const canvas = GameState.getCanvas();
-        
-        ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        
-        ctx.fillStyle = "#FFFFFF";
-        ctx.font = "24px Consolas";
-        ctx.textAlign = "center";
-        ctx.fillText("UNDOCKING SEQUENCE IN PROGRESS", canvas.width / 2, canvas.height / 2 - 40);
-        
-        // Progress bar (reversed)
-        ctx.fillStyle = "#333333";
-        ctx.fillRect(canvas.width / 2 - 100, canvas.height / 2, 200, 20);
-        
-        ctx.fillStyle = "#33AAFF";
-        ctx.fillRect(canvas.width / 2 - 100, canvas.height / 2, 200 * (dockingTransition / 100), 20);
-        
-        ctx.fillStyle = "#FFFFFF";
-        ctx.fillText(`${Math.floor(dockingTransition)}%`, canvas.width / 2, canvas.height / 2 + 40);
-        
-        // Continue animation
-        requestAnimationFrame(animateUndocking);
     }
     
     /**
@@ -164,8 +188,9 @@ const DockingSystem = (function() {
      * Check if ESC key is pressed to exit the station
      */
     function checkExitStation() {
-        if (!docking) return;
-        
+        // Allow ESC to trigger undocking if in DOCKED state (not just during docking animation)
+        if (!(GameState.getCurrentState && GameState.getCurrentState() === GameState.STATE.DOCKED)) return;
+
         if (InputSystem.wasPressed('esc')) {
             // Check if player is at docking point in ASCII map
             if (StationSystem.checkExit()) {
@@ -181,8 +206,8 @@ const DockingSystem = (function() {
      * Handle movement of player character in ASCII mode
      */
     function handlePlayerMovement() {
-        if (!docking) return;
-        // Removed debug notification
+        // Allow movement if in DOCKED state (not just during docking animation)
+        if (!(GameState.getCurrentState && GameState.getCurrentState() === GameState.STATE.DOCKED)) return;
         // Handle arrow key movement
         if (InputSystem.wasPressed('left')) {
             StationSystem.movePlayer(-1, 0);

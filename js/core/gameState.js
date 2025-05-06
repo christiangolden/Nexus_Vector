@@ -410,6 +410,11 @@ const GameState = (function() {
     
     // Render the game (can run at variable frame rate)
     function renderGame(interpolation) {
+        // If docking transition is active, only show docking animation
+        if (typeof DockingSystem !== 'undefined' && DockingSystem.isDocking && DockingSystem.isDocking()) {
+            // The docking animation handles its own canvas clearing and drawing
+            return;
+        }
         // Clear the canvas
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         
