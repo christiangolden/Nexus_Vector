@@ -90,6 +90,9 @@ const GameState = (function() {
         player.level = 1;
         player.isDead = false;
         player.isUndead = false;
+        if (typeof BulletSystem !== 'undefined' && BulletSystem.resetBulletCount) {
+            BulletSystem.resetBulletCount();
+        }
     }
     
     // Update frame timing with fixed timestep accumulation
@@ -213,11 +216,12 @@ const GameState = (function() {
      * Show a notification message on screen
      * @param {string} message - The message to display
      */
-    function showNotification(message) {
+    function showNotification(message, options = {}) {
         notifications.push({
             message: message,
-            duration: settings.notificationDuration,
-            opacity: 1.0
+            duration: options.duration || settings.notificationDuration,
+            opacity: 1.0,
+            pulse: options.pulse || false
         });
         
         // Also publish an event so other systems can react
@@ -247,7 +251,16 @@ const GameState = (function() {
             ctx.save();
             ctx.textAlign = "center";
             ctx.font = "bold 18px Arial";
-            ctx.fillStyle = `rgba(255, 255, 255, ${notification.opacity})`;
+            if (notification.pulse) {
+                // More drastic pulse/glow effect
+                const pulse = 0.5 + 0.5 * Math.abs(Math.sin(session.frameCount / 4));
+                ctx.shadowColor = `rgba(255,255,128,${pulse})`;
+                ctx.shadowBlur = 36 * pulse;
+                ctx.fillStyle = `rgba(255, 255, 128, ${notification.opacity * (0.7 + 0.6 * pulse)})`;
+            } else {
+                ctx.fillStyle = `rgba(255, 255, 255, ${notification.opacity})`;
+                ctx.shadowBlur = 0;
+            }
             ctx.fillText(
                 notification.message,
                 canvas.width / 2,
@@ -740,26 +753,6 @@ const GameState = (function() {
         ctx.textAlign = "center";
         ctx.font = "bold 15px Consolas";
         ctx.fillText(`${currentXp} / ${nextLevelXp} XP`, xpBarX + xpBarWidth / 2, xpBarY + xpBarHeight / 2 + 5);
-        ctx.restore();
-
-        // Draw warp energy bar at upper left
-        const barX = 12;
-        const barY = 12;
-        const barWidth = 120;
-        const barHeight = 16;
-        const warpEnergy = GameState.getWarpEnergy();
-        ctx.save();
-        ctx.textAlign = "start";
-        ctx.font = "bold 14px Consolas";
-        ctx.fillStyle = "#222";
-        ctx.fillRect(barX - 2, barY - 2, barWidth + 4, barHeight + 4);
-        ctx.fillStyle = "#3399FF";
-        ctx.fillRect(barX, barY, barWidth * (warpEnergy / 100), barHeight);
-        ctx.strokeStyle = "#FFF";
-        ctx.lineWidth = 2;
-        ctx.strokeRect(barX, barY, barWidth, barHeight);
-        ctx.fillStyle = "#FFF";
-        ctx.fillText("WARP", barX, barY + barHeight + 14);
         ctx.restore();
     }
     

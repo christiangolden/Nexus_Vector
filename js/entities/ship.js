@@ -223,14 +223,16 @@ const ShipSystem = (function() {
         
         // Engine particle effect during warp
         if (GameState.getWarpActive() && typeof ParticleSystem !== 'undefined') {
-            // Spawn a few particles behind the ship each frame
-            const count = 4 + Math.floor(Math.random() * 4); // 4-7 particles
+            // Particle count is proportional to remaining warp energy (not warpLevel)
+            const warpEnergy = GameState.getWarpEnergy(); // 0 to 100
+            const maxCount = 10; // Max particles at full warp energy
+            const count = Math.floor(maxCount * (warpEnergy / 100)); // Decreases as warp energy is used up
             const baseX = hero.tipX;
             const baseY = hero.tipY + hero.height + 2;
             for (let i = 0; i < count; i++) {
                 // Only allow angles: down (PI/2), down-left (2*PI/3), down-right (PI/3)
                 const allowedAngles = [Math.PI / 2, 2 * Math.PI / 3, Math.PI / 3];
-                const angle = allowedAngles[Math.floor(Math.random() * allowedAngles.length)] + (Math.random() - 0.5) * 0.08; // small randomization
+                const angle = allowedAngles[Math.floor(Math.random() * allowedAngles.length)] + (Math.random() - 0.5) * 0.08;
                 const speed = 2 + Math.random() * 2;
                 const color = Math.random() < 0.5 ? '#FFA500' : '#FFEC8B';
                 const offsetX = (Math.random() - 0.5) * 6;

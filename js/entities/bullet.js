@@ -43,6 +43,7 @@ const BulletSystem = (function() {
 
     function incrementBulletCount(amount) {
         bulletCount += amount;
+        outOfBulletsWarned = false;
     }
 
     function decrementBulletCount() {
@@ -51,10 +52,21 @@ const BulletSystem = (function() {
         }
     }
 
+    let outOfBulletsWarned = false;
+
     function spawnHeroBullet(x, y) {
         if (bulletCount > 0) {
             BulletSystem.spawnBullet(x, y, 0, -10, "hero");
             decrementBulletCount();
+            outOfBulletsWarned = false; // Reset warning flag when player has bullets
+        } else {
+            if (!outOfBulletsWarned && typeof GameState !== 'undefined' && GameState.showNotification) {
+                GameState.showNotification(
+                    "Collect stardust to convert into bullets!",
+                    { duration: 180, pulse: true }
+                );
+                outOfBulletsWarned = true;
+            }
         }
     }
     
@@ -113,7 +125,13 @@ const BulletSystem = (function() {
         heroBulletList = [];
         timer = 0;
         wait = false;
-        bulletCount = 100; // Start with some bullets
+        bulletCount = 0; // Start with zero bullets
+        outOfBulletsWarned = false;
+    }
+
+    function resetBulletCount() {
+        bulletCount = 0;
+        outOfBulletsWarned = false;
     }
     
     /**
@@ -401,6 +419,7 @@ const BulletSystem = (function() {
         // Expose bullet count functions if needed by Game or UI
         getBulletCount: getBulletCount, 
         incrementBulletCount: incrementBulletCount, 
-        decrementBulletCount: decrementBulletCount 
+        decrementBulletCount: decrementBulletCount,
+        resetBulletCount: resetBulletCount
     };
 })();
