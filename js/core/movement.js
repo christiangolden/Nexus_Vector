@@ -60,6 +60,9 @@ const MovementSystem = (function() {
             }
         } else {
             // Immediately disable warp and reset warp level if up is not pressed or warp not allowed
+            if (InputSystem.isUpPressed() && !DockingSystem.isDocking() && starEnergy < 100 * timeStep) {
+                GameState.triggerStarEnergyWarning();
+            }
             GameState.setWarpActive(false);
             GameState.setWarpLevel(0);
             GameState.setSpeed(7);

@@ -59,15 +59,9 @@ const BulletSystem = (function() {
         if (starEnergy >= 10) {
             BulletSystem.spawnBullet(x, y, 0, -10, "hero");
             GameState.setStarEnergy(starEnergy - 10);
-            outOfBulletsWarned = false; // Reset warning flag when player has bullets
+            outOfBulletsWarned = false;
         } else {
-            if (!outOfBulletsWarned && typeof GameState !== 'undefined' && GameState.showNotification) {
-                GameState.showNotification(
-                    "Not enough star energy to shoot!",
-                    { duration: 180, pulse: true }
-                );
-                outOfBulletsWarned = true;
-            }
+            GameState.triggerStarEnergyWarning();
         }
     }
     

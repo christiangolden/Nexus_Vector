@@ -60,6 +60,21 @@ const GameState = (function() {
     
     // Warp energy for warp drive (separate from magwave)
     let warpEnergy = 100;
+
+    let starEnergyWarningTimer = 0;
+    let starEnergyWarningPulse = 0;
+
+    function triggerStarEnergyWarning() {
+        starEnergyWarningTimer = 180; // 3 seconds at 60fps
+        starEnergyWarningPulse = 0;
+    }
+
+    function updateStarEnergyWarning() {
+        if (starEnergyWarningTimer > 0) {
+            starEnergyWarningTimer--;
+            starEnergyWarningPulse++;
+        }
+    }
     
     // Register a state change listener
     function onStateChange(callback) {
@@ -91,7 +106,7 @@ const GameState = (function() {
         player.level = 1;
         player.isDead = false;
         player.isUndead = false;
-        player.starEnergy = 1000; // Start star energy maxed out
+        player.starEnergy = 0; // Start star energy empty
         if (typeof BulletSystem !== 'undefined' && BulletSystem.resetBulletCount) {
             BulletSystem.resetBulletCount();
         }
@@ -379,6 +394,7 @@ const GameState = (function() {
     
     // Update game logic at fixed timestep intervals
     function updateLogic(timeStep) {
+        updateStarEnergyWarning();
         // Always update undock cooldown
         if (typeof DockingSystem !== 'undefined' && DockingSystem.updateUndockCooldown) {
             DockingSystem.updateUndockCooldown();
@@ -680,6 +696,12 @@ const GameState = (function() {
         // Draw meter background
         ctx.save();
         ctx.font = "bold 15px Consolas";
+        // Brighter, pulsing red glow if warning is active
+        if (starEnergyWarningTimer > 0) {
+            const pulse = 0.7 + 0.3 * Math.abs(Math.sin(starEnergyWarningPulse / 30)); // slow pulse
+            ctx.shadowColor = `rgba(255,32,32,${pulse})`;
+            ctx.shadowBlur = 48 * pulse;
+        }
         ctx.fillStyle = "#222";
         ctx.fillRect(meterX - 2, meterY - 2, meterWidth + 4, meterHeight + 4);
         // Draw star energy fill
@@ -724,11 +746,7 @@ const GameState = (function() {
         ctx.strokeStyle = "#FFF";
         ctx.lineWidth = 2;
         ctx.strokeRect(xpBarX, xpBarY, xpBarWidth, xpBarHeight);
-        // Draw XP counter inside bar
-        ctx.fillStyle = "#222";
-        ctx.textAlign = "center";
-        ctx.font = "bold 15px Consolas";
-        ctx.fillText(`${currentXp} / ${nextLevelXp} XP`, xpBarX + xpBarWidth / 2, xpBarY + xpBarHeight / 2 + 5);
+        // Remove XP counter inside bar
         ctx.restore();
     }
     
@@ -789,7 +807,13 @@ const GameState = (function() {
         getLevel: function() { return player.level; },
         gainXp: gainXp,
         isPlayerDead: function() { return player.isDead; },
-        setHeroDead: function(isDead) { player.isDead = isDead; },
+        setHeroDead: function(isDead) { 
+            player.isDead = isDead;
+            if (isDead) {
+                player.xp = 0;
+                player.starEnergy = 0;
+            }
+        },
         isPlayerUndead: function() { return player.isUndead; },
         setPlayerUndead: function(isUndead) { player.isUndead = isUndead; },
         resetPlayerStats: resetPlayerStats,
@@ -827,6 +851,8 @@ const GameState = (function() {
         init: init,
         
         // Notifications
-        showNotification: showNotification
+        showNotification: showNotification,
+
+        triggerStarEnergyWarning: triggerStarEnergyWarning
     };
 })();
