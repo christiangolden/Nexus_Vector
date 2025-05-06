@@ -344,6 +344,12 @@ const GameState = (function() {
     function setupEventHandlers() {
         // Subscribe to state changes
         onStateChange((newState, oldState) => {
+            // Ambient rumble logic
+            if (newState === STATE.PLAYING) {
+                if (window.startAmbientRumble) window.startAmbientRumble();
+            } else {
+                if (window.stopAmbientRumble) window.stopAmbientRumble();
+            }
             if (newState === STATE.PLAYING && oldState === STATE.START_SCREEN) {
                 // Generate initial stations when starting game
                 StationSystem.init();

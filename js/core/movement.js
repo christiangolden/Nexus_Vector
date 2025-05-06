@@ -29,6 +29,8 @@ const MovementSystem = (function() {
         }
     }
     
+    let warpSoundWasActive = false;
+
     /**
      * Process all movement for the current frame
      * @param {number} timeStep - Fixed timestep in seconds
@@ -40,12 +42,16 @@ const MovementSystem = (function() {
         let warpActive = GameState.getWarpActive();
         let warpLevel = GameState.getWarpLevel();
         const rampUp = 0.12; // How fast to ramp up
+        const warpShouldBeActive = InputSystem.isUpPressed() && !DockingSystem.isDocking() && canWarp;
         // Only allow warp if up is pressed, not docking, and enough star energy
-        if (InputSystem.isUpPressed() && !DockingSystem.isDocking() && canWarp) {
+        if (warpShouldBeActive) {
             if (!warpActive) {
                 GameState.setWarpActive(true);
                 GameState.setSpeed(14); // Double the normal speed (default is 7)
             }
+            // Start continuous warp sound if not already playing
+            if (!warpSoundWasActive && window.startContinuousWarpSound) window.startContinuousWarpSound();
+            warpSoundWasActive = true;
             // Drain star energy for warping (100 per second)
             GameState.setStarEnergy(starEnergy - 100 * timeStep);
             // Ramp up warp level
@@ -56,6 +62,9 @@ const MovementSystem = (function() {
                 GameState.setWarpActive(false);
                 GameState.setWarpLevel(0);
                 GameState.setSpeed(7);
+                // Stop continuous warp sound if it was playing
+                if (warpSoundWasActive && window.stopContinuousWarpSound) window.stopContinuousWarpSound();
+                warpSoundWasActive = false;
                 return; // Stop further warp logic this frame
             }
         } else {
@@ -66,6 +75,9 @@ const MovementSystem = (function() {
             GameState.setWarpActive(false);
             GameState.setWarpLevel(0);
             GameState.setSpeed(7);
+            // Stop continuous warp sound if it was playing
+            if (warpSoundWasActive && window.stopContinuousWarpSound) window.stopContinuousWarpSound();
+            warpSoundWasActive = false;
         }
 
         // Handle ship movement based on input

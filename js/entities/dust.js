@@ -147,17 +147,20 @@ const DustSystem = (function() {
         const warp = GameState.getWarpActive();
         
         // Process magwave
-        if ((InputSystem.isDownPressed() || InputSystem.isLeftTouchActive()) && 
-            mwEnergy > 0 && !DockingSystem.isDocking()) {
+        const magwaveActive = (InputSystem.isDownPressed() || InputSystem.isLeftTouchActive()) && mwEnergy > 0 && !DockingSystem.isDocking();
+        if (magwaveActive) {
             if (magWave.radius < ShipSystem.hero.width) {
                 magWave.radius += 0.5 * timeScale;
                 mwEnergy -= 0.02 * timeScale;
             } else {
                 magWave.radius = 0;
             }
-            // Remove drawMagWave call from here - we'll draw it in the render phase
+            // Start continuous magwave sound if not already playing
+            if (window.startMagwaveSound) window.startMagwaveSound();
         } else {
             magWave.radius = 0;
+            // Stop magwave sound if playing
+            if (window.stopMagwaveSound) window.stopMagwaveSound();
         }
         
         // Recharge magwave energy
@@ -221,6 +224,8 @@ const DustSystem = (function() {
                 GameState.incrementPlayerScore();
                 GameState.gainXp(1, true); // Gain 1 XP and increment bullet count by 10
                 GameState.addStarEnergy(100); // Add 100 star energy for each stardust collected
+                // Play stardust collection sound
+                if (window.playStardustSound) window.playStardustSound();
                 i--;
             }
             

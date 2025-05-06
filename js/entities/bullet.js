@@ -62,6 +62,8 @@ const BulletSystem = (function() {
             outOfBulletsWarned = false;
             // Trigger screen shake when shooting
             if (GameState.triggerShootShake) GameState.triggerShootShake();
+            // Play shooting sound
+            if (window.playShootSound) window.playShootSound();
         } else {
             GameState.triggerStarEnergyWarning();
         }
@@ -110,6 +112,8 @@ const BulletSystem = (function() {
             heroBulletList.push(bullet);
         } else {
             bulletList.push(bullet);
+            // Play enemy shooting sound
+            if (window.playEnemyShootSound) window.playEnemyShootSound();
         }
     }
     
