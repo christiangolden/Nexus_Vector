@@ -24,6 +24,11 @@ const DockingSystem = (function() {
     let lastDockY = 0;
     let lastDockTipY = 0; // Store the player's Y coordinate before docking
     
+    // Easing function for smooth transitions
+    function easeInOutQuad(t) {
+        return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+    }
+
     /**
      * Start docking process at specified coordinates
      * @param {number} x - X position to dock at
@@ -32,12 +37,10 @@ const DockingSystem = (function() {
     function dock(x, y) {
         docking = true;
         dockingTransition = 0;
-        dockingPhase = 'in';
+        dockingPhase = 'zoom-in'; // Start with zoom-in phase
         lastDockX = x;
         lastDockY = y;
         lastDockTipY = ShipSystem.hero.tipY; // Save the current Y position
-        
-        // Start docking animation
         animateDocking();
     }
     
@@ -46,62 +49,71 @@ const DockingSystem = (function() {
      */
     function animateDocking() {
         if (!docking) return;
-
         const ctx = GameState.getContext();
         const canvas = GameState.getCanvas();
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        if (dockingPhase === 'in') {
-            dockingTransition += 2; // Was 5
+        // --- Organic Zoom-In and Fade-Out ---
+        if (dockingPhase === 'zoom-in') {
+            const ZOOM_DURATION = 60; // frames, slower for organic feel
+            const MAX_ZOOM = 2.2;
+            let t = dockingTransition / ZOOM_DURATION;
+            if (t > 1) t = 1;
+            const easedT = easeInOutQuad(t);
+            const zoom = 1 + (MAX_ZOOM - 1) * easedT;
+            const fadeAlpha = easedT; // Fade to black as we zoom
 
-            // --- Swipe-in effect (drawn first, as a reveal) ---
-            const swipeWidth = canvas.width * (dockingTransition / 100);
+            if (typeof GameState.renderPlayingState === 'function') {
+                ctx.save();
+                ctx.translate(canvas.width / 2, canvas.height / 2);
+                ctx.scale(zoom, zoom);
+                ctx.translate(-lastDockX, -lastDockY);
+                GameState.renderPlayingState(0);
+                ctx.restore();
+            } else {
+                ctx.fillStyle = '#000';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+            }
+            // Fade to black overlay
             ctx.save();
-            ctx.beginPath();
-            ctx.rect(0, 0, swipeWidth, canvas.height);
-            ctx.clip();
-            ctx.restore();
-
-            // Overlay (darken background)
-            ctx.save();
-            ctx.globalAlpha = 0.5;
-            ctx.fillStyle = "#000";
+            ctx.globalAlpha = fadeAlpha;
+            ctx.fillStyle = '#000';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
-            ctx.globalAlpha = 1.0;
             ctx.restore();
 
-            // (Removed progress bar and text)
-
-            if (dockingTransition >= 100) {
-                dockingPhase = 'out';
-                dockingTransition = 100;
-                ShipSystem.hero.visible = false;
-                GameState.setState('DOCKED');
-                // docking = false; // Do NOT set to false here; let the 'out' phase run
+            dockingTransition++;
+            if (dockingTransition >= ZOOM_DURATION) {
+                dockingTransition = 0;
+                dockingPhase = 'fade-in-interior'; // Start fading in the station interior
             } else {
                 requestAnimationFrame(animateDocking);
                 return;
             }
         }
 
-        if (dockingPhase === 'out') {
-            // Draw the station interior behind the swipe
+        // --- Fade In Station Interior ---
+        if (dockingPhase === 'fade-in-interior') {
+            const FADE_DURATION = 40; // frames
+            let t = dockingTransition / FADE_DURATION;
+            if (t > 1) t = 1;
+            const fadeAlpha = 1 - easeInOutQuad(t); // Fade from black to visible
+
+            // Draw station interior
             if (typeof StationSystem !== 'undefined' && StationSystem.drawStationInterior) {
                 StationSystem.drawStationInterior(ctx);
+            } else {
+                ctx.fillStyle = '#222';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
             }
-
-            // --- Swipe-out effect (drawn last, on top) ---
-            dockingTransition -= 2; // Was 5
-            const swipeWidth = canvas.width * (dockingTransition / 100);
+            // Fade from black overlay
             ctx.save();
-            ctx.fillStyle = "#000";
-            ctx.globalAlpha = 1.0;
-            ctx.fillRect(0, 0, swipeWidth, canvas.height);
+            ctx.globalAlpha = fadeAlpha;
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
             ctx.restore();
-            // --- End swipe-out effect ---
 
-            if (dockingTransition <= 0) {
-                // GameState.showNotification("Docking complete. Press ESC to exit station."); // Removed notification
+            dockingTransition++;
+            if (dockingTransition >= FADE_DURATION) {
                 ShipSystem.hero.visible = false;
                 GameState.setState('DOCKED');
                 docking = false;
