@@ -22,6 +22,7 @@ const DockingSystem = (function() {
     // Last docking position (for undocking)
     let lastDockX = 0;
     let lastDockY = 0;
+    let lastDockTipY = 0; // Store the player's Y coordinate before docking
     
     /**
      * Start docking process at specified coordinates
@@ -34,6 +35,7 @@ const DockingSystem = (function() {
         dockingPhase = 'in';
         lastDockX = x;
         lastDockY = y;
+        lastDockTipY = ShipSystem.hero.tipY; // Save the current Y position
         
         // Start docking animation
         animateDocking();
@@ -161,9 +163,9 @@ const DockingSystem = (function() {
             docking = false;
             GameState.showNotification("Undocking complete.");
             ShipSystem.hero.visible = true;
-            // Place ship at last docked X position and default starting Y position
+            // Place ship at last docked X position and restore previous Y position
             ShipSystem.hero.tipX = lastDockX;
-            ShipSystem.hero.tipY = ShipSystem.getDefaultShipY(canvas);
+            ShipSystem.hero.tipY = lastDockTipY; // Restore the Y position
             ShipSystem.hero.leftX = ShipSystem.hero.tipX - ShipSystem.hero.width/2;
             ShipSystem.hero.rightX = ShipSystem.hero.tipX + ShipSystem.hero.width/2;
             ShipSystem.hero.leftY = ShipSystem.hero.tipY + ShipSystem.hero.height;
