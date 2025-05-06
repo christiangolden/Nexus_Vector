@@ -87,41 +87,40 @@ const PowerUpSystem = (function() {
         SHIELD: {
             color: "#3399FF",
             symbol: "S",
-            // Remove duration property since power-ups will persist
-            velocity: 3,   // Speed moving downward
+            velocity: 3,
             apply: function() {
+                PowerUpSystem.resetAllPowerUps();
                 shieldActive = true;
-                // No duration to set since it's persistent
             }
         },
         RAPID_FIRE: {
             color: "#FF3366",
             symbol: "R",
-            // Remove duration property
-            velocity: 2,   // Slow-moving power-up
+            velocity: 2,
             apply: function() {
+                PowerUpSystem.resetAllPowerUps();
                 rapidFireActive = true;
                 originalFireRate = fireRate;
-                fireRate = fireRate / 2; // Double fire rate
+                fireRate = fireRate / 2;
             }
         },
         MULTI_SHOT: {
             color: "#FFCC00",
             symbol: "M",
-            // Remove duration property
-            velocity: 4,   // Fast-moving power-up
+            velocity: 4,
             apply: function() {
+                PowerUpSystem.resetAllPowerUps();
                 multiShotActive = true;
-                multiShotCount = 3; // Triple shot
+                multiShotCount = 3;
             }
         },
         EXTRA_BULLETS: {
             color: "#66CC66",
             symbol: "B",
-            duration: 0, // Instant effect - still no duration needed
-            velocity: 3.5, // Medium-fast moving power-up
+            duration: 0,
+            velocity: 3.5,
             apply: function() {
-                BulletSystem.incrementBulletCount(50); // Add 50 bullets
+                BulletSystem.incrementBulletCount(50);
             }
         }
     };

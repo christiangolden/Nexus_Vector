@@ -498,6 +498,10 @@ const GameState = (function() {
     
     // Game play logic at fixed timestep
     function updatePlayingStateLogic(timeStep) {
+        // Lose all power-ups if star energy is zero
+        if (player.starEnergy === 0) {
+            PowerUpSystem.resetAllPowerUps();
+        }
         // Check if player is attempting to dock with a space station
         StationSystem.checkDocking();
         
