@@ -454,10 +454,22 @@ const ShipSystem = (function() {
             // Scale shooting timer by delta time to maintain consistent fire rate
             enemy.shootTimer -= timeScale;
             if (enemy.shootTimer <= 0 && ship.tipY > 0) { // Only shoot if on screen
-                const { bulletPattern } = enemy;
+                const { bulletPattern, type } = enemy;
                 switch (bulletPattern) {
                     case "aimed":
-                        const angle = Math.atan2(hero.tipY - ship.tipY, hero.tipX - ship.tipX);
+                        let angle = Math.atan2(hero.tipY - ship.tipY, hero.tipX - ship.tipX);
+                        // Restrict sniper's shooting angle to only forward and diagonally forward
+                        if (type === "sniper") {
+                            // Only allow angles between -75deg and +75deg (in front)
+                            // (0 is straight down, negative is left, positive is right)
+                            // atan2 is in radians, 0 is straight down, so limit to [-PI/3, PI/3]
+                            const minAngle = -Math.PI / 3; // -60 degrees
+                            const maxAngle = Math.PI / 3;  // +60 degrees
+                            // Calculate angle relative to straight down
+                            const relAngle = angle - Math.PI / 2;
+                            if (relAngle < minAngle) angle = minAngle + Math.PI / 2;
+                            else if (relAngle > maxAngle) angle = maxAngle + Math.PI / 2;
+                        }
                         const bulletSpeed = 8;
                         BulletSystem.spawnBullet(ship.tipX, ship.tipY, Math.cos(angle) * bulletSpeed, Math.sin(angle) * bulletSpeed, "enemy");
                         break;
