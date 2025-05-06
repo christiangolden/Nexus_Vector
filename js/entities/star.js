@@ -58,24 +58,13 @@ const StarSystem = (function() {
             genStarXY();
         }
         ctx.textAlign = "center";
-        const warpLevel = GameState.getWarpLevel();
+        // Remove warpLevel-based stretching
         for (let i = 0; i < star.yList.length; i++) {
             const sizeIndex = Math.floor(Math.random() * starSizes.length);
             let size = starSizes[sizeIndex];
-            // Stretch stars vertically in warp mode
-            if (warpLevel > 0) size = size * (1 + 1.5 * warpLevel);
             ctx.font = starSizeCache[sizeIndex in starSizeCache ? starSizes[sizeIndex] : size];
             ctx.fillStyle = ColorUtils.randRGB();
-            if (warpLevel > 0) {
-                ctx.save();
-                ctx.transform(1, 0, 0, 1 + 1.5 * warpLevel, 0, -star.yList[i]);
-                ctx.globalAlpha = 0.7;
-                ctx.fillText("*", star.xList[i], star.yList[i] + size / 2);
-                ctx.globalAlpha = 1.0;
-                ctx.restore();
-            } else {
-                ctx.fillText("*", star.xList[i], star.yList[i] + size / 2);
-            }
+            ctx.fillText("*", star.xList[i], star.yList[i] + size / 2);
         }
     }
     

@@ -41,7 +41,6 @@ const MovementSystem = (function() {
         let warpActive = GameState.getWarpActive();
         let warpLevel = GameState.getWarpLevel();
         const rampUp = 0.12; // How fast to ramp up
-        const rampDown = 0.08; // How fast to ramp down
         // Only allow warp if up is pressed, not docking, and energy > 0
         if (InputSystem.isUpPressed() && !DockingSystem.isDocking() && canWarp) {
             if (!warpActive) {
@@ -53,7 +52,6 @@ const MovementSystem = (function() {
             // Ramp up warp level
             warpLevel = Math.min(1, warpLevel + rampUp);
             GameState.setWarpLevel(warpLevel);
-            console.log('[MovementSystem] warpLevel set to:', warpLevel);
             // If energy runs out, disable warp immediately
             if (GameState.getWarpEnergy() <= 0) {
                 GameState.setWarpActive(false);
@@ -62,24 +60,13 @@ const MovementSystem = (function() {
                 return; // Stop further warp logic this frame
             }
         } else {
-            // If warp energy is depleted, force warp off
-            if (GameState.getWarpEnergy() <= 0) {
-                GameState.setWarpActive(false);
-                GameState.setWarpLevel(0);
-                GameState.setSpeed(7);
-            }
+            // Immediately disable warp and reset warp level if up is not pressed or warp not allowed
+            GameState.setWarpActive(false);
+            GameState.setWarpLevel(0);
+            GameState.setSpeed(7);
             // Recharge warp energy if not at max
             if (warpEnergy < 100) {
                 GameState.setWarpEnergy(warpEnergy + 0.5);
-            }
-            // Ramp down warp level
-            warpLevel = Math.max(0, warpLevel - rampDown);
-            GameState.setWarpLevel(warpLevel);
-            console.log('[MovementSystem] warpLevel set to:', warpLevel);
-            // If warp was active, only allow reactivation if energy > minWarpToReactivate
-            if (warpActive && (!InputSystem.isUpPressed() || DockingSystem.isDocking() || !canWarp)) {
-                GameState.setWarpActive(false);
-                GameState.setSpeed(7);
             }
         }
 
