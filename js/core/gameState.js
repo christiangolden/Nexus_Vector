@@ -608,6 +608,7 @@ const GameState = (function() {
     
     // Docked state rendering
     function renderDockedState(interpolation) {
+        console.log('[GameState] renderDockedState called');
         // Reset enemies and projectiles when rendering docked state first time
         if (previousState !== STATE.DOCKED) {
             ShipSystem.resetEnemy();
@@ -847,6 +848,9 @@ const GameState = (function() {
         // Notifications
         showNotification: showNotification,
 
-        triggerStarEnergyWarning: triggerStarEnergyWarning
+        triggerStarEnergyWarning: triggerStarEnergyWarning,
+
+        // Expose renderPlayingState for undocking animation
+        renderPlayingState: renderPlayingState
     };
 })();

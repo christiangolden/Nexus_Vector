@@ -11,7 +11,7 @@ const DockingSystem = (function() {
     // Docking status
     let docking = false;
     let dockingTransition = 0; // For transition animation
-    let dockingPhase = 'in'; // 'in' for swipe-in, 'out' for swipe-out
+    let dockingPhase = null; // null when idle, 'in' for swipe-in, 'out' for swipe-out, 'undock-swipe' for undocking
     
     // Cooldown after undocking to prevent immediate re-dock
     let undockCooldown = 0;
@@ -52,9 +52,17 @@ const DockingSystem = (function() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
         if (dockingPhase === 'in') {
-            dockingTransition += 5;
+            dockingTransition += 2; // Was 5
 
-            // Overlay and UI (drawn first)
+            // --- Swipe-in effect (drawn first, as a reveal) ---
+            const swipeWidth = canvas.width * (dockingTransition / 100);
+            ctx.save();
+            ctx.beginPath();
+            ctx.rect(0, 0, swipeWidth, canvas.height);
+            ctx.clip();
+            ctx.restore();
+
+            // Overlay (darken background)
             ctx.save();
             ctx.globalAlpha = 0.5;
             ctx.fillStyle = "#000";
@@ -62,34 +70,14 @@ const DockingSystem = (function() {
             ctx.globalAlpha = 1.0;
             ctx.restore();
 
-            ctx.fillStyle = "#FFFFFF";
-            ctx.font = "24px Consolas";
-            ctx.textAlign = "center";
-            ctx.fillText("DOCKING SEQUENCE IN PROGRESS", canvas.width / 2, canvas.height / 2 - 40);
-
-            // Progress bar
-            ctx.fillStyle = "#333333";
-            ctx.fillRect(canvas.width / 2 - 100, canvas.height / 2, 200, 20);
-            ctx.fillStyle = "#33AAFF";
-            ctx.fillRect(canvas.width / 2 - 100, canvas.height / 2, 200 * (dockingTransition / 100), 20);
-            ctx.fillStyle = "#FFFFFF";
-            ctx.fillText(`${Math.floor(dockingTransition)}%`, canvas.width / 2, canvas.height / 2 + 40);
-
-            // --- Swipe-in effect (drawn last, on top) ---
-            const swipeWidth = canvas.width * (dockingTransition / 100);
-            ctx.save();
-            ctx.fillStyle = "#000";
-            ctx.globalAlpha = 1.0;
-            ctx.fillRect(0, 0, swipeWidth, canvas.height);
-            ctx.restore();
-            // --- End swipe-in effect ---
+            // (Removed progress bar and text)
 
             if (dockingTransition >= 100) {
                 dockingPhase = 'out';
                 dockingTransition = 100;
                 ShipSystem.hero.visible = false;
                 GameState.setState('DOCKED');
-                docking = false; // Allow normal DOCKED state logic and movement
+                // docking = false; // Do NOT set to false here; let the 'out' phase run
             } else {
                 requestAnimationFrame(animateDocking);
                 return;
@@ -103,7 +91,7 @@ const DockingSystem = (function() {
             }
 
             // --- Swipe-out effect (drawn last, on top) ---
-            dockingTransition -= 5;
+            dockingTransition -= 2; // Was 5
             const swipeWidth = canvas.width * (dockingTransition / 100);
             ctx.save();
             ctx.fillStyle = "#000";
@@ -113,9 +101,11 @@ const DockingSystem = (function() {
             // --- End swipe-out effect ---
 
             if (dockingTransition <= 0) {
-                GameState.showNotification("Docking complete. Press ESC to exit station.");
+                // GameState.showNotification("Docking complete. Press ESC to exit station."); // Removed notification
                 ShipSystem.hero.visible = false;
                 GameState.setState('DOCKED');
+                docking = false;
+                dockingPhase = null;
                 return;
             } else {
                 requestAnimationFrame(animateDocking);
@@ -139,19 +129,25 @@ const DockingSystem = (function() {
      * Animate the undocking process
      */
     function animateUndocking() {
+        console.log('animateUndocking called. docking:', docking, 'dockingTransition:', dockingTransition);
         if (!docking) return;
         const ctx = GameState.getContext();
         const canvas = GameState.getCanvas();
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        // Draw the station interior as background
-        if (typeof StationSystem !== 'undefined' && StationSystem.drawStationInterior) {
-            StationSystem.drawStationInterior(ctx);
+        // Draw the space flight scene as background during undocking
+        if (typeof GameState !== 'undefined' && GameState.renderPlayingState) {
+            // Render the normal space flight background (no interpolation)
+            GameState.renderPlayingState(0);
+        } else {
+            // Fallback: fill with black
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
         }
 
-        // Swipe-out effect: black rectangle slides in from left to right
-        dockingTransition += 5;
-        const swipeWidth = canvas.width * (dockingTransition / 100);
+        // Swipe-out effect: black rectangle shrinks from left to right (mirrors docking swipe-out)
+        dockingTransition += 2; // Was 5
+        const swipeWidth = canvas.width * (1 - dockingTransition / 100);
         ctx.save();
         ctx.fillStyle = "#000";
         ctx.globalAlpha = 1.0;
@@ -161,7 +157,8 @@ const DockingSystem = (function() {
         if (dockingTransition >= 100) {
             // Undocking complete
             docking = false;
-            GameState.showNotification("Undocking complete.");
+            dockingPhase = null;
+            // GameState.showNotification("Undocking complete."); // Removed notification
             ShipSystem.hero.visible = true;
             // Place ship at last docked X position and restore previous Y position
             ShipSystem.hero.tipX = lastDockX;
@@ -171,7 +168,12 @@ const DockingSystem = (function() {
             ShipSystem.hero.leftY = ShipSystem.hero.tipY + ShipSystem.hero.height;
             ShipSystem.hero.rightY = ShipSystem.hero.tipY + ShipSystem.hero.height;
             undockCooldown = 60;
-            GameState.setState('PLAYING');
+            if (typeof StationSystem !== 'undefined') {
+                StationSystem._forceExit();
+            }
+            setTimeout(() => {
+                GameState.setState('PLAYING');
+            }, 0);
             return;
         } else {
             requestAnimationFrame(animateUndocking);
@@ -208,19 +210,24 @@ const DockingSystem = (function() {
      * Handle movement of player character in ASCII mode
      */
     function handlePlayerMovement() {
+        console.log('[DockingSystem] handlePlayerMovement called. State:', GameState.getCurrentState());
         // Allow movement if in DOCKED state (not just during docking animation)
         if (!(GameState.getCurrentState && GameState.getCurrentState() === GameState.STATE.DOCKED)) return;
         // Handle arrow key movement
         if (InputSystem.wasPressed('left')) {
+            console.log('[DockingSystem] Left pressed');
             StationSystem.movePlayer(-1, 0);
         }
         if (InputSystem.wasPressed('right')) {
+            console.log('[DockingSystem] Right pressed');
             StationSystem.movePlayer(1, 0);
         }
         if (InputSystem.wasPressed('up')) {
+            console.log('[DockingSystem] Up pressed');
             StationSystem.movePlayer(0, -1);
         }
         if (InputSystem.wasPressed('down')) {
+            console.log('[DockingSystem] Down pressed');
             StationSystem.movePlayer(0, 1);
         }
     }
@@ -237,7 +244,10 @@ const DockingSystem = (function() {
     
     // Public API
     return {
-        isDocking: function() { return docking; },
+        isDocking: function() {
+            // Robust: true if in any docking/undocking transition phase
+            return docking === true || dockingPhase === 'in' || dockingPhase === 'out' || dockingPhase === 'undock-swipe';
+        },
         dock: dock,
         undock: undock,
         setOnDockingComplete: setOnDockingComplete,

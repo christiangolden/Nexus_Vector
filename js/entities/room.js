@@ -678,6 +678,7 @@ const StationSystem = (function() {
      */
     function drawStationInterior(ctx) {
         if (!isInside) return;
+        console.log('[StationSystem] drawStationInterior: rendering player at', playerX, playerY);
         
         const tileSize = 20;
         const startX = (ctx.canvas.width - MAP_WIDTH * tileSize) / 2;
@@ -729,8 +730,11 @@ const StationSystem = (function() {
         }
         
         // Draw player
+        ctx.save();
+        // Remove debug magenta square
         ctx.fillStyle = "#FFAA00";
         ctx.fillText('@', startX + playerX * tileSize + tileSize/2, startY + playerY * tileSize + tileSize/2);
+        ctx.restore();
         
         // Draw station info
         ctx.font = "16px Arial";
@@ -775,6 +779,7 @@ const StationSystem = (function() {
         
         // Check bounds
         if (newX < 0 || newX >= MAP_WIDTH || newY < 0 || newY >= MAP_HEIGHT) {
+            console.log('[StationSystem] movePlayer: Out of bounds', newX, newY);
             return;
         }
         
@@ -783,6 +788,9 @@ const StationSystem = (function() {
         if (tile !== '#') { // Not a wall
             playerX = newX;
             playerY = newY;
+            console.log('[StationSystem] movePlayer: moved to', playerX, playerY, 'tile:', tile);
+        } else {
+            console.log('[StationSystem] movePlayer: blocked by wall at', newX, newY);
         }
     }
     
@@ -804,8 +812,13 @@ const StationSystem = (function() {
      * Exit the station and return to the ship
      */
     function exitStation() {
-        isInside = false;
+        // isInside = false; // Moved to end of undocking animation for smooth transition
         DockingSystem.undock();
+    }
+    
+    // Force exit from station (used by DockingSystem after undock animation)
+    function _forceExit() {
+        isInside = false;
     }
     
     /**
@@ -840,7 +853,8 @@ const StationSystem = (function() {
         movePlayer: movePlayer,
         checkExit: checkExit,
         exitStation: exitStation,
-        isInside: function() { return isInside; }
+        isInside: function() { return isInside; },
+        _forceExit: _forceExit
     };
 })();
 
