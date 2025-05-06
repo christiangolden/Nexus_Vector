@@ -686,67 +686,61 @@ const GameState = (function() {
     
     // Draw the score and game stats
     function drawScore() {
-        // --- Star Energy Meter (Upper Right) ---
+        // --- Layout for bottom center ---
         const meterWidth = 180;
         const meterHeight = 22;
-        const meterY = 22;
-        const meterX = canvas.width - meterWidth - 24;
+        const xpBarWidth = 180;
+        const xpBarHeight = 22;
+        const gap = 48; // Increased space between bars to prevent overlap
+        const totalWidth = meterWidth + gap + xpBarWidth;
+        const centerX = canvas.width / 2;
+        const baseY = canvas.height - 48; // 48px from bottom
+
+        // --- Star Energy Meter (Left) ---
+        const meterX = centerX - totalWidth / 2;
+        const meterY = baseY;
         const starEnergy = player.starEnergy;
-        const maxStarEnergy = 1000; // Arbitrary cap for meter display
-        // Draw meter background
+        const maxStarEnergy = 1000;
         ctx.save();
         ctx.font = "bold 15px Consolas";
-        // Brighter, pulsing red glow if warning is active
         if (starEnergyWarningTimer > 0) {
-            const pulse = 0.7 + 0.3 * Math.abs(Math.sin(starEnergyWarningPulse / 30)); // slow pulse
+            const pulse = 0.7 + 0.3 * Math.abs(Math.sin(starEnergyWarningPulse / 30));
             ctx.shadowColor = `rgba(255,32,32,${pulse})`;
             ctx.shadowBlur = 48 * pulse;
         }
         ctx.fillStyle = "#222";
         ctx.fillRect(meterX - 2, meterY - 2, meterWidth + 4, meterHeight + 4);
-        // Draw star energy fill
         ctx.fillStyle = "#44C3FF";
         ctx.fillRect(meterX, meterY, meterWidth * Math.min(starEnergy / maxStarEnergy, 1), meterHeight);
-        // Draw meter border
         ctx.strokeStyle = "#FFF";
         ctx.lineWidth = 2;
         ctx.strokeRect(meterX, meterY, meterWidth, meterHeight);
-        // Draw star icon only (no number)
         ctx.font = "bold 20px Consolas";
         ctx.fillStyle = "#FFD700";
         ctx.textAlign = "right";
         ctx.fillText("★", meterX - 10, meterY + meterHeight - 3);
         ctx.restore();
 
-        // --- XP Bar and Level Counter (Upper Right, below star energy) ---
-        const xpBarWidth = 180;
-        const xpBarHeight = 22;
-        const xpBarY = meterY + meterHeight + 18;
-        const xpBarX = canvas.width - xpBarWidth - 24;
+        // --- XP Bar and Level Counter (Right) ---
+        const xpBarX = meterX + meterWidth + gap;
+        const xpBarY = meterY;
         const currentXp = player.xp;
         const nextLevelXp = player.level * 100;
-        // Level counter to the left of the bar
-        const levelText = `Lv ${player.level}`;
-        ctx.save();
-        ctx.font = "bold 18px Consolas";
-        const levelTextWidth = ctx.measureText(levelText).width;
-        const levelX = xpBarX - levelTextWidth - 18;
-        const levelY = xpBarY + xpBarHeight / 2 + 6;
-        ctx.textAlign = "left";
-        ctx.fillStyle = "#FFD700";
-        ctx.fillText(levelText, levelX, levelY);
         // Draw bar background
+        ctx.save();
         ctx.font = "bold 15px Consolas";
         ctx.fillStyle = "#222";
         ctx.fillRect(xpBarX - 2, xpBarY - 2, xpBarWidth + 4, xpBarHeight + 4);
-        // Draw XP fill
         ctx.fillStyle = "#44FF88";
         ctx.fillRect(xpBarX, xpBarY, xpBarWidth * (currentXp / nextLevelXp), xpBarHeight);
-        // Draw bar border
         ctx.strokeStyle = "#FFF";
         ctx.lineWidth = 2;
         ctx.strokeRect(xpBarX, xpBarY, xpBarWidth, xpBarHeight);
-        // Remove XP counter inside bar
+        // Draw level number at the right end of the bar
+        ctx.font = "bold 18px Consolas";
+        ctx.textAlign = "right";
+        ctx.fillStyle = "#FFD700";
+        ctx.fillText(`${player.level}`, xpBarX + xpBarWidth + 24, xpBarY + xpBarHeight / 2 + 6);
         ctx.restore();
     }
     

@@ -208,12 +208,12 @@ const ShipSystem = (function() {
                 DustSystem.dust.width, DustSystem.dust.height,
                 hero.leftX, hero.tipY, hero.width, hero.height)
             ) {
+                // Absorb stardust: remove dust and add to star energy
                 DustSystem.dust.xList.splice(i, 1);
                 DustSystem.dust.yList.splice(i, 1);
-                GameState.incrementDestDust();
-                GameState.setHeroDead(true);
-                // Important: adjust the counter when removing an element
+                GameState.addStarEnergy(100); // Add 100 star energy per dust (adjust as needed)
                 i--;
+                continue;
             }
         }
         
