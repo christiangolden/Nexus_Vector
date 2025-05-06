@@ -464,9 +464,11 @@ function stopAmbientRumble() {
         const ctx = window.masterAudioCtx;
         ambientRumbleNodes.mixGain.gain.linearRampToValueAtTime(0.0001, ctx.currentTime + 0.18);
         setTimeout(() => {
+            // Double-check ambientRumbleNodes is still valid before accessing
+            if (!ambientRumbleNodes) return;
             try {
-                ambientRumbleNodes.bassOsc.stop();
-                ambientRumbleNodes.noiseSource.stop();
+                if (ambientRumbleNodes.bassOsc) ambientRumbleNodes.bassOsc.stop();
+                if (ambientRumbleNodes.noiseSource) ambientRumbleNodes.noiseSource.stop();
             } catch (e) {}
             Object.values(ambientRumbleNodes).forEach(node => {
                 if (node && node.disconnect) try { node.disconnect(); } catch (e) {}

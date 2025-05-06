@@ -794,6 +794,19 @@ const GameState = (function() {
         player.starEnergy = Math.max(0, Math.min(1000, player.starEnergy + val));
     }
 
+    // --- Cleanup all warp/warp audio effects on player death ---
+    function handlePlayerDeathCleanup() {
+        // Stop warp visuals and reset state
+        session.warpActive = false;
+        session.warpLevel = 0;
+        session.speed = 7;
+        // Stop all warp and magwave sounds if available
+        if (window.stopContinuousWarpSound) window.stopContinuousWarpSound();
+        if (window.stopWarpSound) window.stopWarpSound();
+        if (window.stopMagwaveSound) window.stopMagwaveSound();
+        if (window.stopAmbientRumble) window.stopAmbientRumble();
+    }
+
     // Public API
     return {
         STATE: STATE,
@@ -818,6 +831,7 @@ const GameState = (function() {
             if (isDead) {
                 player.xp = 0;
                 player.starEnergy = 0;
+                handlePlayerDeathCleanup();
             }
         },
         isPlayerUndead: function() { return player.isUndead; },
