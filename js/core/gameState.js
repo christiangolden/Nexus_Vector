@@ -748,16 +748,7 @@ const GameState = (function() {
     // Draw help text in pause screen
     function drawHelpText() {
         drawScore();
-        ctx.font = "18px Consolas";
-        ctx.fillStyle = ColorUtils.randRGB();
-        ctx.textAlign = "start";
-        ctx.fillText("Move:             <-/-> or Tilt", 5, canvas.height - 60);
-        ctx.fillStyle = ColorUtils.randRGB();
-        ctx.fillText("Shoot:            Space/Touch Right", 5, canvas.height - 42);
-        ctx.fillStyle = ColorUtils.randRGB();
-        ctx.fillText("MagWave:     Down/Touch Left", 5, canvas.height - 24);
-        ctx.fillStyle = ColorUtils.randRGB();
-        ctx.fillText("Resume:         p/Multi-Touch", 5, canvas.height - 6);
+        // Remove all instruction text, only show pause icon
         ctx.textAlign = "center";
         ctx.fillStyle = ColorUtils.randRGB();
         ctx.font = "48px Consolas";
