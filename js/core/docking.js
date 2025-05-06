@@ -109,10 +109,10 @@ const DockingSystem = (function() {
             // Show ship again
             ShipSystem.hero.visible = true;
             
-            // Place ship at last docked X position and standard Y position
+            // Place ship at last docked X position and default starting Y position
             const canvas = GameState.getCanvas();
             ShipSystem.hero.tipX = lastDockX;
-            ShipSystem.hero.tipY = canvas.height - 50;
+            ShipSystem.hero.tipY = ShipSystem.getDefaultShipY(canvas);
             ShipSystem.hero.leftX = ShipSystem.hero.tipX - ShipSystem.hero.width/2;
             ShipSystem.hero.rightX = ShipSystem.hero.tipX + ShipSystem.hero.width/2;
             ShipSystem.hero.leftY = ShipSystem.hero.tipY + ShipSystem.hero.height;
@@ -182,10 +182,7 @@ const DockingSystem = (function() {
      */
     function handlePlayerMovement() {
         if (!docking) return;
-        // Debug: notify when movement input is processed
-        if (InputSystem.wasPressed('left') || InputSystem.wasPressed('right') || InputSystem.wasPressed('up') || InputSystem.wasPressed('down')) {
-            GameState.showNotification('ASCII movement input detected');
-        }
+        // Removed debug notification
         // Handle arrow key movement
         if (InputSystem.wasPressed('left')) {
             StationSystem.movePlayer(-1, 0);
