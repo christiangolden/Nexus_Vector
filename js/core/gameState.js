@@ -76,6 +76,14 @@ const GameState = (function() {
         }
     }
     
+    // --- Screen shake for shooting ---
+    let shootShakeFrames = 0;
+    let shootShakeIntensity = 0;
+    function triggerShootShake(frames = 6, intensity = 8) {
+        shootShakeFrames = frames;
+        shootShakeIntensity = intensity;
+    }
+
     // Register a state change listener
     function onStateChange(callback) {
         stateChangeListeners.push(callback);
@@ -523,16 +531,22 @@ const GameState = (function() {
     
     // Game play rendering
     function renderPlayingState(interpolation) {
-        // Screen shake effect during warp
+        // Screen shake effect during warp or shooting
         let shaking = false;
         let shakeX = 0, shakeY = 0;
         if (GameState.getWarpActive()) {
             shaking = true;
-            // Increase shake intensity: random offset between -4 and 4 pixels
             shakeX = (Math.random() - 0.5) * 8;
             shakeY = (Math.random() - 0.5) * 8;
             ctx.save();
             ctx.translate(shakeX, shakeY);
+        } else if (shootShakeFrames > 0) {
+            shaking = true;
+            shakeX = (Math.random() - 0.5) * shootShakeIntensity;
+            shakeY = (Math.random() - 0.5) * shootShakeIntensity;
+            ctx.save();
+            ctx.translate(shakeX, shakeY);
+            shootShakeFrames--;
         }
         // Draw background elements
         ParallaxSystem.draw(ctx);
@@ -842,6 +856,8 @@ const GameState = (function() {
         triggerStarEnergyWarning: triggerStarEnergyWarning,
 
         // Expose renderPlayingState for undocking animation
-        renderPlayingState: renderPlayingState
+        renderPlayingState: renderPlayingState,
+
+        triggerShootShake: triggerShootShake
     };
 })();

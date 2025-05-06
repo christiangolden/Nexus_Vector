@@ -60,6 +60,8 @@ const BulletSystem = (function() {
             BulletSystem.spawnBullet(x, y, 0, -10, "hero");
             GameState.setStarEnergy(starEnergy - 10);
             outOfBulletsWarned = false;
+            // Trigger screen shake when shooting
+            if (GameState.triggerShootShake) GameState.triggerShootShake();
         } else {
             GameState.triggerStarEnergyWarning();
         }
