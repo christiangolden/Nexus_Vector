@@ -40,6 +40,16 @@ const StationSystem = (function() {
         "#112233"
     ];
     
+    // NPC types and their symbols
+    const NPC_TYPES = {
+        MECHANIC: 'M',      // Mechanics in engine rooms
+        CAPTAIN: 'C',       // Captains in bridge
+        TRADER: 'T',        // Traders in storage areas
+        GUARD: 'G',         // Guards near entrances and corridors
+        SCIENTIST: 'Z',     // Scientists in various areas
+        CIVILIAN: 'V'       // Civilians throughout the station
+    };
+    
     // Docking symbol
     const DOCK_SYMBOL = "\u27D0\uFE0E"; 
     
@@ -73,6 +83,9 @@ const StationSystem = (function() {
             storage: { x: 0, y: 0 },
             dock: { x: 0, y: 0 }
         };
+        
+        // NPC data structure
+        this.npcs = [];
         
         // Generate the station's points based on shape
         this.generatePoints();
@@ -344,6 +357,9 @@ const StationSystem = (function() {
             }
         }
         
+        // Generate NPCs for the station interior
+        this.generateNPCs();
+        
         // Attach asciiMap to this instance for test harness
         this.asciiMap = asciiMap;
         this.interiorGenerated = true;
@@ -548,6 +564,260 @@ const StationSystem = (function() {
     };
     
     /**
+     * Generate and place NPCs throughout the station
+     * Each station will have specific NPCs based on its layout
+     */
+    SpaceStation.prototype.generateNPCs = function() {
+        // Clear existing NPCs
+        this.npcs = [];
+        
+        // Generate 1-3 NPCs for each special room
+        this.generateRoomNPCs(this.specialRooms.bridge, NPC_TYPES.CAPTAIN, 1);
+        this.generateRoomNPCs(this.specialRooms.engine, NPC_TYPES.MECHANIC, 1, 2);
+        this.generateRoomNPCs(this.specialRooms.storage, NPC_TYPES.TRADER, 1);
+        
+        // Add guards near the dock
+        this.generateRoomNPCs(this.specialRooms.dock, NPC_TYPES.GUARD, 1);
+        
+        // Add additional NPCs in corridors and rooms
+        this.generateRandomNPCs(3, 7);
+        
+        console.log(`[StationSystem] Generated ${this.npcs.length} NPCs for station ${this.id}`);
+        return this.npcs;
+    };
+    
+    /**
+     * Generate NPCs in a specific room area
+     * @param {Object} roomPosition - {x, y} coordinates of the room center
+     * @param {String} npcType - Type of NPC to generate
+     * @param {Number} minCount - Minimum number of NPCs
+     * @param {Number} maxCount - Maximum number of NPCs (defaults to minCount)
+     */
+    SpaceStation.prototype.generateRoomNPCs = function(roomPosition, npcType, minCount, maxCount = minCount) {
+        if (!roomPosition || roomPosition.x === 0) return; // Invalid room
+        
+        const count = Math.floor(Math.random() * (maxCount - minCount + 1)) + minCount;
+        
+        // Try to place NPCs around the room's center point
+        for (let i = 0; i < count; i++) {
+            // Search for a valid spot in a 5x5 area around the room center
+            let placed = false;
+            let attempts = 0;
+            
+            while (!placed && attempts < 20) {
+                attempts++;
+                const offsetX = Math.floor(Math.random() * 5) - 2;
+                const offsetY = Math.floor(Math.random() * 5) - 2;
+                const x = roomPosition.x + offsetX;
+                const y = roomPosition.y + offsetY;
+                
+                // Check if this position is valid (on a floor tile and not occupied)
+                if (x > 0 && x < MAP_WIDTH && y > 0 && y < MAP_HEIGHT &&
+                    (asciiMap[y][x] === '.' || asciiMap[y][x] === '+') &&
+                    !this.isNPCAt(x, y)) {
+                    
+                    // Place NPC here
+                    this.npcs.push({
+                        id: 'npc_' + Math.random().toString(36).substr(2, 9),
+                        x: x,
+                        y: y,
+                        type: npcType,
+                        name: this.generateNPCName(npcType),
+                        dialog: this.generateDialog(npcType)
+                    });
+                    
+                    // Update the position in the ASCII map to show the NPC
+                    asciiMap[y][x] = npcType;
+                    placed = true;
+                }
+            }
+        }
+    };
+    
+    /**
+     * Generate random NPCs throughout the station in corridors and rooms
+     * @param {Number} minCount - Minimum number of NPCs
+     * @param {Number} maxCount - Maximum number of NPCs
+     */
+    SpaceStation.prototype.generateRandomNPCs = function(minCount, maxCount) {
+        const count = Math.floor(Math.random() * (maxCount - minCount + 1)) + minCount;
+        const npcTypes = [NPC_TYPES.CIVILIAN, NPC_TYPES.SCIENTIST];
+        
+        for (let i = 0; i < count; i++) {
+            let placed = false;
+            let attempts = 0;
+            
+            while (!placed && attempts < 50) {
+                attempts++;
+                // Pick a random location in the map
+                const x = 1 + Math.floor(Math.random() * (MAP_WIDTH - 2));
+                const y = 1 + Math.floor(Math.random() * (MAP_HEIGHT - 2));
+                
+                // Check if this position is valid (on a floor tile and not occupied)
+                if ((asciiMap[y][x] === '.' || asciiMap[y][x] === '+') && !this.isNPCAt(x, y)) {
+                    // Choose a random NPC type
+                    const npcType = npcTypes[Math.floor(Math.random() * npcTypes.length)];
+                    
+                    // Place NPC here
+                    this.npcs.push({
+                        id: 'npc_' + Math.random().toString(36).substr(2, 9),
+                        x: x,
+                        y: y,
+                        type: npcType,
+                        name: this.generateNPCName(npcType),
+                        dialog: this.generateDialog(npcType),
+                        moving: Math.random() < 0.5, // Some NPCs move randomly
+                        moveCooldown: 0
+                    });
+                    
+                    // Update the position in the ASCII map to show the NPC
+                    asciiMap[y][x] = npcType;
+                    placed = true;
+                }
+            }
+        }
+    };
+    
+    /**
+     * Check if there's an NPC at a specific position
+     * @param {Number} x - X coordinate
+     * @param {Number} y - Y coordinate
+     * @returns {Boolean} - True if there's an NPC at (x,y)
+     */
+    SpaceStation.prototype.isNPCAt = function(x, y) {
+        return this.npcs.some(npc => npc.x === x && npc.y === y);
+    };
+    
+    /**
+     * Generate a random name for an NPC based on its type
+     * @param {String} npcType - The NPC type from NPC_TYPES
+     * @returns {String} - A random name
+     */
+    SpaceStation.prototype.generateNPCName = function(npcType) {
+        const names = {
+            [NPC_TYPES.MECHANIC]: ['Sparks', 'Gizmo', 'Wrench', 'Coil', 'Bolt', 'Gear'],
+            [NPC_TYPES.CAPTAIN]: ['Cmdr. Nova', 'Capt. Rigel', 'Lt. Polaris', 'Adm. Vega', 'Cmdr. Orion'],
+            [NPC_TYPES.TRADER]: ['Barter', 'Profit', 'Exchange', 'Dealer', 'Stock', 'Vendor'],
+            [NPC_TYPES.GUARD]: ['Sentinel', 'Vigilant', 'Shield', 'Watch', 'Ward', 'Patrol'],
+            [NPC_TYPES.SCIENTIST]: ['Doc', 'Prof', 'Theory', 'Logic', 'Engineer', 'Quantum'],
+            [NPC_TYPES.CIVILIAN]: ['Settler', 'Traveler', 'Spacer', 'Colonist', 'Wanderer']
+        };
+        
+        // Get the appropriate name list or fallback to a default list
+        const nameList = names[npcType] || names[NPC_TYPES.CIVILIAN];
+        
+        // Pick a random name from the list
+        return nameList[Math.floor(Math.random() * nameList.length)];
+    };
+    
+    /**
+     * Generate dialog for an NPC based on its type
+     * @param {String} npcType - The NPC type from NPC_TYPES
+     * @returns {Array} - Array of possible dialog lines
+     */
+    SpaceStation.prototype.generateDialog = function(npcType) {
+        const dialog = {
+            [NPC_TYPES.MECHANIC]: [
+                "The engine core's running hot today.",
+                "Watch those power fluctuations.",
+                "Need some parts for repairs?",
+                "These old systems need constant maintenance."
+            ],
+            [NPC_TYPES.CAPTAIN]: [
+                "Welcome to the bridge, pilot.",
+                "The navigation systems show increased asteroid activity.",
+                "We've detected unusual readings from the outer sectors.",
+                "Keep your ship's systems updated."
+            ],
+            [NPC_TYPES.TRADER]: [
+                "Looking to trade? I've got rare goods.",
+                "Fresh supplies just arrived yesterday.",
+                "I'll give you a good price for your cargo.",
+                "Need ammunition? Fuel cells? I've got it all."
+            ],
+            [NPC_TYPES.GUARD]: [
+                "Move along, nothing to see here.",
+                "Keep your weapons holstered while on station.",
+                "I'm watching you, traveler.",
+                "Report any suspicious activity immediately."
+            ],
+            [NPC_TYPES.SCIENTIST]: [
+                "My research is at a critical stage!",
+                "These readings are quite fascinating.",
+                "Have you encountered any unusual phenomena out there?",
+                "I'm studying the effects of deep space radiation."
+            ],
+            [NPC_TYPES.CIVILIAN]: [
+                "Just passing through the system.",
+                "This station has seen better days.",
+                "Have you heard news from the central planets?",
+                "Been on this station for three cycles now."
+            ]
+        };
+        
+        // Get the appropriate dialog list or fallback to a default list
+        const dialogList = dialog[npcType] || dialog[NPC_TYPES.CIVILIAN];
+        
+        return dialogList;
+    };
+    
+    /**
+     * Update NPCs for this station (movement and behavior)
+     * @param {Number} deltaTime - Time since last update
+     */
+    SpaceStation.prototype.updateNPCs = function(deltaTime) {
+        if (!this.interiorGenerated || !isInside || !this.npcs) return;
+        
+        // Update each NPC
+        for (let i = 0; i < this.npcs.length; i++) {
+            const npc = this.npcs[i];
+            
+            // Skip non-moving NPCs
+            if (!npc.moving) continue;
+            
+            // Decrease movement cooldown
+            if (npc.moveCooldown > 0) {
+                npc.moveCooldown -= deltaTime;
+                continue;
+            }
+            
+            // Randomly decide to move
+            if (Math.random() < 0.2) {
+                // Remove NPC from current position in asciiMap
+                asciiMap[npc.y][npc.x] = '.';
+                
+                // Choose a random direction
+                const directions = [[0,1],[1,0],[0,-1],[-1,0]];
+                const dir = directions[Math.floor(Math.random() * directions.length)];
+                
+                const newX = npc.x + dir[0];
+                const newY = npc.y + dir[1];
+                
+                // Check if the new position is valid (floor or door, not occupied)
+                if (newX > 0 && newX < MAP_WIDTH && newY > 0 && newY < MAP_HEIGHT && 
+                    (asciiMap[newY][newX] === '.' || asciiMap[newY][newX] === '+') &&
+                    !this.isNPCAt(newX, newY) && 
+                    !(newX === playerX && newY === playerY)) {
+                    
+                    // Move NPC to new position
+                    npc.x = newX;
+                    npc.y = newY;
+                    
+                    // Update asciiMap
+                    asciiMap[npc.y][npc.x] = npc.type;
+                }
+                else {
+                    // If movement failed, put back in original position
+                    asciiMap[npc.y][npc.x] = npc.type;
+                }
+                
+                // Set cooldown for next movement (2-5 seconds)
+                npc.moveCooldown = 2 + Math.random() * 3;
+            }
+        }
+    };
+    
+    /**
      * Initialize the station system
      */
     function init() {
@@ -588,20 +858,31 @@ const StationSystem = (function() {
         const yMult = 1 + (warpFactor - 1) * warpLevel;
         const timeScale = 60 * deltaTime;
         console.log('[StationSystem] warpLevel:', warpLevel, 'yMult:', yMult, 'deltaTime:', deltaTime);
-        for (let i = 0; i < stationList.length; i++) {
-            stationList[i].update(deltaTime);
-            stationList[i].y += 2.0 * yMult * timeScale;
-            
-            // Remove stations that are far below the screen
-            if (stationList[i].y - stationList[i].size > canvas.height + 500) {
-                stationList.splice(i, 1);
-                i--;
-            }
-        }
         
-        // Generate new stations as needed
-        if (stationList.length < 3 && Math.random() < 0.01) {
-            generateStation();
+        // If inside a station, update NPCs
+        if (isInside) {
+            const currentStation = getCurrentStation();
+            if (currentStation) {
+                currentStation.updateNPCs(deltaTime);
+            }
+        } 
+        // Otherwise update stations in space
+        else {
+            for (let i = 0; i < stationList.length; i++) {
+                stationList[i].update(deltaTime);
+                stationList[i].y += 2.0 * yMult * timeScale;
+                
+                // Remove stations that are far below the screen
+                if (stationList[i].y - stationList[i].size > canvas.height + 500) {
+                    stationList.splice(i, 1);
+                    i--;
+                }
+            }
+            
+            // Generate new stations as needed
+            if (stationList.length < 3 && Math.random() < 0.01) {
+                generateStation();
+            }
         }
     }
     
@@ -717,6 +998,25 @@ const StationSystem = (function() {
                     case 'D': // Dock
                         ctx.fillStyle = "#335577";
                         break;
+                    // NPC types with different background colors
+                    case NPC_TYPES.MECHANIC: // Mechanics
+                        ctx.fillStyle = "#553300";
+                        break;
+                    case NPC_TYPES.CAPTAIN: // Captains
+                        ctx.fillStyle = "#334477";
+                        break;
+                    case NPC_TYPES.TRADER: // Traders
+                        ctx.fillStyle = "#555522";
+                        break;
+                    case NPC_TYPES.GUARD: // Guards
+                        ctx.fillStyle = "#444444";
+                        break;
+                    case NPC_TYPES.SCIENTIST: // Scientists
+                        ctx.fillStyle = "#225566";
+                        break;
+                    case NPC_TYPES.CIVILIAN: // Civilians
+                        ctx.fillStyle = "#2A332A";
+                        break;
                     default:
                         ctx.fillStyle = "#000000";
                 }
@@ -724,14 +1024,35 @@ const StationSystem = (function() {
                 ctx.fillRect(tileX, tileY, tileSize, tileSize);
                 
                 // Draw ASCII character
-                ctx.fillStyle = "#FFFFFF";
+                switch (asciiMap[y][x]) {
+                    case NPC_TYPES.MECHANIC:
+                        ctx.fillStyle = "#FF9933";
+                        break;
+                    case NPC_TYPES.CAPTAIN:
+                        ctx.fillStyle = "#99CCFF";
+                        break;
+                    case NPC_TYPES.TRADER:
+                        ctx.fillStyle = "#FFFF66";
+                        break;
+                    case NPC_TYPES.GUARD:
+                        ctx.fillStyle = "#FF6666";
+                        break;
+                    case NPC_TYPES.SCIENTIST:
+                        ctx.fillStyle = "#66FFFF";
+                        break;
+                    case NPC_TYPES.CIVILIAN:
+                        ctx.fillStyle = "#AAFFAA";
+                        break;
+                    default:
+                        ctx.fillStyle = "#FFFFFF";
+                }
+                
                 ctx.fillText(asciiMap[y][x], tileX + tileSize/2, tileY + tileSize/2);
             }
         }
         
         // Draw player
         ctx.save();
-        // Remove debug magenta square
         ctx.fillStyle = "#FFAA00";
         ctx.fillText('@', startX + playerX * tileSize + tileSize/2, startY + playerY * tileSize + tileSize/2);
         ctx.restore();
@@ -742,28 +1063,41 @@ const StationSystem = (function() {
         ctx.textAlign = "center";
         ctx.fillText("Use ARROW KEYS to move - Press ESC to exit station", ctx.canvas.width / 2, startY - 20);
         
-        // Draw help text based on player position
-        const tile = asciiMap[playerY][playerX];
-        let helpText = "";
-        
-        switch (tile) {
-            case 'D':
-                helpText = "DOCKING BAY - Press ESC to return to ship";
-                break;
-            case 'B':
-                helpText = "BRIDGE - Navigation systems and controls";
-                break;
-            case 'E':
-                helpText = "ENGINE ROOM - Power core at critical levels";
-                break;
-            case 'S':
-                helpText = "STORAGE - Supplies and equipment";
-                break;
+        // Check if player is next to an NPC for interaction
+        const currentStation = getCurrentStation();
+        if (currentStation) {
+            const adjacentNPC = findAdjacentNPC(currentStation);
+            if (adjacentNPC) {
+                // Draw NPC dialog
+                drawNPCDialog(ctx, adjacentNPC, startX, startY, tileSize);
+            } else {
+                // Draw help text based on player position
+                const tile = asciiMap[playerY][playerX];
+                let helpText = "";
+                
+                switch (tile) {
+                    case 'D':
+                        helpText = "DOCKING BAY - Press ESC to return to ship";
+                        break;
+                    case 'B':
+                        helpText = "BRIDGE - Navigation systems and controls";
+                        break;
+                    case 'E':
+                        helpText = "ENGINE ROOM - Power core at critical levels";
+                        break;
+                    case 'S':
+                        helpText = "STORAGE - Supplies and equipment";
+                        break;
+                }
+                
+                if (helpText) {
+                    ctx.fillText(helpText, ctx.canvas.width / 2, startY + MAP_HEIGHT * tileSize + 20);
+                }
+            }
         }
         
-        if (helpText) {
-            ctx.fillText(helpText, ctx.canvas.width / 2, startY + MAP_HEIGHT * tileSize + 20);
-        }
+        // Draw NPC legend
+        drawNPCLegend(ctx, startX + MAP_WIDTH * tileSize + 10, startY);
     }
     
     /**
@@ -839,6 +1173,130 @@ const StationSystem = (function() {
             if (intersect) inside = !inside;
         }
         return inside;
+    }
+    
+    /**
+     * Find an adjacent NPC to the player
+     * @param {SpaceStation} station - Current station
+     * @returns {Object|null} - The NPC object if found, or null
+     */
+    function findAdjacentNPC(station) {
+        if (!station.npcs) return null;
+        
+        // Check all 4 adjacent tiles
+        const directions = [[0,1],[1,0],[0,-1],[-1,0]];
+        
+        for (const [dx, dy] of directions) {
+            const checkX = playerX + dx;
+            const checkY = playerY + dy;
+            
+            // Find NPC at this position
+            const npc = station.npcs.find(n => n.x === checkX && n.y === checkY);
+            if (npc) return npc;
+        }
+        
+        return null;
+    }
+    
+    /**
+     * Draw NPC dialog when player is adjacent to an NPC
+     * @param {CanvasRenderingContext2D} ctx - Canvas context
+     * @param {Object} npc - The NPC object
+     * @param {number} startX - X offset of ASCII map
+     * @param {number} startY - Y offset of ASCII map
+     * @param {number} tileSize - Size of each ASCII tile
+     */
+    function drawNPCDialog(ctx, npc, startX, startY, tileSize) {
+        // Draw dialog box at the bottom of the screen
+        const boxWidth = MAP_WIDTH * tileSize * 0.8;
+        const boxHeight = 80;
+        const boxX = startX + (MAP_WIDTH * tileSize - boxWidth) / 2;
+        const boxY = startY + MAP_HEIGHT * tileSize + 10;
+        
+        // Draw box background
+        ctx.fillStyle = "rgba(0, 0, 0, 0.8)";
+        ctx.strokeStyle = "#6688AA";
+        ctx.lineWidth = 2;
+        ctx.fillRect(boxX, boxY, boxWidth, boxHeight);
+        ctx.strokeRect(boxX, boxY, boxWidth, boxHeight);
+        
+        // Draw NPC name
+        ctx.font = "bold 16px Arial";
+        ctx.fillStyle = getColorForNPCType(npc.type);
+        ctx.textAlign = "left";
+        ctx.fillText(npc.name, boxX + 15, boxY + 20);
+        
+        // Draw dialog text
+        ctx.font = "14px Arial";
+        ctx.fillStyle = "#FFFFFF";
+        // Choose a random dialog line or a specific one based on some game state
+        const dialogLine = npc.dialog[Math.floor(Math.random() * npc.dialog.length)];
+        ctx.fillText(dialogLine, boxX + 15, boxY + 50);
+    }
+    
+    /**
+     * Get the text color for an NPC type
+     * @param {String} npcType - The NPC type
+     * @returns {String} - CSS color for the NPC type
+     */
+    function getColorForNPCType(npcType) {
+        const colors = {
+            [NPC_TYPES.MECHANIC]: "#FF9933",
+            [NPC_TYPES.CAPTAIN]: "#99CCFF",
+            [NPC_TYPES.TRADER]: "#FFFF66",
+            [NPC_TYPES.GUARD]: "#FF6666",
+            [NPC_TYPES.SCIENTIST]: "#66FFFF",
+            [NPC_TYPES.CIVILIAN]: "#AAFFAA"
+        };
+        
+        return colors[npcType] || "#FFFFFF";
+    }
+    
+    /**
+     * Draw a legend for NPCs
+     * @param {CanvasRenderingContext2D} ctx - Canvas context
+     * @param {number} x - X position to start drawing
+     * @param {number} y - Y position to start drawing
+     */
+    function drawNPCLegend(ctx, x, y) {
+        ctx.font = "14px Arial";
+        ctx.textAlign = "left";
+        ctx.textBaseline = "middle";
+        
+        const npcTypes = [
+            { symbol: NPC_TYPES.CAPTAIN, name: "Captain", color: "#99CCFF" },
+            { symbol: NPC_TYPES.MECHANIC, name: "Mechanic", color: "#FF9933" },
+            { symbol: NPC_TYPES.TRADER, name: "Trader", color: "#FFFF66" },
+            { symbol: NPC_TYPES.GUARD, name: "Guard", color: "#FF6666" },
+            { symbol: NPC_TYPES.SCIENTIST, name: "Scientist", color: "#66FFFF" },
+            { symbol: NPC_TYPES.CIVILIAN, name: "Civilian", color: "#AAFFAA" }
+        ];
+        
+        ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
+        ctx.fillRect(x, y, 120, 30 + npcTypes.length * 20);
+        ctx.strokeStyle = "#555555";
+        ctx.strokeRect(x, y, 120, 30 + npcTypes.length * 20);
+        
+        ctx.fillStyle = "#FFFFFF";
+        ctx.fillText("STATION NPCs:", x + 10, y + 15);
+        
+        for (let i = 0; i < npcTypes.length; i++) {
+            const npc = npcTypes[i];
+            ctx.fillStyle = npc.color;
+            ctx.fillText(npc.symbol, x + 10, y + 40 + i * 20);
+            ctx.fillText("- " + npc.name, x + 30, y + 40 + i * 20);
+        }
+    }
+    
+    /**
+     * Get the current station that the player is inside
+     * @returns {SpaceStation|null} - The current station or null
+     */
+    function getCurrentStation() {
+        if (!isInside) return null;
+        
+        // Find the station with interiorGenerated = true
+        return stationList.find(station => station.interiorGenerated) || null;
     }
     
     // Public API
