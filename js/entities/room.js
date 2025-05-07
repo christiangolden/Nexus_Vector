@@ -623,7 +623,9 @@ const StationSystem = (function() {
                         y: y,
                         type: npcType,
                         name: this.generateNPCName(npcType),
-                        dialog: this.generateDialog(npcType)
+                        dialog: this.generateDialog(npcType),
+                        dialogActive: false,
+                        dialogCooldown: 0
                     });
                     
                     // Update the position in the ASCII map to show the NPC
@@ -667,7 +669,9 @@ const StationSystem = (function() {
                         name: this.generateNPCName(npcType),
                         dialog: this.generateDialog(npcType),
                         moving: Math.random() < 0.5, // Some NPCs move randomly
-                        moveCooldown: 0
+                        moveCooldown: 0,
+                        dialogActive: false,
+                        dialogCooldown: 0
                     });
                     
                     // Update the position in the ASCII map to show the NPC
@@ -1068,9 +1072,24 @@ const StationSystem = (function() {
         if (currentStation) {
             const adjacentNPC = findAdjacentNPC(currentStation);
             if (adjacentNPC) {
-                // Draw NPC dialog
+                // Only show dialog if not active and cooldown is 0
+                if (!adjacentNPC.dialogActive && (!adjacentNPC.dialogCooldown || adjacentNPC.dialogCooldown <= 0)) {
+                    adjacentNPC.dialogActive = true;
+                    adjacentNPC.dialogCooldown = 0; // Will be set when dialog closes
+                    // Pick a dialog line and store it
+                    adjacentNPC._currentDialogLine = adjacentNPC.dialog[Math.floor(Math.random() * adjacentNPC.dialog.length)];
+                }
                 drawNPCDialog(ctx, adjacentNPC, startX, startY, tileSize);
             } else {
+                // If no adjacent NPC, reset dialogActive and start cooldown for all NPCs
+                if (currentStation.npcs) {
+                    for (const npc of currentStation.npcs) {
+                        if (npc.dialogActive) {
+                            npc.dialogActive = false;
+                            npc.dialogCooldown = 30; // About 0.5 seconds at 60fps
+                        }
+                    }
+                }
                 // Draw help text based on player position
                 const tile = asciiMap[playerY][playerX];
                 let helpText = "";
@@ -1096,8 +1115,14 @@ const StationSystem = (function() {
             }
         }
         
-        // Draw NPC legend
-        drawNPCLegend(ctx, startX + MAP_WIDTH * tileSize + 10, startY);
+        // Decrement dialogCooldown for all NPCs
+        if (currentStation.npcs) {
+            for (const npc of currentStation.npcs) {
+                if (npc.dialogCooldown && npc.dialogCooldown > 0) {
+                    npc.dialogCooldown--;
+                }
+            }
+        }
     }
     
     /**
@@ -1229,8 +1254,7 @@ const StationSystem = (function() {
         // Draw dialog text
         ctx.font = "14px Arial";
         ctx.fillStyle = "#FFFFFF";
-        // Choose a random dialog line or a specific one based on some game state
-        const dialogLine = npc.dialog[Math.floor(Math.random() * npc.dialog.length)];
+        const dialogLine = npc._currentDialogLine || npc.dialog[Math.floor(Math.random() * npc.dialog.length)];
         ctx.fillText(dialogLine, boxX + 15, boxY + 50);
     }
     
